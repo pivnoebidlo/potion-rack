@@ -1,0 +1,78 @@
+{
+  "name": "potion-rack",
+  "version": "1.0.0",
+  "description": "Paint Manager for Miniatures",
+  "author": "Your Name",
+  "main": "dist/main.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.main.json && tsc -p tsconfig.renderer.json",
+    "start": "npm run build && electron .",
+    "dist:mac": "npm run build && electron-builder --mac --arm64",
+    "dist:win": "npm run build && electron-builder --win --x64",
+    "dist:win-portable": "npm run build && electron-builder --win --x64 -- portable",
+    "dist:linux": "npm run build && electron-builder --linux --x64",
+    "dist:all": "npm run build && electron-builder --mac --arm64 --win --x64 --linux --x64"
+  },
+  "build": {
+    "appId": "com.potionrack.app",
+    "productName": "Potion Rack",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "public/**/*",
+      "!dist/**/*.map",
+      "!dist/**/*.ts"
+    ],
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "category": "public.app-category.productivity",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false
+    },
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Graphics"
+    },
+    "extraResources": [
+      {
+        "from": "backend",
+        "to": "backend",
+        "filter": [
+          "**/*.py",
+          "**/*.txt",
+          "**/*.db",
+          "!**/__pycache__"
+        ]
+      }
+    ]
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/node": "^20.0.0",
+    "electron": "^28.3.3",
+    "electron-builder": "^24.13.3",
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.10.0",
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
+    "marked": "^18.0.3"
+  }
+}

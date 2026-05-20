@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Potion Rack</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<div class="header">
+    <h1 id="appTitle">🎨 Potion Rack</h1>
+    <div class="stats">
+        <div class="stat">
+            <div class="stat-value" id="totalCount">0</div>
+            <div class="stat-label" id="statsTotalLabel">Total Paints</div>
+        </div>
+        <div class="stat">
+            <div class="stat-value" id="brandCount">0</div>
+            <div class="stat-label" id="statsBrandsLabel">Brands</div>
+        </div>
+    </div>
+</div>
+
+<div class="app-container">
+    <!-- Left sidebar navigation -->
+    <div class="left-sidebar">
+        <div class="nav-item active" data-tab="paints" title="Paints">🎨</div>
+        <div class="nav-item" data-tab="figures" title="Figures">🧩</div>
+        <div class="nav-item" data-tab="settings" title="Settings">⚙️</div>
+    </div>
+
+    <!-- Main content -->
+    <div class="main-container">
+        <!-- Paints View -->
+        <div id="paints-view" class="view active">
+            <div class="toolbar">
+                <div class="filter-row">
+                    <div class="filter-group">
+                        <label id="labelBrand">Brand</label>
+                        <select id="filter-brand" style="min-width: 110px;"></select>
+                    </div>
+                    <div class="filter-group">
+                        <label id="labelSeries">Series</label>
+                        <select id="filter-series" style="min-width: 110px;"></select>
+                    </div>
+                    <div class="filter-group">
+                        <label id="labelBaseColor">Base Color</label>
+                        <select id="filter-base-color" style="min-width: 110px;"></select>
+                    </div>
+                    <div class="filter-group">
+                        <label id="labelSearch">Search</label>
+                        <input type="text" id="filter-color-name" placeholder="Color name..." style="min-width: 120px;">
+                    </div>
+                    <div class="filter-group">
+                        <label id="labelStatus">Status</label>
+                        <select id="filter-status" style="min-width: 100px;">
+                            <option value="">All</option>
+                            <option value="instock">✅ In Stock</option>
+                            <option value="low">⚠️ Low</option>
+                            <option value="out">❌ Out of Stock</option>
+                            <option value="ordered">📦 Ordered</option>
+                        </select>
+                    </div>
+                    <div class="action-buttons">
+                        <button id="resetFiltersBtn" class="icon-btn" title="Reset filters">🔄</button>
+                        <button id="addBtn" class="primary icon-btn" title="Add paint">➕</button>
+                        <select id="languageSwitcher" class="language-switcher">
+                            <option value="en">🇬🇧 EN</option>
+                            <option value="ru">🇷🇺 RU</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="table-container">
+                <table>
+                    <thead>
+                    <tr>
+                        <th id="thBrand">Brand</th>
+                        <th id="thSeries">Series</th>
+                        <th id="thColor">Color Name</th>
+                        <th id="thArticle">Article</th>
+                        <th id="thBaseColor">Base Color</th>
+                        <th id="thPurchaseDate">Purchase Date</th>
+                        <th id="thRating">Rating</th>
+                        <th id="thStatus">Status</th>
+                        <th></th>
+                    </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                    <tr><td colspan="9" class="loading">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Figures View (placeholder) -->
+        <div id="figures-view" class="view">
+            <div style="display: flex; justify-content: center; align-items: center; height: 100%; color: #aaa; flex-direction: column; gap: 20px;">
+                <div style="font-size: 48px;">🧩</div>
+                <div style="font-size: 16px;">Figures feature coming soon!</div>
+                <div style="font-size: 12px;">Track your miniatures and paint usage</div>
+            </div>
+        </div>
+
+        <!-- Settings View -->
+        <div id="settings-view" class="view">
+            <h2 style="color: #e94560; margin-bottom: 20px;">⚙️ Settings</h2>
+
+            <div class="settings-card">
+                <h3>💾 Backup & Restore</h3>
+                <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+                    <button id="settings-export-backup" style="background: #0f3460; padding: 10px 20px;">📤 Export Backup</button>
+                    <button id="settings-import-backup" style="background: #0f3460; padding: 10px 20px;">📥 Import Backup</button>
+                </div>
+                <p style="color: #aaa; font-size: 12px; margin-top: 15px;">Export all paints, photos and settings to a file. Import restores everything from a backup file.</p>
+            </div>
+
+            <div class="settings-card">
+                <h3>🎨 Appearance</h3>
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 5px; color: #aaa;">Theme</label>
+                    <select id="settings-theme" style="width: 100%; padding: 8px; background: #0f3460; border: 1px solid #2a2a3e; color: #eee; border-radius: 4px;">
+                        <option value="dark">Dark</option>
+                        <option value="light">Light</option>
+                        <option value="system">System</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="settings-card">
+                <h3>🌐 Language</h3>
+                <div>
+                    <label style="display: block; margin-bottom: 5px; color: #aaa;">Select language</label>
+                    <select id="settings-language" style="width: 100%; padding: 8px; background: #0f3460; border: 1px solid #2a2a3e; color: #eee; border-radius: 4px;">
+                        <option value="en">English</option>
+                        <option value="ru">Русский</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="settings-card">
+                <h3>ℹ️ About</h3>
+                <p><strong>Potion Rack</strong> v1.0.0</p>
+                <p style="color: #aaa; font-size: 12px; margin-top: 10px;">Paint Manager for Miniatures</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right panel -->
+    <div class="resize-handle" id="resizeHandle"></div>
+    <div class="right-panel" id="rightPanel">
+        <div class="right-panel-header">
+            <button id="collapsePanelBtn" class="collapse-btn" title="Toggle details panel">▶</button>
+        </div>
+        <div class="right-panel-content" id="detailsContent">
+            <div class="details-value">Select a paint to see details</div>
+        </div>
+    </div>
+</div>
+
+<div class="status-message" id="statusMessage">Ready</div>
+
+<script type="module" src="../dist/renderer/index.js"></script>
+</body>
+</html>
