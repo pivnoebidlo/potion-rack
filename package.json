@@ -60,7 +60,7 @@
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/node": "^20.0.0",
-    "electron": "^28.3.3",
+    "electron": "^30.0.0",
     "electron-builder": "^24.13.3",
     "typescript": "^5.0.0"
   },

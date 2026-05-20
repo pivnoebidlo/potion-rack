@@ -1,4 +1,6 @@
 name: Build Potion Rack
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 on:
   push:
@@ -9,7 +11,7 @@ on:
 jobs:
   build-windows:
     name: Build for Windows (x64)
-    runs-on: windows-latest
+    runs-on: windows-2025-vs2026
 
     steps:
       - name: Checkout code
@@ -18,7 +20,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
           cache: 'npm'
 
       - name: Setup Python (required for node-gyp)
@@ -36,7 +38,7 @@ jobs:
         run: npm ci
 
       - name: Rebuild better-sqlite3 for Electron
-        run: npm rebuild better-sqlite3 --runtime=electron --target=28.3.3 --disturl=https://electronjs.org/headers
+        run: npm rebuild better-sqlite3 --runtime=electron --target=30.0.0 --disturl=https://electronjs.org/headers
 
       - name: Build TypeScript
         run: npm run build
@@ -71,7 +73,7 @@ jobs:
         run: npm ci
 
       - name: Rebuild better-sqlite3 for Electron
-        run: npm rebuild better-sqlite3 --runtime=electron --target=28.3.3 --disturl=https://electronjs.org/headers
+        run: npm rebuild better-sqlite3 --runtime=electron --target=30.0.0 --disturl=https://electronjs.org/headers
 
       - name: Build TypeScript
         run: npm run build
@@ -110,7 +112,7 @@ jobs:
         run: npm ci
 
       - name: Rebuild better-sqlite3 for Electron
-        run: npm rebuild better-sqlite3 --runtime=electron --target=28.3.3 --disturl=https://electronjs.org/headers
+        run: npm rebuild better-sqlite3 --runtime=electron --target=30.0.0 --disturl=https://electronjs.org/headers
 
       - name: Build TypeScript
         run: npm run build
