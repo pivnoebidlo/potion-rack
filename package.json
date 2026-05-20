@@ -2,7 +2,7 @@
   "name": "potion-rack",
   "version": "1.0.0",
   "description": "Paint Manager for Miniatures",
-  "author": "Your Name",
+  "author": "Dima <dima@niktokro.me>",
   "main": "dist/main.js",
   "scripts": {
     "build": "tsc -p tsconfig.main.json && tsc -p tsconfig.renderer.json",
@@ -23,13 +23,11 @@
       "!dist/**/*.ts"
     ],
     "mac": {
-      "target": [
-        "dmg",
-        "zip"
-      ],
+      "target": ["dmg", "zip"],
       "category": "public.app-category.productivity",
-      "hardenedRuntime": true,
-      "gatekeeperAssess": false
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false,
+      "identity": null
     },
     "win": {
       "target": [
