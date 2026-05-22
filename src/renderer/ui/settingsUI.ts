@@ -3,6 +3,9 @@ import { settingsManager } from '../modules/settings/SettingsManager.js';
 import { i18n, Language } from '../i18n/index.js';
 import { getAllThemes, applyTheme, getTheme } from '../themes/index.js';
 
+// Version management
+const VERSION = '0.1.0';  // Update manually on release
+
 export function setupSettingsPanel(): void {
     // Get DOM elements
     const exportBtn = document.getElementById('settings-export-backup') as HTMLElement;
@@ -72,6 +75,24 @@ export function setupSettingsPanel(): void {
 
     // Apply current theme on load
     applyTheme(settings.theme);
+
+    // About section - add to existing container
+    const aboutSection = document.createElement('div');
+    aboutSection.className = 'settings-card';
+    aboutSection.innerHTML = `
+        <h3>ℹ️ About</h3>
+        <p><strong>Potion Rack</strong> v${VERSION}</p>
+        <p style="color: #aaa; font-size: 12px; margin-top: 10px;">Paint Manager for Miniatures</p>
+        <p style="color: #aaa; font-size: 11px; margin-top: 15px;">
+            <a href="https://github.com/pivnoebidlo/potion-rack" target="_blank" style="color: #e94560;">GitHub Repository</a>
+        </p>
+    `;
+
+    // Find where to append (after language select or at the end of settings view)
+    const settingsView = document.getElementById('settings-view');
+    if (settingsView) {
+        settingsView.appendChild(aboutSection);
+    }
 }
 
 // Listen for system theme changes (optional)

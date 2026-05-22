@@ -13,6 +13,8 @@ export interface Theme {
         warning: string;
         error: string;
         info: string;
+        starFilled: string;
+        starEmpty: string;
     };
     components: {
         header: string;
@@ -23,7 +25,28 @@ export interface Theme {
         tableRowSelected: string;
         card: string;
         input: string;
+        inputText: string;
+        inputPlaceholder: string;
         button: string;
+        buttonText: string;
         buttonPrimary: string;
+        buttonPrimaryText: string;
+        link: string;
+        modalOverlay: string;
+        modalBackground: string;
+        modalBorder: string;
+        cardBorder: string;
+        cardHover: string;
+        buttonSecondary: string;
+        buttonSecondaryText: string;
+        buttonDanger: string;
+        buttonDangerText: string;
+        selectBg: string;
+        selectText: string;
+        selectBorder: string;
+        selectHover: string;
+        inputBorder: string;
+        inputFocus: string;
+        linkHover: string;
     };
 }

@@ -1,4 +1,4 @@
-import { Theme } from './theme';
+import { Theme } from './theme.js';
 
 export const darkTheme: Theme = {
     id: 'dark',
@@ -15,6 +15,8 @@ export const darkTheme: Theme = {
         warning: '#ff9800',
         error: '#f44336',
         info: '#2196f3',
+        starFilled: '#ffd700',
+        starEmpty: '#555',
     },
     components: {
         header: '#0f0f1a',
@@ -25,7 +27,28 @@ export const darkTheme: Theme = {
         tableRowSelected: '#e94560',
         card: '#16213e',
         input: '#0f3460',
+        inputText: '#eee',
+        inputPlaceholder: '#aaa',
         button: '#0f3460',
+        buttonText: '#fff',
         buttonPrimary: '#e94560',
+        buttonPrimaryText: '#fff',
+        link: '#e94560',
+        modalOverlay: 'rgba(0,0,0,0.7)',
+        modalBackground: '#16213e',
+        modalBorder: '#e94560',
+        cardBorder: '#2a2a3e',
+        cardHover: '#1a1a3e',
+        buttonSecondary: '#0f3460',
+        buttonSecondaryText: '#fff',
+        buttonDanger: '#f44336',
+        buttonDangerText: '#fff',
+        selectBg: '#0f3460',
+        selectText: '#eee',
+        selectBorder: '#2a2a3e',
+        selectHover: '#1a4a7a',
+        inputBorder: '#2a2a3e',
+        inputFocus: '#e94560',
+        linkHover: '#c73e56'
     },
 };

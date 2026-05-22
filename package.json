@@ -1,11 +1,12 @@
 {
   "name": "potion-rack",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "Paint Manager for Miniatures",
   "author": "Dima <dima@niktokro.me>",
   "main": "dist/main.js",
   "scripts": {
     "build": "tsc -p tsconfig.main.json && tsc -p tsconfig.renderer.json",
+    "start": "npm run build && electron .",
     "dist:win": "npm run build && electron-builder --win --x64",
     "dist:mac": "npm run build && electron-builder --mac --arm64",
     "dist:linux": "npm run build && electron-builder --linux --x64"

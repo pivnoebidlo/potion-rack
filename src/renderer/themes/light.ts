@@ -1,4 +1,4 @@
-import { Theme } from './theme';
+import { Theme } from './theme.js';
 
 export const lightTheme: Theme = {
     id: 'light',
@@ -15,6 +15,8 @@ export const lightTheme: Theme = {
         warning: '#ff9800',
         error: '#f44336',
         info: '#2196f3',
+        starFilled: '#ffd700',
+        starEmpty: '#ddd',
     },
     components: {
         header: '#ffffff',
@@ -25,7 +27,28 @@ export const lightTheme: Theme = {
         tableRowSelected: '#e94560',
         card: '#ffffff',
         input: '#ffffff',
+        inputText: '#333',
+        inputPlaceholder: '#999',
         button: '#e0e0e0',
+        buttonText: '#333',
         buttonPrimary: '#e94560',
+        buttonPrimaryText: '#fff',
+        link: '#e94560',
+        modalOverlay: 'rgba(0,0,0,0.5)',
+        modalBackground: '#ffffff',
+        modalBorder: '#e94560',
+        cardBorder: '#e0e0e0',
+        cardHover: '#f5f5f5',
+        buttonSecondary: '#e0e0e0',
+        buttonSecondaryText: '#333',
+        buttonDanger: '#f44336',
+        buttonDangerText: '#fff',
+        selectBg: '#ffffff',
+        selectText: '#333',
+        selectBorder: '#e0e0e0',
+        selectHover: '#f0f0f0',
+        inputBorder: '#e0e0e0',
+        inputFocus: '#e94560',
+        linkHover: '#c73e56'
     },
 };

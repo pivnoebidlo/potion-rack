@@ -22,13 +22,38 @@
     --table-row-hover: #1a1a3e;
     --table-row-selected: #e94560;
     --card-bg: #16213e;
+    --card-border: #2a2a3e;
+    --card-hover: #1a1a3e;
     --input-bg: #0f3460;
+    --input-border: #2a2a3e;
+    --input-focus: #e94560;
     --button-bg: #0f3460;
     --button-primary-bg: #e94560;
+    --button-secondary-bg: #0f3460;
+    --button-secondary-text: #fff;
+    --button-danger-bg: #f44336;
+    --button-danger-text: #fff;
+    --select-bg: #0f3460;
+    --select-text: #eee;
+    --select-border: #2a2a3e;
+    --select-hover: #1a4a7a;
 
     /* Рейтинг (звёзды) */
     --star-filled: #ffd700;
     --star-empty: #555;
+
+    /* Текстовые поля */
+    --input-text: #eee;
+    --input-placeholder: #aaa;
+    --button-text: #fff;
+    --button-primary-text: #fff;
+    --link: #e94560;
+    --link-hover: #c73e56;
+
+    /* Модальные окна */
+    --modal-overlay: rgba(0,0,0,0.7);
+    --modal-bg: #16213e;
+    --modal-border: #e94560;
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -148,13 +173,22 @@ body {
 
 .filter-group input, .filter-group select {
     background: var(--input-bg);
-    border: 1px solid var(--border);
-    color: var(--text);
+    border: 1px solid var(--input-border);
+    color: var(--input-text);
     padding: 6px 10px;
     border-radius: 6px;
     font-size: 12px;
     min-width: 110px;
     transition: background 0.3s, color 0.3s, border 0.3s;
+}
+
+.filter-group input::placeholder {
+    color: var(--input-placeholder);
+}
+
+.filter-group input:focus, .filter-group select:focus {
+    border-color: var(--input-focus);
+    outline: none;
 }
 
 .action-buttons {
@@ -166,7 +200,7 @@ body {
 
 button {
     background: var(--button-bg);
-    color: white;
+    color: var(--button-text);
     border: none;
     padding: 6px 12px;
     border-radius: 6px;
@@ -175,18 +209,26 @@ button {
     transition: background 0.2s;
 }
 button:hover { background: var(--primary); opacity: 0.8; }
-button.primary { background: var(--button-primary-bg); }
+button.primary { background: var(--button-primary-bg); color: var(--button-primary-text); }
 button.primary:hover { background: var(--primary); opacity: 0.8; }
+button.secondary { background: var(--button-secondary-bg); color: var(--button-secondary-text); }
+button.secondary:hover { background: var(--primary); }
+button.danger { background: var(--button-danger-bg); color: var(--button-danger-text); }
+button.danger:hover { opacity: 0.8; }
 button.icon-btn { padding: 6px 10px; font-size: 14px; }
 
 .language-switcher {
-    background: var(--input-bg);
-    border: 1px solid var(--border);
-    color: var(--text);
+    background: var(--select-bg);
+    border: 1px solid var(--select-border);
+    color: var(--select-text);
     padding: 6px 8px;
     border-radius: 6px;
     font-size: 11px;
     cursor: pointer;
+}
+
+.language-switcher:hover {
+    background: var(--select-hover);
 }
 
 /* Table */
@@ -292,15 +334,45 @@ tr.selected { background: var(--table-row-selected); color: white; }
 /* Settings card */
 .settings-card {
     background: var(--card-bg);
+    border: 1px solid var(--card-border);
     border-radius: 8px;
     padding: 20px;
     margin-bottom: 20px;
-    transition: background 0.3s;
+    transition: background 0.3s, border 0.3s;
+}
+
+.settings-card:hover {
+    background: var(--card-hover);
 }
 
 .settings-card h3 {
     margin-bottom: 15px;
     color: var(--primary);
+}
+
+/* Modal styles */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: var(--modal-overlay);
+    z-index: 999;
+}
+
+.modal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: var(--modal-bg);
+    border-radius: 8px;
+    border: 1px solid var(--modal-border);
+    z-index: 1000;
+    max-width: 90%;
+    max-height: 90%;
+    overflow: auto;
 }
 
 /* Scrollbar */
@@ -415,11 +487,12 @@ tr.selected { background: var(--table-row-selected); color: white; }
 }
 
 .markdown-body a {
-    color: var(--primary);
+    color: var(--link);
     text-decoration: none;
 }
 
 .markdown-body a:hover {
+    color: var(--link-hover);
     text-decoration: underline;
 }
 
@@ -445,8 +518,8 @@ tr.selected { background: var(--table-row-selected); color: white; }
     min-height: 150px;
     padding: 8px;
     background: var(--input-bg);
-    border: 1px solid var(--primary);
-    color: var(--text);
+    border: 1px solid var(--input-focus);
+    color: var(--input-text);
     border-radius: 4px;
     font-family: monospace;
     font-size: 12px;
@@ -455,7 +528,7 @@ tr.selected { background: var(--table-row-selected); color: white; }
 
 .comment-edit-textarea:focus {
     outline: none;
-    border-color: var(--primary);
+    border-color: var(--input-focus);
 }
 
 /* Запрет выделения текста во всём приложении */
