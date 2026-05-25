@@ -2,6 +2,9 @@ import { app, BrowserWindow, Menu, dialog, ipcMain } from 'electron';
 import path from 'path';
 import fs from 'fs';
 import { startServer } from './server';
+//import { version } from '../package.json';
+const packageJson = require('../package.json');
+const version = packageJson.version;
 
 let mainWindow: BrowserWindow | null = null;
 let serverStarted = false;
@@ -73,6 +76,11 @@ ipcMain.handle('file:read', async (event, filePath: string) => {
     }
 });
 
+// IPC handler for app version
+ipcMain.handle('get-app-version', () => {
+    return version;
+});
+
 // Window controls
 ipcMain.on('window-minimize', () => {
     if (mainWindow) mainWindow.minimize();
@@ -122,9 +130,10 @@ app.whenReady().then(() => {
     createWindow();
 });
 
-// Закрываем приложение при закрытии всех окон (для всех платформ)
 app.on('window-all-closed', () => {
-    // Принудительно завершаем процесс
+    if (serverStarted) {
+        console.log('Shutting down server...');
+    }
     app.quit();
 });
 
@@ -134,9 +143,8 @@ app.on('activate', () => {
     }
 });
 
-app.on('before-quit', (event) => {
+app.on('before-quit', () => {
     console.log('Potion Rack is shutting down...');
-    // Здесь можно добавить авто-бэкап перед выходом
 });
 
 // Handle uncaught errors
@@ -148,7 +156,6 @@ process.on('unhandledRejection', (reason) => {
     console.error('Unhandled Rejection:', reason);
 });
 
-// Обработка сигналов завершения
 process.on('SIGINT', () => {
     console.log('Received SIGINT, shutting down...');
     app.quit();

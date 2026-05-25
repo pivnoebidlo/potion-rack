@@ -46,7 +46,7 @@ export interface Translations {
     modalSeries: string;
     modalStatus: string;
     msgDeleteConfirm: string;
-    msgDuplicateError: string;
+    msgDuplicatePaint: string;
     msgErrorLoading: string;
     msgLoading: string;
     msgNoData: string;

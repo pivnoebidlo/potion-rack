@@ -191,7 +191,7 @@ export class PaintDetails {
                     <div class="details-label">${t_.detailsStatus}</div>
                     <div class="details-value">${getStatusText(paint.status)}</div>
                     <div class="details-label">${t_.detailsPrice}</div>
-                    <div class="details-value">${paint.price ? '$' + paint.price : '-'}</div>
+                    <div class="details-value">${paint.price ? + paint.price : '-'}</div>
                     <div class="details-label">
                         📝 ${t_.detailsComment}
                         <span style="font-size: 9px; color: #aaa; margin-left: 8px;">(Click to edit, Ctrl+E)</span>

@@ -3,10 +3,20 @@ import { settingsManager } from '../modules/settings/SettingsManager.js';
 import { i18n, Language } from '../i18n/index.js';
 import { getAllThemes, applyTheme, getTheme } from '../themes/index.js';
 
-// Version management
-const VERSION = '0.1.0';  // Update manually on release
+// Version will be fetched from main process
+let appVersion = '0.0.0';
 
-export function setupSettingsPanel(): void {
+async function getVersion(): Promise<void> {
+    try {
+        if (window.electronAPI?.getAppVersion) {
+            appVersion = await window.electronAPI.getAppVersion();
+        }
+    } catch (error) {
+        console.error('Failed to get app version:', error);
+    }
+}
+
+export async function setupSettingsPanel(): Promise<void> {
     const settingsView = document.getElementById('settings-view');
     if (!settingsView) return;
 
@@ -64,18 +74,25 @@ export function setupSettingsPanel(): void {
     `;
     container.appendChild(languageCard);
 
-    // 4. About card
+    // 4. About card (version will be updated after fetch)
     const aboutCard = document.createElement('div');
     aboutCard.className = 'settings-card';
     aboutCard.innerHTML = `
         <h3>ℹ️ About</h3>
-        <p><strong>Potion Rack</strong> v${VERSION}</p>
+        <p><strong>Potion Rack</strong> v<span id="app-version">${appVersion}</span></p>
         <p style="color: var(--text-secondary); font-size: 12px; margin-top: 10px;">Paint Manager for Miniatures</p>
         <p style="color: var(--text-secondary); font-size: 11px; margin-top: 15px;">
             <a href="https://github.com/pivnoebidlo/potion-rack" target="_blank" style="color: var(--link);">GitHub Repository</a>
         </p>
     `;
     container.appendChild(aboutCard);
+
+    // Fetch and display version
+    await getVersion();
+    const versionSpan = document.getElementById('app-version');
+    if (versionSpan) {
+        versionSpan.textContent = appVersion;
+    }
 
     // Get references to dynamically created elements
     const exportBtn = document.getElementById('settings-export-backup') as HTMLElement;

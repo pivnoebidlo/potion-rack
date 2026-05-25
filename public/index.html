@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Potion Rack</title>
     <link rel="stylesheet" href="css/styles.css">
+    <script>
+        window.APP_VERSION = '0.1.2';
+    </script>
 </head>
 <body>
 <div class="header">
@@ -62,13 +65,8 @@
                         </select>
                     </div>
                     <div class="action-buttons">
-                        <button id="resetFiltersBtn" class="icon-btn" title="Reset filters">🔄</button>
-                        <button id="addBtn" class="primary icon-btn" title="Add paint">➕</button>
-                        <label for="languageSwitcher" class="visually-hidden">Language</label>
-                        <select id="languageSwitcher" class="language-switcher">
-                            <option value="en">🇬🇧 EN</option>
-                            <option value="ru">🇷🇺 RU</option>
-                        </select>
+                        <button id="resetFiltersBtn" class="icon-btn">🔄</button>
+                        <button id="addBtn" class="primary icon-btn">➕</button>
                     </div>
                 </div>
             </div>
@@ -121,8 +119,6 @@
         </div>
     </div>
 </div>
-
-<div class="status-message" id="statusMessage">Ready</div>
 
 <script type="module" src="../dist/renderer/index.js"></script>
 </body>

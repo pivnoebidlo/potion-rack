@@ -48,7 +48,7 @@ export const ru: Translations = {
     modalSeries: 'Серия',
     modalStatus: 'Статус',
     msgDeleteConfirm: 'Удалить эту краску?',
-    msgDuplicateError: 'Краска с брендом "{brand}" и названием цвета "{color}" уже существует!',
+    msgDuplicatePaint: 'Краска с брендом "{brand}" и названием цвета "{color}" уже существует!',
     msgErrorLoading: 'Ошибка загрузки. Бэкенд запущен?',
     msgLoading: 'Загрузка...',
     msgNoData: 'Краски не найдены',

@@ -88,9 +88,13 @@ export class BackupController {
                 const paintImages = (backup.images || []).filter((img: any) => img.paint_id === paint.id);
                 for (const img of paintImages) {
                     if (img.image_data) {
-                        const imageBuffer = Buffer.from(img.image_data, 'base64');
-                        insertImageStmt.run(newPaintId, imageBuffer, img.content_type || 'image/jpeg', img.filename || null, img.is_primary || 0);
-                        importedImagesCount++;
+                        try {
+                            const imageBuffer = Buffer.from(img.image_data, 'base64');
+                            insertImageStmt.run(newPaintId, imageBuffer, img.content_type || 'image/jpeg', img.filename || null, img.is_primary || 0);
+                            importedImagesCount++;
+                        } catch (imgErr) {
+                            console.error(`   ❌ Failed to import image for paint ${paint.id}:`, imgErr);
+                        }
                     }
                 }
             }
