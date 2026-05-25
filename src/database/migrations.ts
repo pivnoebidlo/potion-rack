@@ -40,7 +40,7 @@ export function initDatabase(db: Database.Database): void {
                         FOREIGN KEY (base_color_id) REFERENCES base_colors(id)
                     );
 
-                    CREATE UNIQUE INDEX IF NOT EXISTS idx_unique_brand_color ON paints(brand, color_name);
+                    CREATE UNIQUE INDEX IF NOT EXISTS idx_unique_brand_color ON paints(brand COLLATE NOCASE, color_name COLLATE NOCASE);
                 `);
             }
         },

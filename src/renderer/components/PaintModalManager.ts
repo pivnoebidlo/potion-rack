@@ -168,9 +168,30 @@ export class PaintModalManager {
                     }
                     modal.close();
                     await this.onSaveCallback();
-                } catch (err) {
-                    console.error('Save error:', err);
-                    alert('Failed to save: ' + err);
+                } catch (err: any) {
+                    console.error('Save error - Full error object:', err);
+                    console.error('Save error - Status:', err.status);
+                    console.error('Save error - Response:', err.response);
+
+                    let errorMessage = 'Failed to save';
+                    const t_ = t();
+
+                    // Проверяем все возможные места, где может быть статус 409
+                    const status = err.status || err.response?.status;
+                    const errorCode = err.response?.data?.error || err.error;
+
+                    console.error('Detected status:', status);
+                    console.error('Detected errorCode:', errorCode);
+
+                    if (status === 409 || errorCode === 'DUPLICATE_PAINT') {
+                        errorMessage = t_.msgDuplicatePaint
+                            .replace('{brand}', formData.brand)
+                            .replace('{color}', formData.color_name);
+                    } else if (err.message) {
+                        errorMessage = err.message;
+                    }
+
+                    alert(errorMessage);
                 }
             }
         });

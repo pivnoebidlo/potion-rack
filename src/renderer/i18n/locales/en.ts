@@ -48,7 +48,7 @@ export const en: Translations = {
     modalSeries: 'Series',
     modalStatus: 'Status',
     msgDeleteConfirm: 'Are you sure you want to delete this paint?',
-    msgDuplicateError: 'A paint with brand "{brand}" and color name "{color}" already exists!',
+    msgDuplicatePaint: 'A paint with brand "{brand}" and color name "{color}" already exists!',
     msgErrorLoading: 'Error loading data. Is backend running?',
     msgLoading: 'Loading...',
     msgNoData: 'No paints found',

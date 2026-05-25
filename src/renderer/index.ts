@@ -30,7 +30,6 @@ import { setupSettingsPanel } from './ui/settingsUI.js';
 console.log('Potion Rack starting...');
 
 // DOM elements
-const languageSwitcher = document.getElementById('languageSwitcher') as HTMLSelectElement;
 const addBtn = document.getElementById('addBtn') as HTMLButtonElement;
 
 // Initialize right panel
@@ -98,18 +97,6 @@ function setupNavigation(): void {
 async function init(): Promise<void> {
     console.log('Initializing...');
     await settingsManager.initialize();
-
-    if (languageSwitcher) {
-        languageSwitcher.value = i18n.getLanguage();
-        languageSwitcher.onchange = (e) => {
-            const lang = (e.target as HTMLSelectElement).value as Language;
-            i18n.setLanguage(lang);
-            updateUILanguage();
-            setupSorting();
-            refreshFilterData();
-            renderTable();
-        };
-    }
 
     updateUILanguage();
     await refreshFilterData();

@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import Database from 'better-sqlite3';
+import { Database } from 'better-sqlite3';
 
 export class PaintsController {
     private db: Database.Database;
@@ -39,8 +39,17 @@ export class PaintsController {
 
             res.status(201).json({ id: result.lastInsertRowid, message: 'Paint created' });
         } catch (err) {
+            const error = err as { code?: string; message: string };
+            // Обработка уникального ограничения (дубликат brand + color_name)
+            if (error.code === 'SQLITE_CONSTRAINT_UNIQUE') {
+                res.status(409).json({
+                    error: 'DUPLICATE_PAINT',
+                    message: `A paint with brand "${brand}" and color name "${color_name}" already exists!`
+                });
+                return;
+            }
             console.error('POST /api/paints error:', err);
-            res.status(500).json({ error: (err as Error).message });
+            res.status(500).json({ error: error.message });
         }
     };
 
@@ -76,8 +85,16 @@ export class PaintsController {
             this.db.prepare(query).run(...values);
             res.json({ message: 'Paint updated' });
         } catch (err) {
+            const error = err as { code?: string; message: string };
+            if (error.code === 'SQLITE_CONSTRAINT_UNIQUE') {
+                res.status(409).json({
+                    error: 'DUPLICATE_PAINT',
+                    message: `A paint with brand "${brand}" and color name "${color_name}" already exists!`
+                });
+                return;
+            }
             console.error('PUT /api/paints/:id error:', err);
-            res.status(500).json({ error: (err as Error).message });
+            res.status(500).json({ error: error.message });
         }
     };
 
@@ -85,7 +102,8 @@ export class PaintsController {
         const { comment } = req.body;
 
         try {
-            this.db.prepare(`UPDATE paints SET comment = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`).run(comment, req.params.id);
+            this.db.prepare(`UPDATE paints SET comment = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`)
+                .run(comment, req.params.id);
             res.json({ message: 'Comment updated' });
         } catch (err) {
             console.error('PATCH /api/paints/:id/comment error:', err);

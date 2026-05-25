@@ -58,7 +58,25 @@ export async function createPaintAPI(paintData: PaintData): Promise<{id: number}
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(paintData),
     });
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+    if (!response.ok) {
+        // Пытаемся получить тело ошибки
+        let errorMessage = `HTTP ${response.status}`;
+        try {
+            const errorBody = await response.json();
+            errorMessage = errorBody.message || errorBody.error || errorMessage;
+            // Создаём ошибку с дополнительными полями
+            const error = new Error(errorMessage);
+            (error as any).status = response.status;
+            (error as any).response = { status: response.status, data: errorBody };
+            throw error;
+        } catch (parseError) {
+            const error = new Error(errorMessage);
+            (error as any).status = response.status;
+            throw error;
+        }
+    }
+
     return response.json();
 }
 

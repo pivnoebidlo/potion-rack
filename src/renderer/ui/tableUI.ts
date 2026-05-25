@@ -96,6 +96,8 @@ export async function renderTable(): Promise<void> {
 
         if (paints.length === 0) {
             tableBody.innerHTML = `<tr><td colspan="9" class="loading">${t().msgNoData}...</td></tr>`;
+            // Если нет красок, очищаем детали
+            paintDetails.clear();
             return;
         }
 
@@ -122,6 +124,22 @@ export async function renderTable(): Promise<void> {
         attachRowHandlers(paints);
         attachDeleteHandlers();
         attachStatusHandlers();
+
+        // Автоматически выбираем первую краску, если ничего не выбрано
+        if (paints.length > 0 && appState.currentSelectedId === null) {
+            appState.setSelectedId(paints[0].id);
+            await paintDetails.loadPaint(paints[0].id, getBaseColorName);
+            // Обновляем таблицу, чтобы подсветить выбранную строку
+            await renderTable();
+        } else if (paints.length > 0 && appState.currentSelectedId !== null) {
+            // Если краска выбрана, но её нет в отфильтрованном списке — выбираем первую
+            const isSelectedInList = paints.some(p => p.id === appState.currentSelectedId);
+            if (!isSelectedInList) {
+                appState.setSelectedId(paints[0].id);
+                await paintDetails.loadPaint(paints[0].id, getBaseColorName);
+                await renderTable();
+            }
+        }
 
     } catch (error) {
         console.error('Render error:', error);
@@ -310,34 +328,5 @@ export function focusOnFilter(): void {
     if (filterInput) {
         filterInput.focus();
         filterInput.select();
-    }
-}
-
-// Reset filters button handler
-export function setupResetFiltersButton(): void {
-    const resetBtn = document.getElementById('resetFiltersBtn') as HTMLElement;
-
-    if (resetBtn) {
-        resetBtn.onclick = () => {
-            const filterBar = getFilterBar();
-            if (filterBar) {
-                filterBar.reset();
-            } else {
-                // Fallback
-                const filterBrandEl = document.getElementById('filter-brand') as HTMLSelectElement;
-                const filterSeriesEl = document.getElementById('filter-series') as HTMLSelectElement;
-                const filterBaseColorEl = document.getElementById('filter-base-color') as HTMLSelectElement;
-                const filterColorNameEl = document.getElementById('filter-color-name') as HTMLInputElement;
-                const filterStatusEl = document.getElementById('filter-status') as HTMLSelectElement;
-                const t_ = t();
-
-                if (filterBrandEl) filterBrandEl.value = '';
-                if (filterSeriesEl) filterSeriesEl.innerHTML = '<option value="">' + t_.filterAll + '</option>';
-                if (filterBaseColorEl) filterBaseColorEl.value = '';
-                if (filterColorNameEl) filterColorNameEl.value = '';
-                if (filterStatusEl) filterStatusEl.value = '';
-            }
-            renderTable();
-        };
     }
 }
