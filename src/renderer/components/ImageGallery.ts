@@ -2,6 +2,9 @@ import { t } from '../i18n/index.js';
 import { API_BASE } from '../config/constants.js';
 import { fetchPaintImages, deletePaintImage, setPrimaryImage, compressImage, addPaintImage, PaintImage } from '../services/api.js';
 
+// Путь к заглушке (относительный путь от корня приложения)
+const PLACEHOLDER_PATH = 'images/placeholder.png';
+
 export class ImageGallery {
     private container: HTMLElement;
     private paintId: number;
@@ -64,22 +67,45 @@ export class ImageGallery {
         }
     }
 
+    private getImageUrl(imageId?: number): string {
+        if (!imageId || this.images.length === 0) {
+            // Возвращаем URL заглушки
+            return PLACEHOLDER_PATH;
+        }
+        return `${API_BASE}/paints/${this.paintId}/images/${imageId}`;
+    }
+
     private renderImages(): void {
         const mainDiv = this.container.querySelector('#gallery-main') as HTMLElement;
         const thumbnailsDiv = this.container.querySelector('#gallery-thumbnails') as HTMLElement;
 
         if (!mainDiv || !thumbnailsDiv) return;
 
+        // Если нет фотографий — показываем заглушку
         if (this.images.length === 0) {
             mainDiv.innerHTML = `
                 <div class="gallery-main-image placeholder">
-                    <div class="gallery-placeholder-content">📷</div>
+                    <img src="${PLACEHOLDER_PATH}" alt="No photo">
+                    <div class="gallery-main-overlay">
+                        <button class="gallery-main-add" title="Add photo">➕</button>
+                    </div>
                 </div>
             `;
+
+            const addBtn = mainDiv.querySelector('.gallery-main-add') as HTMLButtonElement | null;
+            const fileInput = this.container.querySelector('#image-file-input') as HTMLInputElement;
+            if (addBtn && fileInput) {
+                addBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    fileInput.click();
+                };
+            }
+
             thumbnailsDiv.innerHTML = '';
             return;
         }
 
+        // Есть фотографии — показываем первую/главную
         const primaryImage = this.images.find(img => img.is_primary) || this.images[0];
         this.currentMainImageId = primaryImage.id;
         const mainImageUrl = `${API_BASE}/paints/${this.paintId}/images/${primaryImage.id}`;
@@ -131,7 +157,7 @@ export class ImageGallery {
             };
         }
 
-        // Thumbnails
+        // Thumbnails (если больше одного фото)
         if (this.images.length <= 1) {
             thumbnailsDiv.innerHTML = '';
             return;
