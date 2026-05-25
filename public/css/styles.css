@@ -690,3 +690,80 @@ select option {
     outline: none;
     border-color: var(--primary);
 }
+
+/* Status select in table */
+.status-select {
+    background: var(--select-bg);
+    border: 1px solid var(--select-border);
+    color: var(--select-text);
+    border-radius: 4px;
+    padding: 4px 8px;
+    cursor: pointer;
+    font-size: 12px;
+    transition: all 0.2s;
+}
+
+.status-select:hover {
+    background: var(--select-hover);
+}
+
+.status-select:focus {
+    outline: none;
+    border-color: var(--primary);
+}
+
+/* Force theme on all modal elements */
+.modal,
+.modal * {
+    background: var(--modal-bg);
+    color: var(--text);
+    border-color: var(--border);
+}
+
+.modal input,
+.modal select,
+.modal textarea {
+    background: var(--input-bg) !important;
+    border: 1px solid var(--input-border) !important;
+    color: var(--input-text) !important;
+}
+
+.modal input:focus,
+.modal select:focus,
+.modal textarea:focus {
+    border-color: var(--input-focus) !important;
+    outline: none;
+}
+
+.modal button {
+    background: var(--button-bg);
+    color: var(--button-text);
+    border: none;
+}
+
+.modal button.primary {
+    background: var(--button-primary-bg);
+    color: var(--button-primary-text);
+}
+
+.modal button.secondary {
+    background: var(--button-secondary-bg);
+    color: var(--button-secondary-text);
+}
+
+/* Comment section */
+.comment-value {
+    background: var(--surface);
+    border-left: 3px solid var(--primary);
+    transition: background 0.2s;
+}
+
+.comment-value:hover {
+    background: var(--card-hover);
+}
+
+.comment-edit-textarea {
+    background: var(--input-bg) !important;
+    border: 1px solid var(--primary) !important;
+    color: var(--input-text) !important;
+}
