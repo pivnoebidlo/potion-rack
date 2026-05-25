@@ -145,10 +145,6 @@ export class ImageGallery {
             thumbnailsHtml += `
                 <div class="gallery-thumbnail ${isActive ? 'active' : ''}" data-image-id="${image.id}">
                     <img src="${thumbUrl}" alt="Thumbnail">
-                    <div class="gallery-thumbnail-overlay">
-                        ${!image.is_primary ? `<button class="thumb-set-primary" data-id="${image.id}">⭐</button>` : '<span class="thumb-primary-badge">⭐</span>'}
-                        <button class="thumb-delete" data-id="${image.id}">🗑</button>
-                    </div>
                 </div>
             `;
         }
@@ -161,34 +157,6 @@ export class ImageGallery {
             const imageId = parseInt(thumb.dataset.imageId || '0');
             thumb.onclick = () => {
                 this.switchMainImage(imageId);
-            };
-        }
-
-        // Set primary from thumbnails
-        const setPrimaryBtns = thumbnailsDiv.querySelectorAll('.thumb-set-primary');
-        for (let i = 0; i < setPrimaryBtns.length; i++) {
-            const btn = setPrimaryBtns[i] as HTMLButtonElement;
-            btn.onclick = async (e) => {
-                e.stopPropagation();
-                const imageId = parseInt(btn.dataset.id || '0');
-                await setPrimaryImage(this.paintId, imageId);
-                await this.loadImages();
-                this.onImageChange();
-            };
-        }
-
-        // Delete from thumbnails
-        const deleteBtns = thumbnailsDiv.querySelectorAll('.thumb-delete');
-        for (let i = 0; i < deleteBtns.length; i++) {
-            const btn = deleteBtns[i] as HTMLButtonElement;
-            btn.onclick = async (e) => {
-                e.stopPropagation();
-                const imageId = parseInt(btn.dataset.id || '0');
-                if (confirm(t().galleryDeleteConfirm)) {
-                    await deletePaintImage(this.paintId, imageId);
-                    await this.loadImages();
-                    this.onImageChange();
-                }
             };
         }
     }
