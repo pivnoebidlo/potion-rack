@@ -88,16 +88,14 @@ export class PaintDetails {
         const textarea = document.createElement('textarea');
         textarea.value = currentComment;
         textarea.className = 'comment-edit-textarea';
-        const t_ = t();
-        textarea.placeholder = (t_ as any).detailsCommentPlaceholder || 'Add your notes here... Supports **Markdown**!';
-        textarea.style.cssText = 'width: 100%; min-height: 150px; padding: 8px; background: #0f3460; border: 1px solid #e94560; color: #eee; border-radius: 4px; font-family: monospace; font-size: 12px; resize: vertical;';
+        textarea.placeholder = (t() as any).detailsCommentPlaceholder || 'Add your notes here... Supports **Markdown**!';
 
         const buttonContainer = document.createElement('div');
-        buttonContainer.style.cssText = 'display: flex; gap: 8px; margin-top: 8px;';
+        buttonContainer.className = 'comment-edit-buttons';
         buttonContainer.innerHTML = `
-            <button class="save-comment-btn" style="background: #e94560; padding: 4px 12px; font-size: 11px;">💾 Save (Ctrl+S)</button>
-            <button class="cancel-comment-btn" style="background: #0f3460; padding: 4px 12px; font-size: 11px;">✖ Cancel (Esc)</button>
-        `;
+        <button class="save-comment-btn primary">💾 Save (Ctrl+S)</button>
+        <button class="cancel-comment-btn secondary">✖ Cancel (Esc)</button>
+    `;
 
         const parent = commentElement.parentElement;
         if (parent) {
@@ -198,9 +196,8 @@ export class PaintDetails {
                         📝 ${t_.detailsComment}
                         <span style="font-size: 9px; color: #aaa; margin-left: 8px;">(Click to edit, Ctrl+E)</span>
                     </div>
-                    <div class="details-value comment-value" data-comment="${escapeHtml(paint.comment || '')}" 
-                         style="cursor: pointer; padding: 8px; background: #0f0f1a; border-radius: 6px; border-left: 3px solid #e94560;">
-                        <div class="markdown-body" style="font-size: 12px; line-height: 1.5;">${renderedComment}</div>
+                    <div class="details-value comment-value" data-comment="${escapeHtml(paint.comment || '')}">
+                        <div class="markdown-body">${renderedComment}</div>
                     </div>
                 </div>
             `;
