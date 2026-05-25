@@ -67,14 +67,6 @@ export class ImageGallery {
         }
     }
 
-    private getImageUrl(imageId?: number): string {
-        if (!imageId || this.images.length === 0) {
-            // Возвращаем URL заглушки
-            return PLACEHOLDER_PATH;
-        }
-        return `${API_BASE}/paints/${this.paintId}/images/${imageId}`;
-    }
-
     private renderImages(): void {
         const mainDiv = this.container.querySelector('#gallery-main') as HTMLElement;
         const thumbnailsDiv = this.container.querySelector('#gallery-thumbnails') as HTMLElement;
