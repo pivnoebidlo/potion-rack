@@ -36,23 +36,23 @@
             <div class="toolbar">
                 <div class="filter-row">
                     <div class="filter-group">
-                        <label id="labelBrand">Brand</label>
+                        <label id="labelBrand" for="filter-brand">Brand</label>
                         <select id="filter-brand" style="min-width: 110px;"></select>
                     </div>
                     <div class="filter-group">
-                        <label id="labelSeries">Series</label>
+                        <label id="labelSeries" for="filter-series">Series</label>
                         <select id="filter-series" style="min-width: 110px;"></select>
                     </div>
                     <div class="filter-group">
-                        <label id="labelBaseColor">Base Color</label>
+                        <label id="labelBaseColor" for="filter-base-color">Base Color</label>
                         <select id="filter-base-color" style="min-width: 110px;"></select>
                     </div>
                     <div class="filter-group">
-                        <label id="labelSearch">Search</label>
+                        <label id="labelSearch" for="filter-color-name">Search</label>
                         <input type="text" id="filter-color-name" placeholder="Color name..." style="min-width: 120px;">
                     </div>
                     <div class="filter-group">
-                        <label id="labelStatus">Status</label>
+                        <label id="labelStatus" for="filter-status">Status</label>
                         <select id="filter-status" style="min-width: 100px;">
                             <option value="">All</option>
                             <option value="instock">✅ In Stock</option>
@@ -64,6 +64,7 @@
                     <div class="action-buttons">
                         <button id="resetFiltersBtn" class="icon-btn" title="Reset filters">🔄</button>
                         <button id="addBtn" class="primary icon-btn" title="Add paint">➕</button>
+                        <label for="languageSwitcher" class="visually-hidden">Language</label>
                         <select id="languageSwitcher" class="language-switcher">
                             <option value="en">🇬🇧 EN</option>
                             <option value="ru">🇷🇺 RU</option>
@@ -105,39 +106,7 @@
 
         <!-- Settings View -->
         <div id="settings-view" class="view">
-            <h2 style="color: #e94560; margin-bottom: 20px;">⚙️ Settings</h2>
-
-            <div class="settings-card">
-                <h3>💾 Backup & Restore</h3>
-                <div style="display: flex; gap: 15px; flex-wrap: wrap;">
-                    <button id="settings-export-backup" style="background: #0f3460; padding: 10px 20px;">📤 Export Backup</button>
-                    <button id="settings-import-backup" style="background: #0f3460; padding: 10px 20px;">📥 Import Backup</button>
-                </div>
-                <p style="color: #aaa; font-size: 12px; margin-top: 15px;">Export all paints, photos and settings to a file. Import restores everything from a backup file.</p>
-            </div>
-
-            <div class="settings-card">
-                <h3>🎨 Appearance</h3>
-                <div style="margin-bottom: 15px;">
-                    <label style="display: block; margin-bottom: 5px; color: #aaa;">Theme</label>
-                    <select id="settings-theme" style="width: 100%; padding: 8px; background: #0f3460; border: 1px solid #2a2a3e; color: #eee; border-radius: 4px;">
-                        <option value="dark">Dark</option>
-                        <option value="light">Light</option>
-                        <option value="system">System</option>
-                    </select>
-                </div>
-            </div>
-
-            <div class="settings-card">
-                <h3>🌐 Language</h3>
-                <div>
-                    <label style="display: block; margin-bottom: 5px; color: #aaa;">Select language</label>
-                    <select id="settings-language" style="width: 100%; padding: 8px; background: #0f3460; border: 1px solid #2a2a3e; color: #eee; border-radius: 4px;">
-                        <option value="en">English</option>
-                        <option value="ru">Русский</option>
-                    </select>
-                </div>
-            </div>
+            <!-- Settings content will be injected here by JS -->
         </div>
     </div>
 
@@ -145,7 +114,7 @@
     <div class="resize-handle" id="resizeHandle"></div>
     <div class="right-panel" id="rightPanel">
         <div class="right-panel-header">
-            <button id="collapsePanelBtn" class="collapse-btn" title="Toggle details panel">▶</button>
+            <button id="collapsePanelBtn" class="collapse-btn" title="Toggle details panel">◀</button>
         </div>
         <div class="right-panel-content" id="detailsContent">
             <div class="details-value">Select a paint to see details</div>

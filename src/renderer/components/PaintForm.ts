@@ -1,4 +1,5 @@
 import { t } from '../i18n/index.js';
+import { renderRatingStars, escapeHtml } from '../utils/dom.js';
 
 export interface PaintFormData {
     brand: string;
@@ -25,45 +26,30 @@ export class PaintForm {
         this.render();
     }
 
-    private escapeHtml(text: string): string {
-        if (!text) return '';
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
-
-    private renderRatingStars(rating: number): string {
-        let html = '';
-        for (let i = 1; i <= 5; i++) {
-            html += `<span data-rating="${i}" style="color: ${i <= rating ? '#ffd700' : '#555'};">★</span>`;
-        }
-        return html;
-    }
-
     private render(): void {
         const t_ = t();
 
         this.container.innerHTML = `
             <div style="display: grid; gap: 15px;">
                 <div>
-                    <label style="display: block; margin-bottom: 5px; color: #aaa;">${t_.modalBrand}</label>
-                    <input type="text" id="form-brand" class="form-input" value="${this.escapeHtml(this.data.brand || '')}" style="width: 100%; padding: 8px; background: #0f3460; border: 1px solid #e94560; color: #eee; border-radius: 4px;">
+                    <label>${t_.modalBrand}</label>
+                    <input type="text" id="form-brand" class="form-input" value="${escapeHtml(this.data.brand || '')}" placeholder="Enter brand">
                 </div>
                 <div>
-                    <label style="display: block; margin-bottom: 5px; color: #aaa;">${t_.modalSeries}</label>
-                    <input type="text" id="form-series" class="form-input" value="${this.escapeHtml(this.data.series || '')}" style="width: 100%; padding: 8px; background: #0f3460; border: 1px solid #e94560; color: #eee; border-radius: 4px;">
+                    <label>${t_.modalSeries}</label>
+                    <input type="text" id="form-series" class="form-input" value="${escapeHtml(this.data.series || '')}" placeholder="Series">
                 </div>
                 <div>
-                    <label style="display: block; margin-bottom: 5px; color: #aaa;">${t_.modalColorName}</label>
-                    <input type="text" id="form-color-name" class="form-input" value="${this.escapeHtml(this.data.color_name || '')}" style="width: 100%; padding: 8px; background: #0f3460; border: 1px solid #e94560; color: #eee; border-radius: 4px;">
+                    <label>${t_.modalColorName}</label>
+                    <input type="text" id="form-color-name" class="form-input" value="${escapeHtml(this.data.color_name || '')}" placeholder="Color name">
                 </div>
                 <div>
-                    <label style="display: block; margin-bottom: 5px; color: #aaa;">${t_.modalArticle}</label>
-                    <input type="text" id="form-article" class="form-input" value="${this.escapeHtml(this.data.article || '')}" style="width: 100%; padding: 8px; background: #0f3460; border: 1px solid #e94560; color: #eee; border-radius: 4px;">
+                    <label>${t_.modalArticle}</label>
+                    <input type="text" id="form-article" class="form-input" value="${escapeHtml(this.data.article || '')}" placeholder="Article">
                 </div>
                 <div>
-                    <label style="display: block; margin-bottom: 5px; color: #aaa;">${t_.modalStatus}</label>
-                    <select id="form-status" style="width: 100%; padding: 8px; background: #0f3460; border: 1px solid #e94560; color: #eee; border-radius: 4px;">
+                    <label>${t_.modalStatus}</label>
+                    <select id="form-status" class="form-select">
                         <option value="instock" ${this.data.status === 'instock' ? 'selected' : ''}>${t_.statusInstock}</option>
                         <option value="low" ${this.data.status === 'low' ? 'selected' : ''}>${t_.statusLow}</option>
                         <option value="out" ${this.data.status === 'out' ? 'selected' : ''}>${t_.statusOut}</option>
@@ -71,26 +57,26 @@ export class PaintForm {
                     </select>
                 </div>
                 <div>
-                    <label style="display: block; margin-bottom: 5px; color: #aaa;">${t_.modalRating}</label>
+                    <label>${t_.modalRating}</label>
                     <div id="form-rating" class="rating-selector" style="display: flex; gap: 5px; cursor: pointer;">
-                        ${this.renderRatingStars(this.data.rating || 3)}
+                        ${renderRatingStars(this.data.rating || 3)}
                     </div>
                 </div>
                 <div>
-                    <label style="display: block; margin-bottom: 5px; color: #aaa;">${t_.modalPrice}</label>
-                    <input type="number" id="form-price" class="form-input" value="${this.data.price || ''}" step="0.01" style="width: 100%; padding: 8px; background: #0f3460; border: 1px solid #e94560; color: #eee; border-radius: 4px;">
+                    <label>${t_.modalPrice}</label>
+                    <input type="number" id="form-price" class="form-input" value="${this.data.price || ''}" step="0.01" placeholder="Price">
                 </div>
                 <div>
-                    <label style="display: block; margin-bottom: 5px; color: #aaa;">${t_.modalPurchasePlace}</label>
-                    <input type="text" id="form-place" class="form-input" value="${this.escapeHtml(this.data.purchase_place || '')}" style="width: 100%; padding: 8px; background: #0f3460; border: 1px solid #e94560; color: #eee; border-radius: 4px;">
+                    <label>${t_.modalPurchasePlace}</label>
+                    <input type="text" id="form-place" class="form-input" value="${escapeHtml(this.data.purchase_place || '')}" placeholder="Purchase place">
                 </div>
                 <div>
-                    <label style="display: block; margin-bottom: 5px; color: #aaa;">${t_.modalPurchaseDate}</label>
-                    <input type="date" id="form-date" class="form-input" value="${this.data.purchase_date || ''}" style="width: 100%; padding: 8px; background: #0f3460; border: 1px solid #e94560; color: #eee; border-radius: 4px;">
+                    <label>${t_.modalPurchaseDate}</label>
+                    <input type="date" id="form-date" class="form-input" value="${this.data.purchase_date || ''}">
                 </div>
                 <div>
-                    <label style="display: block; margin-bottom: 5px; color: #aaa;">${t_.modalComment}</label>
-                    <textarea id="form-comment" rows="3" style="width: 100%; padding: 8px; background: #0f3460; border: 1px solid #e94560; color: #eee; border-radius: 4px; resize: vertical;">${this.escapeHtml(this.data.comment || '')}</textarea>
+                    <label>${t_.modalComment}</label>
+                    <textarea id="form-comment" class="form-textarea" rows="3" placeholder="Comment">${escapeHtml(this.data.comment || '')}</textarea>
                 </div>
             </div>
         `;
@@ -107,7 +93,7 @@ export class PaintForm {
             const rating = target.dataset.rating;
             if (rating) {
                 const newRating = parseInt(rating);
-                ratingDiv.innerHTML = this.renderRatingStars(newRating);
+                ratingDiv.innerHTML = renderRatingStars(newRating);
                 const hiddenInput = document.createElement('input');
                 hiddenInput.type = 'hidden';
                 hiddenInput.id = 'form-rating-value';

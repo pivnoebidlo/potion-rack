@@ -217,17 +217,14 @@ button.danger { background: var(--button-danger-bg); color: var(--button-danger-
 button.danger:hover { opacity: 0.8; }
 button.icon-btn { padding: 6px 10px; font-size: 14px; }
 
-.language-switcher {
+/* Select and Language Switcher */
+select, .language-switcher {
     background: var(--select-bg);
     border: 1px solid var(--select-border);
     color: var(--select-text);
-    padding: 6px 8px;
-    border-radius: 6px;
-    font-size: 11px;
-    cursor: pointer;
 }
 
-.language-switcher:hover {
+select:hover, .language-switcher:hover {
     background: var(--select-hover);
 }
 
@@ -518,7 +515,7 @@ tr.selected { background: var(--table-row-selected); color: white; }
     min-height: 150px;
     padding: 8px;
     background: var(--input-bg);
-    border: 1px solid var(--input-focus);
+    border: 1px solid var(--primary);
     color: var(--input-text);
     border-radius: 4px;
     font-family: monospace;
@@ -528,7 +525,7 @@ tr.selected { background: var(--table-row-selected); color: white; }
 
 .comment-edit-textarea:focus {
     outline: none;
-    border-color: var(--input-focus);
+    border-color: var(--primary);
 }
 
 /* Запрет выделения текста во всём приложении */
@@ -548,3 +545,148 @@ input, textarea, [contenteditable="true"] {
 }
 
 .loading { text-align: center; padding: 40px; color: var(--text-secondary); }
+
+/* Global form elements */
+input, select, textarea {
+    background: var(--input-bg);
+    border: 1px solid var(--border);
+    color: var(--input-text);
+}
+
+input:focus, select:focus, textarea:focus {
+    border-color: var(--primary);
+    outline: none;
+}
+
+/* Modal specific */
+.modal-container {
+    background: var(--modal-bg);
+    border: 1px solid var(--modal-border);
+}
+
+.modal-container input,
+.modal-container select,
+.modal-container textarea {
+    background: var(--input-bg);
+    color: var(--input-text);
+    border-color: var(--border);
+}
+
+/* Paint Form Styles */
+.paint-form input,
+.paint-form select,
+.paint-form textarea {
+    background: var(--input-bg);
+    border: 1px solid var(--border);
+    color: var(--input-text);
+    padding: 8px;
+    border-radius: 4px;
+    width: 100%;
+}
+
+.paint-form input:focus,
+.paint-form select:focus,
+.paint-form textarea:focus {
+    border-color: var(--primary);
+    outline: none;
+}
+
+.paint-form label {
+    color: var(--text-secondary);
+    display: block;
+    margin-bottom: 5px;
+}
+
+/* Force theme variables on all interactive elements */
+select,
+input,
+textarea,
+.status-select,
+.comment-edit-textarea {
+    background-color: var(--input-bg) !important;
+    border-color: var(--border) !important;
+    color: var(--input-text) !important;
+}
+
+select option {
+    background-color: var(--input-bg);
+    color: var(--input-text);
+}
+
+/* Modal Dialog Styles */
+.modal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: var(--modal-bg);
+    border: 1px solid var(--modal-border);
+    border-radius: 8px;
+    z-index: 1000;
+    max-width: 90%;
+    max-height: 90%;
+    overflow: auto;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: var(--modal-overlay);
+    z-index: 999;
+}
+
+.modal-header {
+    padding: 15px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-header h3 {
+    color: var(--primary);
+    margin: 0;
+}
+
+.modal-footer {
+    padding: 15px 20px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+/* Comment display and edit */
+.comment-value {
+    cursor: pointer;
+    padding: 8px;
+    background: var(--surface);
+    border-radius: 6px;
+    border-left: 3px solid var(--primary);
+}
+
+.comment-value .markdown-body {
+    color: var(--text);
+}
+
+.comment-edit-textarea {
+    width: 100%;
+    min-height: 150px;
+    padding: 8px;
+    background: var(--input-bg);
+    border: 1px solid var(--primary);
+    color: var(--input-text);
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 12px;
+    resize: vertical;
+}
+
+.comment-edit-textarea:focus {
+    outline: none;
+    border-color: var(--primary);
+}

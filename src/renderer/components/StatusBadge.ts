@@ -5,7 +5,7 @@ export class StatusBadge {
         const t_ = t();
         return `
             <td>
-                <select class="status-select" data-id="${paintId}" style="background: #0f3460; border: 1px solid #e94560; color: #eee; border-radius: 4px; padding: 4px 8px;">
+                <select class="status-select" data-id="${paintId}">
                     <option value="instock" ${status === 'instock' ? 'selected' : ''}>${t_.statusInstock}</option>
                     <option value="low" ${status === 'low' ? 'selected' : ''}>${t_.statusLow}</option>
                     <option value="out" ${status === 'out' ? 'selected' : ''}>${t_.statusOut}</option>
