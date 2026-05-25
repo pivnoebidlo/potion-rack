@@ -3,17 +3,15 @@ import { settingsManager } from '../modules/settings/SettingsManager.js';
 import { i18n, Language } from '../i18n/index.js';
 import { getAllThemes, applyTheme, getTheme } from '../themes/index.js';
 
-// Version will be fetched from main process
-let appVersion = '0.0.0';
-
-async function getVersion(): Promise<void> {
+async function getVersion(): Promise<string> {
     try {
         if (window.electronAPI?.getAppVersion) {
-            appVersion = await window.electronAPI.getAppVersion();
+            return await window.electronAPI.getAppVersion();
         }
     } catch (error) {
         console.error('Failed to get app version:', error);
     }
+    return '0.0.0';
 }
 
 export async function setupSettingsPanel(): Promise<void> {
@@ -79,7 +77,7 @@ export async function setupSettingsPanel(): Promise<void> {
     aboutCard.className = 'settings-card';
     aboutCard.innerHTML = `
         <h3>ℹ️ About</h3>
-        <p><strong>Potion Rack</strong> v<span id="app-version">${appVersion}</span></p>
+        <p><strong>Potion Rack</strong> v<span id="app-version">...</span></p>
         <p style="color: var(--text-secondary); font-size: 12px; margin-top: 10px;">Paint Manager for Miniatures</p>
         <p style="color: var(--text-secondary); font-size: 11px; margin-top: 15px;">
             <a href="https://github.com/pivnoebidlo/potion-rack" target="_blank" style="color: var(--link);">GitHub Repository</a>
@@ -87,12 +85,13 @@ export async function setupSettingsPanel(): Promise<void> {
     `;
     container.appendChild(aboutCard);
 
-    // Fetch and display version
-    await getVersion();
-    const versionSpan = document.getElementById('app-version');
-    if (versionSpan) {
-        versionSpan.textContent = appVersion;
-    }
+    // Load version asynchronously without blocking UI
+    getVersion().then(version => {
+        const versionSpan = document.getElementById('app-version');
+        if (versionSpan) {
+            versionSpan.textContent = version;
+        }
+    });
 
     // Get references to dynamically created elements
     const exportBtn = document.getElementById('settings-export-backup') as HTMLElement;

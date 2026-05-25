@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+// noinspection SqlDialectInspection,SqlNoDataSourceInspection
 import { Request, Response } from 'express';
 import { Database } from 'better-sqlite3';
 
@@ -56,6 +58,25 @@ export class PaintsController {
     update = (req: Request, res: Response): void => {
         const { brand, series, color_name, article, base_color_id, rating, status, price, purchase_place, purchase_date, comment } = req.body;
 
+        // Проверка на дубликат (исключая текущую запись)
+        if (brand && color_name) {
+            const existing = this.db.prepare(`
+            SELECT id FROM paints 
+            WHERE brand COLLATE NOCASE = ? 
+              AND color_name COLLATE NOCASE = ? 
+              AND id != ?
+        `).get(brand, color_name, req.params.id);
+
+            if (existing) {
+                res.status(409).json({
+                    error: 'DUPLICATE_PAINT',
+                    message: `A paint with brand "${brand}" and color name "${color_name}" already exists!`
+                });
+                return;
+            }
+        }
+
+        // Build dynamic update query for partial updates
         const fields: string[] = [];
         const values: any[] = [];
 

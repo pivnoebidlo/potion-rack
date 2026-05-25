@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+// noinspection SqlDialectInspection,SqlNoDataSourceInspection
+
 import Database from 'better-sqlite3';
 
 export function initDatabase(db: Database.Database): void {
