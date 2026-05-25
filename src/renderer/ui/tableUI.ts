@@ -77,14 +77,24 @@ async function updateSeriesFilter(paints: Paint[]): Promise<void> {
 }
 
 export async function renderTable(): Promise<void> {
+    const t0 = performance.now();
+    console.log('⏱️ renderTable() started');
+
     try {
         let paints = await fetchPaints();
+        console.log(`⏱️ fetchPaints(): ${paints.length} paints, took ${(performance.now() - t0).toFixed(2)}ms`);
+
+        const t1 = performance.now();
         const stats = await fetchStats();
+        console.log(`⏱️ fetchStats(): took ${(performance.now() - t1).toFixed(2)}ms`);
 
         if (statsPanel) {
             statsPanel.update(stats.total, stats.brands);
         }
+
+        const t2 = performance.now();
         await updateSeriesFilter(paints);
+        console.log(`⏱️ updateSeriesFilter(): took ${(performance.now() - t2).toFixed(2)}ms`);
 
         const filterBar = getFilterBar();
         if (filterBar) {
@@ -96,8 +106,8 @@ export async function renderTable(): Promise<void> {
 
         if (paints.length === 0) {
             tableBody.innerHTML = `<tr><td colspan="9" class="loading">${t().msgNoData}...</td></tr>`;
-            // Если нет красок, очищаем детали
             paintDetails.clear();
+            console.log(`⏱️ renderTable() total: ${(performance.now() - t0).toFixed(2)}ms (no paints)`);
             return;
         }
 
@@ -109,7 +119,7 @@ export async function renderTable(): Promise<void> {
                 <tr data-id="${p.id}" ${appState.currentSelectedId === p.id ? 'class="selected"' : ''}>
                     <td>${escapeHtml(p.brand)}</td>
                     <td>${escapeHtml(p.series || '-')}</td>
-                    <td>${escapeHtml(p.color_name)}</td>
+                    <td>${escapeHtml(p.color_name)}</tr>
                     <td>${escapeHtml(p.article || '-')}</td>
                     <td>${escapeHtml(baseColorName)}</td>
                     <td>${DateFormatter.format(p.purchase_date)}</td>
@@ -125,14 +135,12 @@ export async function renderTable(): Promise<void> {
         attachDeleteHandlers();
         attachStatusHandlers();
 
-        // Автоматически выбираем первую краску, если ничего не выбрано
+        // Automatically select first paint if nothing selected
         if (paints.length > 0 && appState.currentSelectedId === null) {
             appState.setSelectedId(paints[0].id);
             await paintDetails.loadPaint(paints[0].id, getBaseColorName);
-            // Обновляем таблицу, чтобы подсветить выбранную строку
             await renderTable();
         } else if (paints.length > 0 && appState.currentSelectedId !== null) {
-            // Если краска выбрана, но её нет в отфильтрованном списке — выбираем первую
             const isSelectedInList = paints.some(p => p.id === appState.currentSelectedId);
             if (!isSelectedInList) {
                 appState.setSelectedId(paints[0].id);
@@ -140,6 +148,8 @@ export async function renderTable(): Promise<void> {
                 await renderTable();
             }
         }
+
+        console.log(`⏱️ renderTable() total: ${(performance.now() - t0).toFixed(2)}ms`);
 
     } catch (error) {
         console.error('Render error:', error);
