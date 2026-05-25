@@ -10,10 +10,11 @@
   "scripts": {
     "build": "tsc -p tsconfig.main.json && tsc -p tsconfig.renderer.json",
     "start": "npm run build && electron .",
-    "postinstall": "electron-builder install-app-deps",
-    "dist:mac": "npm run build && electron-builder --mac --arm64",
-    "dist:win": "npm run build && electron-builder --win --x64",
-    "dist:linux": "npm run build && electron-builder --linux --x64"
+    "postinstall": "echo \"Skipping auto rebuild in CI\"",
+    "rebuild": "electron-rebuild -f -w better-sqlite3",
+    "dist:mac": "npm run build && npm run rebuild && electron-builder --mac --arm64",
+    "dist:win": "npm run build && npm run rebuild && electron-builder --win --x64",
+    "dist:linux": "npm run build && npm run rebuild && electron-builder --linux --x64"
   },
   "build": {
     "appId": "com.potionrack.app",
@@ -50,6 +51,7 @@
     "@types/node": "^22.0.0",
     "electron": "^35.7.5",
     "electron-builder": "^24.13.3",
+    "electron-rebuild": "^3.2.9",
     "typescript": "^5.5.0"
   },
   "dependencies": {
