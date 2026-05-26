@@ -1,15 +1,15 @@
 export interface ModalOptions {
     title: string;
     width?: string;
-    onConfirm?: (data?: any) => void;
+    onConfirm?: () => void;
     onCancel?: () => void;
 }
 
 export class BaseModal {
-    protected overlay: HTMLElement;
-    protected modal: HTMLElement;
-    protected onConfirm?: (data?: any) => void;
-    protected onCancel?: () => void;
+    private overlay: HTMLElement;
+    private modal: HTMLElement;
+    private onConfirm?: () => void;
+    private onCancel?: () => void;
 
     constructor() {
         this.overlay = this.createOverlay();
@@ -17,7 +17,7 @@ export class BaseModal {
         this.setupEventListeners();
     }
 
-    protected createOverlay(): HTMLElement {
+    private createOverlay(): HTMLElement {
         const overlay = document.createElement('div');
         overlay.className = 'modal-overlay';
         overlay.style.display = 'none';
@@ -25,7 +25,7 @@ export class BaseModal {
         return overlay;
     }
 
-    protected createModal(): HTMLElement {
+    private createModal(): HTMLElement {
         const modal = document.createElement('div');
         modal.className = 'modal';
         modal.style.display = 'none';
@@ -33,7 +33,7 @@ export class BaseModal {
         return modal;
     }
 
-    protected setupEventListeners(): void {
+    private setupEventListeners(): void {
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape' && this.isVisible()) {
                 this.close();
@@ -42,7 +42,7 @@ export class BaseModal {
         });
     }
 
-    protected isVisible(): boolean {
+    private isVisible(): boolean {
         return this.modal.style.display === 'block';
     }
 
@@ -53,7 +53,6 @@ export class BaseModal {
         this.modal.innerHTML = '';
         this.modal.style.width = options.width || '500px';
 
-        // Header
         const header = document.createElement('div');
         header.className = 'modal-header';
         header.innerHTML = `
@@ -69,7 +68,6 @@ export class BaseModal {
         }
         this.modal.appendChild(header);
 
-        // Body
         const body = document.createElement('div');
         body.className = 'modal-body';
         if (typeof content === 'string') {
@@ -79,7 +77,6 @@ export class BaseModal {
         }
         this.modal.appendChild(body);
 
-        // Footer
         const footer = document.createElement('div');
         footer.className = 'modal-footer';
         footer.innerHTML = `

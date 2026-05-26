@@ -1,73 +1,67 @@
 import { t } from '../../i18n/index.js';
-import { FiguresList } from './components/FiguresList.js';
-import { FigureDetails } from './components/FigureDetails.js';
+import { FiguresGrid } from './components/FiguresGrid.js';
+import { FigureEditor } from './components/FigureEditor.js';
 import { FigureModalManager } from './components/FigureModalManager.js';
 import { Figure } from './types.js';
-
-// Mock data for now (will be replaced with API calls)
-const mockFigures: Figure[] = [
-    {
-        id: 1,
-        name: 'Space Marine',
-        manufacturer: 'Games Workshop',
-        scale: '28mm',
-        status: 'in-progress',
-        material: 'plastic',
-        description: 'Ultramarines chapter',
-        created_at: '2026-05-26T10:00:00Z',
-        updated_at: '2026-05-26T10:00:00Z'
-    },
-    {
-        id: 2,
-        name: 'Ork Boy',
-        manufacturer: 'Games Workshop',
-        scale: '28mm',
-        status: 'draft',
-        material: 'plastic',
-        description: 'Goff clan',
-        created_at: '2026-05-26T10:00:00Z',
-        updated_at: '2026-05-26T10:00:00Z'
-    }
-];
+import { fetchFigures, fetchFigureDetails, deleteFigureAPI, updateFigureAPI } from '../../services/apiFigures.js';
 
 export class FiguresApp {
-    private tableContainer: HTMLElement;
-    private detailsContainer: HTMLElement;
-    private figuresList: FiguresList;
-    private figureDetails: FigureDetails;
+    private gridContainer: HTMLElement;
+    private editorContainer: HTMLElement;
+    private figuresGrid: FiguresGrid;
+    private figureEditor: FigureEditor;
     private modalManager: FigureModalManager;
     private currentSelectedId: number | null = null;
-    private figures: Figure[] = mockFigures;
+    private figures: Figure[] = [];
 
-    constructor(tableContainer: HTMLElement, detailsContainer: HTMLElement) {
-        this.tableContainer = tableContainer;
-        this.detailsContainer = detailsContainer;
+    constructor(gridContainer: HTMLElement, editorContainer: HTMLElement) {
+        this.gridContainer = gridContainer;
+        this.editorContainer = editorContainer;
 
-        this.figuresList = new FiguresList(this.tableContainer);
-        this.figureDetails = new FigureDetails(this.detailsContainer);
-        this.modalManager = new FigureModalManager([], [], async () => {
+        this.figuresGrid = new FiguresGrid(
+            this.gridContainer,
+            (id) => this.selectFigure(id),
+            (id) => this.editFigure(id),
+            (id) => this.deleteFigure(id)
+        );
+        this.figureEditor = new FigureEditor(this.editorContainer, async (data) => {
+            if (this.currentSelectedId) {
+                try {
+                    await updateFigureAPI(this.currentSelectedId, data);
+                    await this.refresh();
+                    // Refresh the editor with updated data
+                    const updatedFigure = await fetchFigureDetails(this.currentSelectedId);
+                    this.figureEditor.loadFigure(updatedFigure);
+                } catch (error) {
+                    console.error('Failed to save figure:', error);
+                    alert('Failed to save figure');
+                }
+            }
+        });
+        this.modalManager = new FigureModalManager(async () => {
             await this.refresh();
         });
 
-        this.setupCallbacks();
-        this.render();
+        this.loadFigures();
     }
 
-    private setupCallbacks(): void {
-        this.figuresList.setCallbacks({
-            onRowClick: (id) => this.selectFigure(id),
-            onRowDoubleClick: (id) => this.editFigure(id),
-            onDelete: (id) => this.deleteFigure(id)
-        });
+    private async loadFigures(): Promise<void> {
+        try {
+            this.figures = await fetchFigures();
+            await this.render();
+        } catch (error) {
+            console.error('Failed to load figures:', error);
+        }
     }
 
     private async selectFigure(id: number): Promise<void> {
         this.currentSelectedId = id;
-        const figure = this.figures.find(f => f.id === id);
-        if (figure) {
-            await this.figureDetails.loadFigure(figure);
+        try {
+            const figure = await fetchFigureDetails(id);
+            this.figureEditor.loadFigure(figure);
+        } catch (error) {
+            console.error('Failed to load figure details:', error);
         }
-        this.figuresList.setSelectedId(id);
     }
 
     private async editFigure(id: number): Promise<void> {
@@ -79,24 +73,29 @@ export class FiguresApp {
 
     private async deleteFigure(id: number): Promise<void> {
         if (confirm(t().msgDeleteConfirm)) {
-            this.figures = this.figures.filter(f => f.id !== id);
-            if (this.currentSelectedId === id) {
-                this.currentSelectedId = null;
-                this.figureDetails.clear();
+            try {
+                await deleteFigureAPI(id);
+                await this.loadFigures();
+                if (this.currentSelectedId === id) {
+                    this.currentSelectedId = null;
+                    this.figureEditor.loadFigure(null);
+                }
+                await this.render();
+            } catch (error) {
+                console.error('Failed to delete figure:', error);
             }
-            await this.refresh();
         }
     }
 
     private async render(): Promise<void> {
-        this.figuresList.setData(this.figures);
+        this.figuresGrid.setData(this.figures);
         if (this.figures.length > 0 && !this.currentSelectedId) {
             await this.selectFigure(this.figures[0].id);
         }
     }
 
     async refresh(): Promise<void> {
-        await this.render();
+        await this.loadFigures();
     }
 
     showAddModal(): void {

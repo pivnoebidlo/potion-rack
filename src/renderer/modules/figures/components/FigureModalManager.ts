@@ -1,15 +1,12 @@
 import { t } from '../../../i18n/index.js';
 import { BaseModal } from '../../../components/BaseModal.js';
-import { createPaintAPI, updatePaintAPI, Paint } from '../../../services/api.js';
+import { createFigureAPI, updateFigureAPI, Figure } from '../../../services/apiFigures.js';
 
 export class FigureModalManager {
-    private brands: string[];
-    private baseColors: {id: number, name: string}[];
     private onSaveCallback: () => Promise<void>;
 
-    constructor(brands: string[], baseColors: {id: number, name: string}[], onSave: () => Promise<void>) {
-        this.brands = brands;
-        this.baseColors = baseColors;
+    // Убираем ненужные параметры brands и baseColors
+    constructor(onSave: () => Promise<void>) {
         this.onSaveCallback = onSave;
     }
 
@@ -17,11 +14,11 @@ export class FigureModalManager {
         await this.showModal();
     }
 
-    async showEditModal(figure: any): Promise<void> {
+    async showEditModal(figure: Figure): Promise<void> {
         await this.showModal(figure);
     }
 
-    private async showModal(figure?: any): Promise<void> {
+    private async showModal(figure?: Figure): Promise<void> {
         const isEdit = !!figure;
         const t_ = t();
         const title = isEdit ? 'Edit Figure' : 'Add New Figure';
@@ -66,6 +63,10 @@ export class FigureModalManager {
                     <input type="number" id="figure-price" class="form-input" value="${figure?.purchase_price || ''}" step="0.01">
                 </div>
                 <div class="form-group">
+                    <label>Completed Date</label>
+                    <input type="date" id="figure-completed-date" class="form-input" value="${figure?.completed_date || ''}">
+                </div>
+                <div class="form-group">
                     <label>Description</label>
                     <textarea id="figure-description" class="form-textarea" rows="4">${figure?.description || ''}</textarea>
                 </div>
@@ -80,8 +81,39 @@ export class FigureModalManager {
             title: title,
             width: '550px',
             onConfirm: async () => {
-                // TODO: Save figure
-                console.log('Save figure');
+                const name = (formContainer.querySelector('#figure-name') as HTMLInputElement).value.trim();
+                if (!name) {
+                    alert('Name is required');
+                    return;
+                }
+
+                const material = (formContainer.querySelector('#figure-material') as HTMLSelectElement).value as Figure['material'];
+                const status = (formContainer.querySelector('#figure-status') as HTMLSelectElement).value as Figure['status'];
+
+                const figureData = {
+                    name: name,
+                    manufacturer: (formContainer.querySelector('#figure-manufacturer') as HTMLInputElement).value || null,
+                    scale: (formContainer.querySelector('#figure-scale') as HTMLInputElement).value || null,
+                    material: material || null,
+                    status: status,
+                    purchase_date: (formContainer.querySelector('#figure-purchase-date') as HTMLInputElement).value || null,
+                    purchase_price: parseFloat((formContainer.querySelector('#figure-price') as HTMLInputElement).value) || null,
+                    completed_date: (formContainer.querySelector('#figure-completed-date') as HTMLInputElement).value || null,
+                    description: (formContainer.querySelector('#figure-description') as HTMLTextAreaElement).value || null
+                };
+
+                try {
+                    if (isEdit && figure) {
+                        await updateFigureAPI(figure.id, figureData);
+                    } else {
+                        await createFigureAPI(figureData);
+                    }
+                    modal.close();
+                    await this.onSaveCallback();
+                } catch (err) {
+                    console.error('Save error:', err);
+                    alert('Failed to save figure');
+                }
             }
         });
     }

@@ -59,17 +59,36 @@ if (addBtn) {
     };
 }
 
-// Figures App
+// Figures App - инициализация
 let figuresApp: FiguresApp | null = null;
+const figuresSidebar = document.getElementById('figures-sidebar') as HTMLElement;
+const figuresGridContainer = document.getElementById('figures-grid-container') as HTMLElement;
+const figuresEditorView = document.getElementById('figures-editor-view') as HTMLElement;
+const figureEditorContainer = document.getElementById('figure-editor-container') as HTMLElement;
+
+// Кнопки добавления фигурки (в сайдбаре и в тулбаре)
+const addFigureSidebarBtn = document.getElementById('addFigureSidebarBtn') as HTMLElement;
 const addFigureBtn = document.getElementById('addFigureBtn') as HTMLElement;
-if (addFigureBtn) {
-    addFigureBtn.onclick = () => {
-        if (figuresApp) {
-            figuresApp.showAddModal();
-        }
+
+// Инициализируем FiguresApp
+if (figuresGridContainer && figureEditorContainer) {
+    figuresApp = new FiguresApp(figuresGridContainer, figureEditorContainer);
+    console.log('FiguresApp initialized');
+}
+
+// Кнопка в сайдбаре
+if (addFigureSidebarBtn && figuresApp) {
+    addFigureSidebarBtn.onclick = () => {
+        figuresApp.showAddModal();
     };
 }
 
+// Кнопка в тулбаре (если есть)
+if (addFigureBtn && figuresApp) {
+    addFigureBtn.onclick = () => {
+        figuresApp.showAddModal();
+    };
+}
 // Navigation between tabs
 function setupNavigation(): void {
     const navItems = document.querySelectorAll('.nav-item');

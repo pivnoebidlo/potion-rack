@@ -8,6 +8,8 @@ import { setupImageRoutes } from './routes/images';
 import { setupSettingsRoutes } from './routes/settings';
 import { setupStatsRoutes } from './routes/stats';
 import { setupBackupRoutes } from './routes/backup';
+import { setupFiguresRoutes } from './routes/figures.js';
+
 
 const app = express();
 const PORT = 8765;
@@ -26,6 +28,7 @@ setupImageRoutes(app, db);
 setupSettingsRoutes(app, db);
 setupStatsRoutes(app, db);
 setupBackupRoutes(app, db);
+setupFiguresRoutes(app, db);
 
 export function startServer() {
     app.listen(PORT, '0.0.0.0', () => {
