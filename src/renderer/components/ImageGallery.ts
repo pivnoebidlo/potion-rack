@@ -2,7 +2,7 @@ import { t } from '../i18n/index.js';
 import { API_BASE } from '../config/constants.js';
 import { fetchPaintImages, deletePaintImage, setPrimaryImage, compressImage, addPaintImage, PaintImage } from '../services/api.js';
 
-// Путь к заглушке (относительный путь от корня приложения)
+// Путь к заглушке
 const PLACEHOLDER_PATH = 'images/placeholder.png';
 
 export class ImageGallery {
@@ -11,6 +11,7 @@ export class ImageGallery {
     private images: PaintImage[] = [];
     private onImageChange: () => void;
     private currentMainImageId: number | null = null;
+    private isProcessing: boolean = false;
 
     constructor(container: HTMLElement, paintId: number, onImageChange: () => void) {
         this.container = container;
@@ -41,29 +42,51 @@ export class ImageGallery {
     }
 
     private setupEventListeners(): void {
+        const addBtn = this.container.querySelector('#add-image-btn');
         const fileInput = this.container.querySelector('#image-file-input') as HTMLInputElement;
 
-        fileInput.addEventListener('change', async (e) => {
-            const files = (e.target as HTMLInputElement).files;
-            if (files) {
-                for (const file of Array.from(files)) {
-                    await this.uploadImage(file);
+        if (addBtn) {
+            addBtn.addEventListener('click', () => {
+                fileInput.click();
+            });
+        }
+
+        if (fileInput) {
+            fileInput.addEventListener('change', async (e) => {
+                const files = (e.target as HTMLInputElement).files;
+                if (files) {
+                    for (const file of Array.from(files)) {
+                        await this.uploadImage(file);
+                    }
+                    fileInput.value = '';
                 }
-                fileInput.value = '';
-            }
-        });
+            });
+        }
     }
 
     private async uploadImage(file: File): Promise<void> {
         const t_ = t();
+
+        const mainDiv = this.container.querySelector('#gallery-main') as HTMLElement;
+        const originalContent = mainDiv?.innerHTML;
+        if (mainDiv) {
+            mainDiv.innerHTML = '<div class="gallery-loading">⏳ Uploading...</div>';
+        }
+
         try {
+            console.log(`Compressing image: ${file.name} (${(file.size / 1024).toFixed(2)} KB)`);
             const compressedImage = await compressImage(file, 800, 800, 0.7);
+            console.log(`Compressed, uploading...`);
+
             await addPaintImage(this.paintId, compressedImage, file.name);
             await this.loadImages();
             this.onImageChange();
         } catch (error) {
             console.error('Failed to upload image:', error);
             alert(t_.galleryUploadError);
+            if (mainDiv && originalContent) {
+                mainDiv.innerHTML = originalContent;
+            }
         }
     }
 
@@ -73,7 +96,6 @@ export class ImageGallery {
 
         if (!mainDiv || !thumbnailsDiv) return;
 
-        // Если нет фотографий — показываем заглушку
         if (this.images.length === 0) {
             mainDiv.innerHTML = `
                 <div class="gallery-main-image placeholder">
@@ -97,7 +119,6 @@ export class ImageGallery {
             return;
         }
 
-        // Есть фотографии — показываем первую/главную
         const primaryImage = this.images.find(img => img.is_primary) || this.images[0];
         this.currentMainImageId = primaryImage.id;
         const mainImageUrl = `${API_BASE}/paints/${this.paintId}/images/${primaryImage.id}`;
@@ -113,7 +134,6 @@ export class ImageGallery {
             </div>
         `;
 
-        // Add button
         const addBtn = mainDiv.querySelector('.gallery-main-add') as HTMLButtonElement | null;
         const fileInput = this.container.querySelector('#image-file-input') as HTMLInputElement;
         if (addBtn && fileInput) {
@@ -123,7 +143,6 @@ export class ImageGallery {
             };
         }
 
-        // Set primary button
         const setPrimaryBtn = mainDiv.querySelector('.gallery-main-set-primary') as HTMLButtonElement | null;
         if (setPrimaryBtn) {
             setPrimaryBtn.onclick = async (e) => {
@@ -135,7 +154,6 @@ export class ImageGallery {
             };
         }
 
-        // Delete button
         const deleteBtn = mainDiv.querySelector('.gallery-main-delete') as HTMLButtonElement | null;
         if (deleteBtn) {
             deleteBtn.onclick = async (e) => {
@@ -149,7 +167,6 @@ export class ImageGallery {
             };
         }
 
-        // Thumbnails (если больше одного фото)
         if (this.images.length <= 1) {
             thumbnailsDiv.innerHTML = '';
             return;
@@ -168,7 +185,6 @@ export class ImageGallery {
         }
         thumbnailsDiv.innerHTML = thumbnailsHtml;
 
-        // Thumbnail click handlers
         const thumbnails = thumbnailsDiv.querySelectorAll('.gallery-thumbnail');
         for (let i = 0; i < thumbnails.length; i++) {
             const thumb = thumbnails[i] as HTMLElement;
@@ -201,7 +217,6 @@ export class ImageGallery {
                 </div>
             `;
 
-            // Re-attach handlers
             const addBtn = mainDiv.querySelector('.gallery-main-add') as HTMLButtonElement | null;
             const fileInput = this.container.querySelector('#image-file-input') as HTMLInputElement;
             if (addBtn && fileInput) {
@@ -236,7 +251,6 @@ export class ImageGallery {
             }
         }
 
-        // Update thumbnails active state
         const thumbnailsDiv = this.container.querySelector('#gallery-thumbnails') as HTMLElement;
         if (thumbnailsDiv) {
             const thumbnails = thumbnailsDiv.querySelectorAll('.gallery-thumbnail');

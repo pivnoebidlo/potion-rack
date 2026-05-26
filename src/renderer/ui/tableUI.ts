@@ -25,7 +25,7 @@ const statusMessage = document.getElementById('statusMessage') as HTMLElement;
 
 // Components
 let statsPanel: StatsPanel;
-let paintDetails: PaintDetails;
+export let paintDetails: PaintDetails;
 let paintModalManager: PaintModalManager | null = null;
 
 function updateStatusMessage(message: string): void {
@@ -124,7 +124,6 @@ export async function renderTable(): Promise<void> {
         attachDeleteHandlers();
         attachStatusHandlers();
 
-        // Automatically select first paint if nothing selected
         if (paints.length > 0 && appState.currentSelectedId === null) {
             appState.setSelectedId(paints[0].id);
             await paintDetails.loadPaint(paints[0].id, getBaseColorName);
@@ -308,30 +307,11 @@ export function scrollToSelectedRow(): void {
     const tableWrapper = document.querySelector('.table-container');
     if (!tableWrapper) return;
 
-    // Получаем высоту нижней панели
-    const statusBar = document.querySelector('.status-bar') as HTMLElement;
-    const statusBarHeight = statusBar ? statusBar.offsetHeight : 28;
-
-    // Получаем позицию строки относительно контейнера
-    const rowRect = selectedRow.getBoundingClientRect();
-    const wrapperRect = tableWrapper.getBoundingClientRect();
-
-    // Относительная позиция строки внутри контейнера
-    const relativeTop = rowRect.top - wrapperRect.top;
-    const relativeBottom = rowRect.bottom - wrapperRect.top;
-
-    // Видимая область контейнера с учётом нижней панели
-    const visibleTop = 0;
-    const visibleBottom = wrapperRect.height - statusBarHeight;
-
-    // Если строка не видна или частично перекрыта
-    if (relativeTop < visibleTop || relativeBottom > visibleBottom) {
-        const scrollOffset = relativeTop - (visibleBottom - relativeBottom) / 2;
-        tableWrapper.scrollBy({
-            top: scrollOffset,
-            behavior: 'smooth'
-        });
-    }
+    selectedRow.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+        inline: 'nearest'
+    });
 }
 
 export function focusOnFilter(): void {
