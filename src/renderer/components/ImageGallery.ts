@@ -41,7 +41,12 @@ export class ImageGallery {
     }
 
     private setupEventListeners(): void {
+        const addBtn = this.container.querySelector('#add-image-btn');
         const fileInput = this.container.querySelector('#image-file-input') as HTMLInputElement;
+
+        addBtn?.addEventListener('click', () => {
+            fileInput.click();
+        });
 
         fileInput.addEventListener('change', async (e) => {
             const files = (e.target as HTMLInputElement).files;
@@ -52,18 +57,48 @@ export class ImageGallery {
                 fileInput.value = '';
             }
         });
+
+        // Добавляем обработчик вставки из буфера обмена
+        document.addEventListener('paste', async (e) => {
+            const items = e.clipboardData?.items;
+            if (!items) return;
+
+            for (const item of Array.from(items)) {
+                if (item.type.startsWith('image/')) {
+                    const file = item.getAsFile();
+                    if (file) {
+                        console.log(`📋 Pasting image from clipboard: ${file.name || 'image'}`);
+                        await this.uploadImage(file);
+                    }
+                }
+            }
+        });
     }
 
     private async uploadImage(file: File): Promise<void> {
         const t_ = t();
+
+        // Показываем индикатор загрузки
+        const mainDiv = this.container.querySelector('#gallery-main');
+        const originalContent = mainDiv?.innerHTML;
+        if (mainDiv) {
+            mainDiv.innerHTML = '<div class="gallery-loading">⏳ Uploading...</div>';
+        }
+
         try {
+            console.log(`Compressing image: ${file.name} (${(file.size / 1024).toFixed(2)} KB)`);
             const compressedImage = await compressImage(file, 800, 800, 0.7);
+            console.log(`Compressed, uploading...`);
+
             await addPaintImage(this.paintId, compressedImage, file.name);
             await this.loadImages();
             this.onImageChange();
         } catch (error) {
             console.error('Failed to upload image:', error);
             alert(t_.galleryUploadError);
+            if (mainDiv) {
+                mainDiv.innerHTML = originalContent || '';
+            }
         }
     }
 
