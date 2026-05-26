@@ -59,43 +59,56 @@ if (addBtn) {
     };
 }
 
-// Figures App - инициализация
+// Figures App
 let figuresApp: FiguresApp | null = null;
 const figuresSidebar = document.getElementById('figures-sidebar') as HTMLElement;
 const figuresGridContainer = document.getElementById('figures-grid-container') as HTMLElement;
-const figuresEditorView = document.getElementById('figures-editor-view') as HTMLElement;
-const figureEditorContainer = document.getElementById('figure-editor-container') as HTMLElement;
 
-// Кнопки добавления фигурки (в сайдбаре и в тулбаре)
+// Create figure-editor-container if not exists
+let figureEditorContainer = document.getElementById('figure-editor-container') as HTMLElement;
+if (!figureEditorContainer) {
+    console.log('Creating figure-editor-container dynamically');
+    figureEditorContainer = document.createElement('div');
+    figureEditorContainer.id = 'figure-editor-container';
+    figureEditorContainer.className = 'figure-editor-container';
+    const editorView = document.getElementById('figures-editor-view');
+    if (editorView) {
+        editorView.appendChild(figureEditorContainer);
+    } else {
+        console.error('figures-editor-view not found');
+    }
+}
+
 const addFigureSidebarBtn = document.getElementById('addFigureSidebarBtn') as HTMLElement;
-const addFigureBtn = document.getElementById('addFigureBtn') as HTMLElement;
 
-// Инициализируем FiguresApp
+// Debug output
+console.log('Figures grid container:', figuresGridContainer);
+console.log('Figure editor container:', figureEditorContainer);
+console.log('Add figure button:', addFigureSidebarBtn);
+
 if (figuresGridContainer && figureEditorContainer) {
     figuresApp = new FiguresApp(figuresGridContainer, figureEditorContainer);
     console.log('FiguresApp initialized');
+} else {
+    console.error('FiguresApp not initialized: missing containers');
 }
 
-// Кнопка в сайдбаре
 if (addFigureSidebarBtn && figuresApp) {
     addFigureSidebarBtn.onclick = () => {
+        console.log('Add figure button clicked');
         figuresApp.showAddModal();
     };
+} else {
+    console.error('Add button or FiguresApp not ready');
 }
 
-// Кнопка в тулбаре (если есть)
-if (addFigureBtn && figuresApp) {
-    addFigureBtn.onclick = () => {
-        figuresApp.showAddModal();
-    };
-}
 // Navigation between tabs
 function setupNavigation(): void {
     const navItems = document.querySelectorAll('.nav-item');
     const paintsView = document.getElementById('paints-view');
-    const figuresView = document.getElementById('figures-view');
+    const figuresSidebar = document.getElementById('figures-sidebar');
+    const figuresEditorView = document.getElementById('figures-editor-view');
     const settingsView = document.getElementById('settings-view');
-    const figuresTableContainer = document.getElementById('figures-table-container') as HTMLElement;
 
     navItems.forEach(item => {
         item.addEventListener('click', () => {
@@ -103,23 +116,26 @@ function setupNavigation(): void {
             navItems.forEach(nav => nav.classList.remove('active'));
             item.classList.add('active');
 
+            // Hide all views
             if (paintsView) paintsView.style.display = 'none';
-            if (figuresView) figuresView.style.display = 'none';
+            if (figuresEditorView) figuresEditorView.style.display = 'none';
             if (settingsView) settingsView.style.display = 'none';
+            if (figuresSidebar) figuresSidebar.style.display = 'none';
 
             if (tab === 'paints' && paintsView) {
                 paintsView.style.display = 'flex';
                 paintsView.style.flexDirection = 'column';
+                if (figuresSidebar) figuresSidebar.style.display = 'none';
                 renderTable();
-            } else if (tab === 'figures' && figuresView) {
-                figuresView.style.display = 'flex';
-                figuresView.style.flexDirection = 'column';
-                if (!figuresApp && figuresTableContainer) {
-                    figuresApp = new FiguresApp(figuresTableContainer, detailsContent);
-                }
+            } else if (tab === 'figures' && figuresEditorView && figuresSidebar) {
+                figuresSidebar.style.display = 'flex';
+                figuresSidebar.style.flexDirection = 'column';
+                figuresEditorView.style.display = 'flex';
+                figuresEditorView.style.flexDirection = 'column';
             } else if (tab === 'settings' && settingsView) {
                 settingsView.style.display = 'flex';
                 settingsView.style.flexDirection = 'column';
+                if (figuresSidebar) figuresSidebar.style.display = 'none';
             }
         });
     });
@@ -152,10 +168,8 @@ document.addEventListener('paste', async (e) => {
 
                 updateStatusMessage('Image uploaded ✓');
 
-                // Обновляем таблицу
                 await renderTable();
 
-                // Обновляем галерею в правой панели
                 if (currentPaintId === appState.currentSelectedId) {
                     const { paintDetails, getBaseColorName } = await import('./ui/tableUI.js');
                     if (paintDetails) {
