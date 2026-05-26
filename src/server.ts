@@ -28,7 +28,7 @@ setupImageRoutes(app, db);
 setupSettingsRoutes(app, db);
 setupStatsRoutes(app, db);
 setupBackupRoutes(app, db);
-setupFiguresRoutes(app, db);
+setupFiguresRoutes(app);
 
 export function startServer() {
     app.listen(PORT, '0.0.0.0', () => {

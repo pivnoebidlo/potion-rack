@@ -1,100 +1,135 @@
 import { Request, Response } from 'express';
-import Database from 'better-sqlite3';
+import { getDatabase } from '../database/connection';
 
 export class FiguresController {
-    private db: Database.Database;
-
-    constructor(db: Database.Database) {
-        this.db = db;
+    async getAll(req: Request, res: Response): Promise<void> {
+        try {
+            const db = getDatabase();
+            const figures = db.prepare(`
+                SELECT * FROM figures ORDER BY updated_at DESC
+            `).all();
+            res.json(figures);
+        } catch (error) {
+            console.error('Error fetching figures:', error);
+            res.status(500).json({ error: 'Failed to fetch figures' });
+        }
     }
 
-    getAll = (req: Request, res: Response): void => {
+    async getById(req: Request, res: Response): Promise<void> {
         try {
-            const rows = this.db.prepare(`SELECT * FROM figures ORDER BY name`).all();
-            res.json(rows);
-        } catch (err) {
-            console.error('GET /api/figures error:', err);
-            res.status(500).json({ error: (err as Error).message });
-        }
-    };
+            const db = getDatabase();
+            const figure = db.prepare(`
+                SELECT * FROM figures WHERE id = ?
+            `).get(req.params.id);
 
-    getOne = (req: Request, res: Response): void => {
+            if (!figure) {
+                res.status(404).json({ error: 'Figure not found' });
+                return;
+            }
+
+            res.json(figure);
+        } catch (error) {
+            console.error('Error fetching figure:', error);
+            res.status(500).json({ error: 'Failed to fetch figure' });
+        }
+    }
+
+    async create(req: Request, res: Response): Promise<void> {
         try {
-            const row = this.db.prepare(`SELECT * FROM figures WHERE id = ?`).get(req.params.id);
-            res.json(row);
-        } catch (err) {
-            console.error('GET /api/figures/:id error:', err);
-            res.status(500).json({ error: (err as Error).message });
+            const db = getDatabase();
+            const { name, manufacturer, scale, material, status, purchase_date, purchase_price, completed_date, description, content } = req.body;
+
+            if (!name) {
+                res.status(400).json({ error: 'Name is required' });
+                return;
+            }
+
+            const now = new Date().toISOString();
+            const result = db.prepare(`
+                INSERT INTO figures (name, manufacturer, scale, material, status, purchase_date, purchase_price, completed_date, description, content, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `).run(
+                name,
+                manufacturer || null,
+                scale || null,
+                material || 'plastic',
+                status || 'draft',
+                purchase_date || null,
+                purchase_price || null,
+                completed_date || null,
+                description || null,
+                content || null,
+                now,
+                now
+            );
+
+            const figure = db.prepare('SELECT * FROM figures WHERE id = ?').get(result.lastInsertRowid);
+            res.status(201).json(figure);
+        } catch (error) {
+            console.error('Error creating figure:', error);
+            res.status(500).json({ error: 'Failed to create figure' });
         }
-    };
+    }
 
-    create = (req: Request, res: Response): void => {
-        const { name, manufacturer, scale, material, status, purchase_date, purchase_price, completed_date, description } = req.body;
-
-        if (!name) {
-            res.status(400).json({ error: 'Name is required' });
-            return;
-        }
-
+    async update(req: Request, res: Response): Promise<void> {
         try {
-            const result = this.db.prepare(`
-                INSERT INTO figures (name, manufacturer, scale, material, status, purchase_date, purchase_price, completed_date, description)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            `).run(name, manufacturer || null, scale || null, material || null, status || 'draft', purchase_date || null, purchase_price || null, completed_date || null, description || null);
+            const db = getDatabase();
+            const { id } = req.params;
+            const { name, manufacturer, scale, material, status, purchase_date, purchase_price, completed_date, description, content } = req.body;
 
-            res.status(201).json({ id: result.lastInsertRowid, message: 'Figure created' });
-        } catch (err) {
-            console.error('POST /api/figures error:', err);
-            res.status(500).json({ error: (err as Error).message });
+            const figure = db.prepare('SELECT * FROM figures WHERE id = ?').get(id) as any;
+            if (!figure) {
+                res.status(404).json({ error: 'Figure not found' });
+                return;
+            }
+
+            const now = new Date().toISOString();
+            db.prepare(`
+                UPDATE figures SET
+                                   name = ?, manufacturer = ?, scale = ?, material = ?,
+                                   status = ?, purchase_date = ?, purchase_price = ?,
+                                   completed_date = ?, description = ?,
+                                   content = ?, updated_at = ?
+                WHERE id = ?
+            `).run(
+                name ?? figure.name,
+                manufacturer ?? figure.manufacturer,
+                scale ?? figure.scale,
+                material ?? figure.material,
+                status ?? figure.status,
+                purchase_date ?? figure.purchase_date,
+                purchase_price ?? figure.purchase_price,
+                completed_date ?? figure.completed_date,
+                description ?? figure.description,
+                content ?? figure.content,
+                now,
+                id
+            );
+
+            const updated = db.prepare('SELECT * FROM figures WHERE id = ?').get(id);
+            res.json(updated);
+        } catch (error) {
+            console.error('Error updating figure:', error);
+            res.status(500).json({ error: 'Failed to update figure' });
         }
-    };
+    }
 
-    update = (req: Request, res: Response): void => {
-        const { name, manufacturer, scale, material, status, purchase_date, purchase_price, completed_date, description } = req.body;
-
-        const fields: string[] = [];
-        const values: any[] = [];
-
-        if (name !== undefined) { fields.push('name = ?'); values.push(name); }
-        if (manufacturer !== undefined) { fields.push('manufacturer = ?'); values.push(manufacturer); }
-        if (scale !== undefined) { fields.push('scale = ?'); values.push(scale); }
-        if (material !== undefined) { fields.push('material = ?'); values.push(material); }
-        if (status !== undefined) { fields.push('status = ?'); values.push(status); }
-        if (purchase_date !== undefined) { fields.push('purchase_date = ?'); values.push(purchase_date); }
-        if (purchase_price !== undefined) { fields.push('purchase_price = ?'); values.push(purchase_price); }
-        if (completed_date !== undefined) { fields.push('completed_date = ?'); values.push(completed_date); }
-        if (description !== undefined) { fields.push('description = ?'); values.push(description); }
-
-        if (fields.length === 0) {
-            res.status(400).json({ error: 'No fields to update' });
-            return;
-        }
-
-        fields.push('updated_at = CURRENT_TIMESTAMP');
-        values.push(req.params.id);
-
-        const query = `UPDATE figures SET ${fields.join(', ')} WHERE id = ?`;
-
+    async delete(req: Request, res: Response): Promise<void> {
         try {
-            this.db.prepare(query).run(...values);
-            res.json({ message: 'Figure updated' });
-        } catch (err) {
-            console.error('PUT /api/figures/:id error:', err);
-            res.status(500).json({ error: (err as Error).message });
-        }
-    };
+            const db = getDatabase();
+            const { id } = req.params;
 
-    delete = (req: Request, res: Response): void => {
-        const figureId = req.params.id as string;
+            const figure = db.prepare('SELECT * FROM figures WHERE id = ?').get(id);
+            if (!figure) {
+                res.status(404).json({ error: 'Figure not found' });
+                return;
+            }
 
-        try {
-            this.db.prepare(`DELETE FROM figure_images WHERE figure_id = ?`).run(figureId);
-            this.db.prepare(`DELETE FROM figure_paints WHERE figure_id = ?`).run(figureId);
-            this.db.prepare(`DELETE FROM figures WHERE id = ?`).run(figureId);
-            res.json({ message: 'Figure and associated data deleted' });
-        } catch (err) {
-            console.error('DELETE /api/figures/:id error:', err);
-            res.status(500).json({ error: (err as Error).message });
+            db.prepare('DELETE FROM figures WHERE id = ?').run(id);
+            res.status(204).send();
+        } catch (error) {
+            console.error('Error deleting figure:', error);
+            res.status(500).json({ error: 'Failed to delete figure' });
         }
-    };
+    }
 }

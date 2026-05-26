@@ -118,7 +118,6 @@ export class FigureEditor {
             purchase_date: this.figure?.purchase_date,
             purchase_price: this.figure?.purchase_price,
             completed_date: this.figure?.completed_date,
-            notes: this.figure?.notes || '',
             images: this.figure?.images || [],
             paints: this.figure?.paints || [],
             created_at: this.figure?.created_at || now,

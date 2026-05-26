@@ -117,6 +117,16 @@ export function initDatabase(db: Database.Database): void {
                         );
                 `);
             }
+        },
+        {
+            version: 5,
+            name: 'Add content field to figures',
+            up: (db: Database.Database) => {
+                db.exec(`
+                    ALTER TABLE figures
+                        ADD COLUMN content TEXT;
+                `);
+            }
         }
     ];
 

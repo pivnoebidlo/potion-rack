@@ -80,7 +80,19 @@ export class FiguresApp {
 
         const saveBtn = document.getElementById('saveFigureContentBtn');
         saveBtn?.addEventListener('click', () => this.saveFigureContent());
+
+        const previewBtn = document.getElementById('togglePreviewBtn');
+        previewBtn?.addEventListener('click', () => {
+            if (this.markdownEditor) {
+                this.markdownEditor.togglePreview();
+                const btn = document.getElementById('togglePreviewBtn');
+                if (btn) {
+                    btn.innerHTML = this.markdownEditor.isInPreview() ? '✏️ Edit' : '👁 Preview';
+                }
+            }
+        });
     }
+
 
     private initComponents(): void {
         this.figuresGrid = new FiguresGrid(
@@ -187,26 +199,26 @@ export class FiguresApp {
         editorContainer.innerHTML = '';
 
         this.markdownEditor = new MarkdownEditor(editorContainer, {
-            initialValue: figure.description || '',
+            initialValue: figure.content || '',
             height: '100%',
             placeholder: 'Начните писать лог покраски...',
             onChange: (markdown: string) => {
                 if (this.currentFigure) {
-                    this.currentFigure.description = markdown;
+                    this.currentFigure.content = markdown;
                 }
             }
         });
     }
 
     private async saveFigureContent(): Promise<void> {
-        if (!this.currentFigure || !this.markdownEditor) {
+        if (!this.currentFigure) {
             console.warn('No figure selected for saving');
             return;
         }
 
         try {
-            const markdown = this.markdownEditor.getMarkdown();
-            await updateFigureAPI(this.currentFigure.id, { description: markdown });
+            const markdown = this.markdownEditor?.getMarkdown() || this.currentFigure.content || '';
+            await updateFigureAPI(this.currentFigure.id, { content: markdown });
             console.log('Figure content saved');
         } catch (err) {
             console.error('Failed to save figure content:', err);

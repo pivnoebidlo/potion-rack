@@ -4,6 +4,7 @@ export interface Figure {
     id: number;
     name: string;
     description?: string;
+    content?: string;
     manufacturer?: string;
     scale?: string;
     material?: 'plastic' | 'resin' | 'metal' | 'other';
@@ -13,7 +14,6 @@ export interface Figure {
     completed_date?: string;
     images?: FigureImage[];
     paints?: FigurePaintUsage[];
-    notes?: string;
     created_at: string;
     updated_at: string;
 }
