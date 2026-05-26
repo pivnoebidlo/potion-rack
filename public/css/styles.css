@@ -214,11 +214,11 @@ select, .language-switcher {
 }
 select:hover, .language-switcher:hover { background: var(--select-hover); }
 
-/* Table */
 .table-container {
     flex: 1;
     overflow: auto;
 }
+
 table {
     width: 100%;
     border-collapse: collapse;
@@ -548,4 +548,32 @@ tr.selected { background: var(--table-row-selected); color: white; }
     height: 100%;
     object-fit: contain;
     opacity: 0.7;
+}
+/* Bottom status bar */
+.status-bar {
+    position: sticky;
+    bottom: 0;
+    left: 48px;
+    right: 0;
+    height: 28px;
+    background: var(--sidebar-bg);
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    z-index: 100;
+}
+
+.status-bar span {
+    color: var(--text);
+}
+
+/* Adjust main container height to leave space for status bar */
+.app-container {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+    height: calc(100vh - 28px);
 }

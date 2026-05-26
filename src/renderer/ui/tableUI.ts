@@ -77,24 +77,14 @@ async function updateSeriesFilter(paints: Paint[]): Promise<void> {
 }
 
 export async function renderTable(): Promise<void> {
-    const t0 = performance.now();
-    console.log('⏱️ renderTable() started');
-
     try {
         let paints = await fetchPaints();
-        console.log(`⏱️ fetchPaints(): ${paints.length} paints, took ${(performance.now() - t0).toFixed(2)}ms`);
-
-        const t1 = performance.now();
         const stats = await fetchStats();
-        console.log(`⏱️ fetchStats(): took ${(performance.now() - t1).toFixed(2)}ms`);
 
         if (statsPanel) {
             statsPanel.update(stats.total, stats.brands);
         }
-
-        const t2 = performance.now();
         await updateSeriesFilter(paints);
-        console.log(`⏱️ updateSeriesFilter(): took ${(performance.now() - t2).toFixed(2)}ms`);
 
         const filterBar = getFilterBar();
         if (filterBar) {
@@ -107,7 +97,6 @@ export async function renderTable(): Promise<void> {
         if (paints.length === 0) {
             tableBody.innerHTML = `<tr><td colspan="9" class="loading">${t().msgNoData}...</td></tr>`;
             paintDetails.clear();
-            console.log(`⏱️ renderTable() total: ${(performance.now() - t0).toFixed(2)}ms (no paints)`);
             return;
         }
 
@@ -119,12 +108,12 @@ export async function renderTable(): Promise<void> {
                 <tr data-id="${p.id}" ${appState.currentSelectedId === p.id ? 'class="selected"' : ''}>
                     <td>${escapeHtml(p.brand)}</td>
                     <td>${escapeHtml(p.series || '-')}</td>
-                    <td>${escapeHtml(p.color_name)}</tr>
+                    <td>${escapeHtml(p.color_name)}</td>
                     <td>${escapeHtml(p.article || '-')}</td>
                     <td>${escapeHtml(baseColorName)}</td>
                     <td>${DateFormatter.format(p.purchase_date)}</td>
                     <td class="stars">${getStars(p.rating)}</td>
-                    ${StatusBadge.render(p.status, p.id)}
+                    <td class="status-cell">${StatusBadge.render(p.status, p.id)}</td>
                     <td><button class="delete-btn" data-id="${p.id}">Delete</button></td>
                 </tr>
             `;
@@ -148,8 +137,6 @@ export async function renderTable(): Promise<void> {
                 await renderTable();
             }
         }
-
-        console.log(`⏱️ renderTable() total: ${(performance.now() - t0).toFixed(2)}ms`);
 
     } catch (error) {
         console.error('Render error:', error);
@@ -321,15 +308,29 @@ export function scrollToSelectedRow(): void {
     const tableWrapper = document.querySelector('.table-container');
     if (!tableWrapper) return;
 
-    const rowTop = selectedRow.offsetTop;
-    const rowBottom = rowTop + selectedRow.offsetHeight;
-    const wrapperScrollTop = tableWrapper.scrollTop;
-    const wrapperHeight = tableWrapper.clientHeight;
+    // Получаем высоту нижней панели
+    const statusBar = document.querySelector('.status-bar') as HTMLElement;
+    const statusBarHeight = statusBar ? statusBar.offsetHeight : 28;
 
-    if (rowTop < wrapperScrollTop) {
-        tableWrapper.scrollTo({ top: rowTop - 10, behavior: 'smooth' });
-    } else if (rowBottom > wrapperScrollTop + wrapperHeight) {
-        tableWrapper.scrollTo({ top: rowBottom - wrapperHeight + 10, behavior: 'smooth' });
+    // Получаем позицию строки относительно контейнера
+    const rowRect = selectedRow.getBoundingClientRect();
+    const wrapperRect = tableWrapper.getBoundingClientRect();
+
+    // Относительная позиция строки внутри контейнера
+    const relativeTop = rowRect.top - wrapperRect.top;
+    const relativeBottom = rowRect.bottom - wrapperRect.top;
+
+    // Видимая область контейнера с учётом нижней панели
+    const visibleTop = 0;
+    const visibleBottom = wrapperRect.height - statusBarHeight;
+
+    // Если строка не видна или частично перекрыта
+    if (relativeTop < visibleTop || relativeBottom > visibleBottom) {
+        const scrollOffset = relativeTop - (visibleBottom - relativeBottom) / 2;
+        tableWrapper.scrollBy({
+            top: scrollOffset,
+            behavior: 'smooth'
+        });
     }
 }
 
