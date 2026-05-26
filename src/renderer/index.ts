@@ -26,11 +26,26 @@ import {
 } from './ui/filtersUI.js';
 import { setupSettingsPanel } from './ui/settingsUI.js';
 
+// Performance logging
+const LOG_PERFORMANCE = true;
+
+function perfLog(message: string, startTime?: number): void {
+    if (!LOG_PERFORMANCE) return;
+    if (startTime) {
+        console.log(`⏱️ ${message}: ${(performance.now() - startTime).toFixed(2)}ms`);
+    } else {
+        console.log(`⏱️ ${message}`);
+    }
+}
 
 console.log('Potion Rack starting...');
 
 // DOM elements
+const tableBody = document.getElementById('tableBody') as HTMLElement;
+const statusMessage = document.getElementById('statusMessage') as HTMLElement;
 const addBtn = document.getElementById('addBtn') as HTMLButtonElement;
+const detailsContent = document.getElementById('detailsContent') as HTMLElement;
+const languageSwitcher = document.getElementById('languageSwitcher') as HTMLSelectElement;
 
 // Initialize right panel
 new RightPanelManager();
@@ -66,11 +81,9 @@ function setupNavigation(): void {
             navItems.forEach(nav => nav.classList.remove('active'));
             item.classList.add('active');
 
-            // Hide all views
             if (paintsView) paintsView.style.display = 'none';
             if (settingsView) settingsView.style.display = 'none';
 
-            // Show selected view
             if (tab === 'paints' && paintsView) {
                 paintsView.style.display = 'flex';
                 paintsView.style.flexDirection = 'column';
@@ -80,7 +93,6 @@ function setupNavigation(): void {
                 settingsView.style.flexDirection = 'column';
             } else if (tab === 'figures') {
                 alert('Figures feature coming soon!');
-                // Если нет отдельного views, возвращаемся к краскам
                 if (paintsView) {
                     paintsView.style.display = 'flex';
                     paintsView.style.flexDirection = 'column';
@@ -95,17 +107,47 @@ function setupNavigation(): void {
 
 // Initialize
 async function init(): Promise<void> {
-    console.log('Initializing...');
+    const t0 = performance.now();
+    perfLog('🚀 Initialization started');
+
+    perfLog('⏳ settingsManager.initialize()');
+    const t1 = performance.now();
     await settingsManager.initialize();
+    perfLog('✅ settingsManager.initialize()', t1);
 
+    perfLog('⏳ languageSwitcher setup');
+    const t2 = performance.now();
+    if (languageSwitcher) languageSwitcher.value = i18n.getLanguage();
     updateUILanguage();
-    await refreshFilterData();
-    await initializePaintModal();
-    setupSorting();
-    setupSettingsPanel();
-    setupNavigation();
+    perfLog('✅ languageSwitcher setup', t2);
 
-    // Setup keyboard shortcuts
+    perfLog('⏳ loadFilterData()');
+    const t3 = performance.now();
+    await refreshFilterData();
+    perfLog('✅ loadFilterData()', t3);
+
+    perfLog('⏳ initializePaintModal()');
+    const t4 = performance.now();
+    await initializePaintModal();
+    perfLog('✅ initializePaintModal()', t4);
+
+    perfLog('⏳ setupSorting()');
+    const t5 = performance.now();
+    setupSorting();
+    perfLog('✅ setupSorting()', t5);
+
+    perfLog('⏳ setupSettingsPanel()');
+    const t6 = performance.now();
+    await setupSettingsPanel();
+    perfLog('✅ setupSettingsPanel()', t6);
+
+    perfLog('⏳ setupNavigation()');
+    const t7 = performance.now();
+    setupNavigation();
+    perfLog('✅ setupNavigation()', t7);
+
+    perfLog('⏳ setupKeyboardShortcuts()');
+    const t8 = performance.now();
     setupKeyboardShortcuts(
         selectPreviousPaint,
         selectNextPaint,
@@ -132,9 +174,20 @@ async function init(): Promise<void> {
         },
         refreshFilterData
     );
+    perfLog('✅ setupKeyboardShortcuts()', t8);
 
+    perfLog('⏳ renderTable()');
+    const t9 = performance.now();
     await renderTable();
+    perfLog('✅ renderTable()', t9);
 
+    perfLog('⏳ paintDetails.clear()');
+    const t10 = performance.now();
+    // paintDetails.clear();
+    perfLog('✅ paintDetails.clear()', t10);
+
+    updateStatusMessage(t().msgReady);
+    perfLog('🏁 Initialization complete', t0);
     console.log('Ready!');
     console.log('PaintModalManager ready:', getPaintModalManager());
 }

@@ -2,8 +2,7 @@ import { t } from '../i18n/index.js';
 import { Modal } from './Modal.js';
 import { PaintForm, PaintFormData } from './PaintForm.js';
 import {
-    fetchPaints, createPaintAPI, updatePaintAPI,
-    fetchPaintImages, addPaintImage, deletePaintImage, setPrimaryImage, compressImage,
+    createPaintAPI, updatePaintAPI,
     Paint
 } from '../services/api.js';
 import { escapeHtml, renderRatingStars } from '../utils/dom.js';
@@ -179,11 +178,17 @@ export class PaintModalManager {
                     // Проверяем все возможные места, где может быть статус 409
                     const status = err.status || err.response?.status;
                     const errorCode = err.response?.data?.error || err.error;
+                    const errorText = err.response?.data?.message || err.message;
 
                     console.error('Detected status:', status);
                     console.error('Detected errorCode:', errorCode);
+                    console.error('Detected errorText:', errorText);
 
                     if (status === 409 || errorCode === 'DUPLICATE_PAINT') {
+                        errorMessage = t_.msgDuplicatePaint
+                            .replace('{brand}', formData.brand)
+                            .replace('{color}', formData.color_name);
+                    } else if (errorText && errorText.includes('already exists')) {
                         errorMessage = t_.msgDuplicatePaint
                             .replace('{brand}', formData.brand)
                             .replace('{color}', formData.color_name);

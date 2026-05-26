@@ -96,7 +96,6 @@ export async function renderTable(): Promise<void> {
 
         if (paints.length === 0) {
             tableBody.innerHTML = `<tr><td colspan="9" class="loading">${t().msgNoData}...</td></tr>`;
-            // Если нет красок, очищаем детали
             paintDetails.clear();
             return;
         }
@@ -114,7 +113,7 @@ export async function renderTable(): Promise<void> {
                     <td>${escapeHtml(baseColorName)}</td>
                     <td>${DateFormatter.format(p.purchase_date)}</td>
                     <td class="stars">${getStars(p.rating)}</td>
-                    ${StatusBadge.render(p.status, p.id)}
+                    <td class="status-cell">${StatusBadge.render(p.status, p.id)}</td>
                     <td><button class="delete-btn" data-id="${p.id}">Delete</button></td>
                 </tr>
             `;
@@ -125,14 +124,12 @@ export async function renderTable(): Promise<void> {
         attachDeleteHandlers();
         attachStatusHandlers();
 
-        // Автоматически выбираем первую краску, если ничего не выбрано
+        // Automatically select first paint if nothing selected
         if (paints.length > 0 && appState.currentSelectedId === null) {
             appState.setSelectedId(paints[0].id);
             await paintDetails.loadPaint(paints[0].id, getBaseColorName);
-            // Обновляем таблицу, чтобы подсветить выбранную строку
             await renderTable();
         } else if (paints.length > 0 && appState.currentSelectedId !== null) {
-            // Если краска выбрана, но её нет в отфильтрованном списке — выбираем первую
             const isSelectedInList = paints.some(p => p.id === appState.currentSelectedId);
             if (!isSelectedInList) {
                 appState.setSelectedId(paints[0].id);
@@ -311,15 +308,29 @@ export function scrollToSelectedRow(): void {
     const tableWrapper = document.querySelector('.table-container');
     if (!tableWrapper) return;
 
-    const rowTop = selectedRow.offsetTop;
-    const rowBottom = rowTop + selectedRow.offsetHeight;
-    const wrapperScrollTop = tableWrapper.scrollTop;
-    const wrapperHeight = tableWrapper.clientHeight;
+    // Получаем высоту нижней панели
+    const statusBar = document.querySelector('.status-bar') as HTMLElement;
+    const statusBarHeight = statusBar ? statusBar.offsetHeight : 28;
 
-    if (rowTop < wrapperScrollTop) {
-        tableWrapper.scrollTo({ top: rowTop - 10, behavior: 'smooth' });
-    } else if (rowBottom > wrapperScrollTop + wrapperHeight) {
-        tableWrapper.scrollTo({ top: rowBottom - wrapperHeight + 10, behavior: 'smooth' });
+    // Получаем позицию строки относительно контейнера
+    const rowRect = selectedRow.getBoundingClientRect();
+    const wrapperRect = tableWrapper.getBoundingClientRect();
+
+    // Относительная позиция строки внутри контейнера
+    const relativeTop = rowRect.top - wrapperRect.top;
+    const relativeBottom = rowRect.bottom - wrapperRect.top;
+
+    // Видимая область контейнера с учётом нижней панели
+    const visibleTop = 0;
+    const visibleBottom = wrapperRect.height - statusBarHeight;
+
+    // Если строка не видна или частично перекрыта
+    if (relativeTop < visibleTop || relativeBottom > visibleBottom) {
+        const scrollOffset = relativeTop - (visibleBottom - relativeBottom) / 2;
+        tableWrapper.scrollBy({
+            top: scrollOffset,
+            behavior: 'smooth'
+        });
     }
 }
 

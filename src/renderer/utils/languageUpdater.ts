@@ -25,8 +25,15 @@ export function updateUILanguage(): void {
     if (deleteBtn) deleteBtn.textContent = t_.btnDelete;
     if (resetFiltersBtn) resetFiltersBtn.textContent = t_.btnReset;
 
-    const ths = ['thBrand', 'thSeries', 'thColor', 'thArticle', 'thBaseColor', 'thRating', 'thStatus'];
-    const texts = [t_.thBrand, t_.thSeries, t_.thColor, t_.thArticle, t_.thBaseColor, t_.thRating, t_.thStatus];
+    const ths = [
+        'thBrand', 'thSeries', 'thColor', 'thArticle',
+        'thBaseColor', 'thPurchaseDate', 'thRating', 'thStatus'
+    ];
+    const texts = [
+        t_.thBrand, t_.thSeries, t_.thColor, t_.thArticle,
+        t_.thBaseColor, t_.thPurchaseDate, t_.thRating, t_.thStatus
+    ];
+
     for (let i = 0; i < ths.length; i++) {
         const el = document.getElementById(ths[i]);
         if (el) el.textContent = texts[i];

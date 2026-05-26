@@ -60,21 +60,18 @@ export async function createPaintAPI(paintData: PaintData): Promise<{id: number}
     });
 
     if (!response.ok) {
-        // Пытаемся получить тело ошибки
         let errorMessage = `HTTP ${response.status}`;
+        let errorBody;
         try {
-            const errorBody = await response.json();
+            errorBody = await response.json();
             errorMessage = errorBody.message || errorBody.error || errorMessage;
-            // Создаём ошибку с дополнительными полями
-            const error = new Error(errorMessage);
-            (error as any).status = response.status;
-            (error as any).response = { status: response.status, data: errorBody };
-            throw error;
-        } catch (parseError) {
-            const error = new Error(errorMessage);
-            (error as any).status = response.status;
-            throw error;
+        } catch (e) {
+            // ignore
         }
+        const error = new Error(errorMessage);
+        (error as any).status = response.status;
+        (error as any).response = { status: response.status, data: errorBody };
+        throw error;
     }
 
     return response.json();
@@ -86,7 +83,21 @@ export async function updatePaintAPI(id: number, paintData: PaintData): Promise<
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(paintData),
     });
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+    if (!response.ok) {
+        let errorMessage = `HTTP ${response.status}`;
+        let errorBody;
+        try {
+            errorBody = await response.json();
+            errorMessage = errorBody.message || errorBody.error || errorMessage;
+        } catch (e) {
+            // ignore
+        }
+        const error = new Error(errorMessage);
+        (error as any).status = response.status;
+        (error as any).response = { status: response.status, data: errorBody };
+        throw error;
+    }
 }
 
 export async function deletePaintAPI(id: number): Promise<void> {
@@ -189,70 +200,52 @@ export function compressImage(file: File, maxWidth: number = 800, maxHeight: num
     });
 }
 
-// Backup with Electron dialogs
-declare const electronAPI: {
-    showSaveDialog: (options: any) => Promise<{ canceled: boolean; filePath: string | null }>;
-    showOpenDialog: (options: any) => Promise<{ canceled: boolean; filePaths: string[] }>;
-    saveFile: (filePath: string, data: string) => Promise<{ success: boolean; error?: string }>;
-    readFile: (filePath: string) => Promise<{ success: boolean; data?: string; error?: string }>;
-};
-
+// Backup
 export async function exportBackup(): Promise<void> {
-    // 1. Получаем данные с сервера
     const response = await fetch(`${API_BASE}/backup/export`);
     if (!response.ok) throw new Error('Export failed');
     const backup = await response.json();
 
-    // 2. Показываем диалог выбора места сохранения
-    const result = await electronAPI.showSaveDialog({
-        title: 'Export Potion Rack Backup',
-        defaultPath: `potion-rack-backup-${new Date().toISOString().split('T')[0]}.prbackup`,
-        filters: [
-            { name: 'Potion Rack Backup', extensions: ['prbackup'] },
-            { name: 'JSON Files', extensions: ['json'] }
-        ]
-    });
-
-    if (result.canceled || !result.filePath) {
-        throw new Error('Cancelled');
-    }
-
-    // 3. Сохраняем файл
-    const saveResult = await electronAPI.saveFile(result.filePath, JSON.stringify(backup, null, 2));
-    if (!saveResult.success) {
-        throw new Error(saveResult.error || 'Failed to save file');
-    }
+    const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `potion-rack-backup-${new Date().toISOString().split('T')[0]}.prbackup`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
 }
 
 export async function importBackup(): Promise<{ paintsImported: number; imagesImported: number; skippedDuplicates: number }> {
-    // 1. Показываем диалог выбора файла
-    const result = await electronAPI.showOpenDialog({
-        title: 'Import Potion Rack Backup',
-        filters: [
-            { name: 'Potion Rack Backup', extensions: ['prbackup', 'json'] }
-        ]
+    return new Promise((resolve, reject) => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.prbackup,.json';
+        input.onchange = async () => {
+            if (input.files && input.files[0]) {
+                try {
+                    const file = input.files[0];
+                    const text = await file.text();
+                    const backup = JSON.parse(text);
+
+                    const response = await fetch(`${API_BASE}/backup/import`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(backup)
+                    });
+
+                    if (!response.ok) throw new Error('Import failed');
+                    const result = await response.json();
+                    resolve(result);
+                } catch (err) {
+                    reject(err);
+                }
+            } else {
+                reject(new Error('No file selected'));
+            }
+        };
+        input.oncancel = () => reject(new Error('Cancelled'));
+        input.click();
     });
-
-    if (result.canceled || result.filePaths.length === 0) {
-        throw new Error('Cancelled');
-    }
-
-    const filePath = result.filePaths[0];
-
-    // 2. Читаем файл
-    const readResult = await electronAPI.readFile(filePath);
-    if (!readResult.success || !readResult.data) {
-        throw new Error(readResult.error || 'Failed to read file');
-    }
-
-    // 3. Парсим и отправляем на сервер
-    const backup = JSON.parse(readResult.data);
-    const response = await fetch(`${API_BASE}/backup/import`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(backup)
-    });
-
-    if (!response.ok) throw new Error('Import failed');
-    return response.json();
 }

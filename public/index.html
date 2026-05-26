@@ -5,25 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Potion Rack</title>
     <link rel="stylesheet" href="css/styles.css">
-    <script>
-        window.APP_VERSION = '0.1.2';
-    </script>
 </head>
 <body>
-<div class="header">
-    <h1 id="appTitle">🎨 Potion Rack</h1>
-    <div class="stats">
-        <div class="stat">
-            <div class="stat-value" id="totalCount">0</div>
-            <div class="stat-label" id="statsTotalLabel">Total Paints</div>
-        </div>
-        <div class="stat">
-            <div class="stat-value" id="brandCount">0</div>
-            <div class="stat-label" id="statsBrandsLabel">Brands</div>
-        </div>
-    </div>
-</div>
-
 <div class="app-container">
     <!-- Left sidebar navigation -->
     <div class="left-sidebar">
@@ -56,17 +39,11 @@
                     </div>
                     <div class="filter-group">
                         <label id="labelStatus" for="filter-status">Status</label>
-                        <select id="filter-status" style="min-width: 100px;">
-                            <option value="">All</option>
-                            <option value="instock">✅ In Stock</option>
-                            <option value="low">⚠️ Low</option>
-                            <option value="out">❌ Out of Stock</option>
-                            <option value="ordered">📦 Ordered</option>
-                        </select>
+                        <select id="filter-status" style="min-width: 100px;"></select>
                     </div>
                     <div class="action-buttons">
-                        <button id="resetFiltersBtn" class="icon-btn">🔄</button>
-                        <button id="addBtn" class="primary icon-btn">➕</button>
+                        <button id="resetFiltersBtn" class="icon-btn" title="Reset filters">🔄</button>
+                        <button id="addBtn" class="primary icon-btn" title="Add paint">➕</button>
                     </div>
                 </div>
             </div>
@@ -119,6 +96,14 @@
         </div>
     </div>
 </div>
+
+<!-- Bottom status bar -->
+<div class="status-bar" id="statusBar">
+    <span id="statsTotalLabel">Total Paints</span>: <span id="totalCount">0</span>&nbsp;&nbsp;|&nbsp;&nbsp;
+    <span id="statsBrandsLabel">Brands</span>: <span id="brandCount">0</span>
+</div>
+
+<div class="status-message" id="statusMessage">Ready</div>
 
 <script type="module" src="../dist/renderer/index.js"></script>
 </body>

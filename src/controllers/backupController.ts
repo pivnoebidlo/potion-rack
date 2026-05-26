@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+// noinspection SqlDialectInspection,SqlNoDataSourceInspection
+
 import { Request, Response } from 'express';
 import Database from 'better-sqlite3';
 

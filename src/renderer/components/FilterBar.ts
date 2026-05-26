@@ -16,8 +16,20 @@ export class FilterBar {
         this.filterStatus = document.getElementById('filter-status') as HTMLSelectElement;
         this.onFilterChange = onFilterChange;
 
+        // Initialize status options
+        this.initStatusOptions();
+
         this.setupEventListeners();
         this.updateLabels();
+    }
+
+    private initStatusOptions(): void {
+        if (this.filterStatus) {
+            // Create options dynamically
+            this.filterStatus.innerHTML = `
+                <option value="">Loading...</option>
+            `;
+        }
     }
 
     private setupEventListeners(): void {
@@ -91,14 +103,24 @@ export class FilterBar {
             this.filterColorName.placeholder = (t_ as any).filterColorName || 'Search color...';
         }
 
+        // Update status options
         if (this.filterStatus) {
-            const options = this.filterStatus.options;
-            if (options[0]) options[0].text = t_.filterAll;
-            if (options[1]) options[1].text = t_.statusInstock;
-            if (options[2]) options[2].text = t_.statusLow;
-            if (options[3]) options[3].text = t_.statusOut;
-            if (options[4]) options[4].text = t_.statusOrdered;
+            this.filterStatus.innerHTML = `
+                <option value="">${t_.filterAll}</option>
+                <option value="instock">${t_.statusInstock}</option>
+                <option value="low">${t_.statusLow}</option>
+                <option value="out">${t_.statusOut}</option>
+                <option value="ordered">${t_.statusOrdered}</option>
+            `;
         }
+
+        // Update reset button title
+        const resetBtn = document.getElementById('resetFiltersBtn');
+        if (resetBtn) resetBtn.title = t_.btnReset;
+
+        // Update add button title
+        const addBtn = document.getElementById('addBtn');
+        if (addBtn) addBtn.title = t_.btnAdd;
     }
 
     reset(): void {
