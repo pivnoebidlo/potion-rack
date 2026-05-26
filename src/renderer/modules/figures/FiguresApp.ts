@@ -85,14 +85,12 @@ export class FiguresApp {
         previewBtn?.addEventListener('click', () => {
             if (this.markdownEditor) {
                 this.markdownEditor.togglePreview();
-                const btn = document.getElementById('togglePreviewBtn');
-                if (btn) {
-                    btn.innerHTML = this.markdownEditor.isInPreview() ? '✏️ Edit' : '👁 Preview';
+                if (previewBtn) {
+                    previewBtn.innerHTML = this.markdownEditor.previewActive ? '✏️ Edit' : '👁 Preview';
                 }
             }
         });
     }
-
 
     private initComponents(): void {
         this.figuresGrid = new FiguresGrid(
