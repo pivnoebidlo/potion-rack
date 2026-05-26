@@ -206,15 +206,37 @@ export async function exportBackup(): Promise<void> {
     if (!response.ok) throw new Error('Export failed');
     const backup = await response.json();
 
-    const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `potion-rack-backup-${new Date().toISOString().split('T')[0]}.prbackup`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    // Используем системный диалог через Electron
+    if (window.electronAPI?.showSaveDialog) {
+        const result = await window.electronAPI.showSaveDialog({
+            title: 'Export Potion Rack Backup',
+            defaultPath: `potion-rack-backup-${new Date().toISOString().split('T')[0]}.prbackup`,
+            filters: [
+                { name: 'Potion Rack Backup', extensions: ['prbackup'] },
+                { name: 'JSON Files', extensions: ['json'] }
+            ]
+        });
+
+        if (result.canceled || !result.filePath) {
+            throw new Error('Cancelled');
+        }
+
+        const saveResult = await window.electronAPI.saveFile(result.filePath, JSON.stringify(backup, null, 2));
+        if (!saveResult.success) {
+            throw new Error(saveResult.error || 'Failed to save file');
+        }
+    } else {
+        // Fallback для веб-версии (если Electron API недоступен)
+        const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `potion-rack-backup-${new Date().toISOString().split('T')[0]}.prbackup`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
 }
 
 export async function importBackup(): Promise<{ paintsImported: number; imagesImported: number; skippedDuplicates: number }> {

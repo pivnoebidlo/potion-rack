@@ -25,18 +25,7 @@ import {
     setupResetFiltersButton
 } from './ui/filtersUI.js';
 import { setupSettingsPanel } from './ui/settingsUI.js';
-
-// Performance logging
-const LOG_PERFORMANCE = true;
-
-function perfLog(message: string, startTime?: number): void {
-    if (!LOG_PERFORMANCE) return;
-    if (startTime) {
-        console.log(`⏱️ ${message}: ${(performance.now() - startTime).toFixed(2)}ms`);
-    } else {
-        console.log(`⏱️ ${message}`);
-    }
-}
+import { compressImage, addPaintImage } from './services/api.js';
 
 console.log('Potion Rack starting...');
 
@@ -105,49 +94,80 @@ function setupNavigation(): void {
     });
 }
 
+
+// Global paste handler for images
+// Global paste handler for images
+// Global paste handler for images
+document.addEventListener('paste', async (e) => {
+    const currentPaintId = appState.currentSelectedId;
+    if (!currentPaintId) {
+        console.log('📋 Paste ignored: no paint selected');
+        return;
+    }
+
+    const items = e.clipboardData?.items;
+    if (!items) return;
+
+    const imageItems = Array.from(items).filter(item => item.type.startsWith('image/'));
+    if (imageItems.length === 0) return;
+
+    console.log(`📋 Pasting ${imageItems.length} image(s) to paint ${currentPaintId}`);
+
+    for (const item of imageItems) {
+        const file = item.getAsFile();
+        if (file) {
+            try {
+                updateStatusMessage('Uploading image...');
+
+                const compressedImage = await compressImage(file, 800, 800, 0.7);
+                await addPaintImage(currentPaintId, compressedImage, file.name);
+
+                updateStatusMessage('Image uploaded ✓');
+
+                // Обновляем таблицу
+                await renderTable();
+
+                // Обновляем галерею в правой панели
+                if (currentPaintId === appState.currentSelectedId) {
+                    const { paintDetails, getBaseColorName } = await import('./ui/tableUI.js');
+                    if (paintDetails) {
+                        await paintDetails.loadPaint(currentPaintId, getBaseColorName);
+                    }
+                }
+            } catch (err) {
+                console.error('Failed to paste image:', err);
+                updateStatusMessage('Failed to upload image');
+            }
+        }
+    }
+});
+
+// Helper
+function updateStatusMessage(message: string): void {
+    const statusMessage = document.getElementById('statusMessage');
+    if (!statusMessage) return;
+    statusMessage.textContent = message;
+    statusMessage.style.display = 'block';
+    setTimeout(() => {
+        if (statusMessage.textContent === message) {
+            statusMessage.style.display = 'none';
+        }
+    }, 3000);
+}
+
 // Initialize
 async function init(): Promise<void> {
-    const t0 = performance.now();
-    perfLog('🚀 Initialization started');
-
-    perfLog('⏳ settingsManager.initialize()');
-    const t1 = performance.now();
+    console.log('Initializing...');
     await settingsManager.initialize();
-    perfLog('✅ settingsManager.initialize()', t1);
 
-    perfLog('⏳ languageSwitcher setup');
-    const t2 = performance.now();
     if (languageSwitcher) languageSwitcher.value = i18n.getLanguage();
     updateUILanguage();
-    perfLog('✅ languageSwitcher setup', t2);
-
-    perfLog('⏳ loadFilterData()');
-    const t3 = performance.now();
     await refreshFilterData();
-    perfLog('✅ loadFilterData()', t3);
-
-    perfLog('⏳ initializePaintModal()');
-    const t4 = performance.now();
     await initializePaintModal();
-    perfLog('✅ initializePaintModal()', t4);
-
-    perfLog('⏳ setupSorting()');
-    const t5 = performance.now();
     setupSorting();
-    perfLog('✅ setupSorting()', t5);
-
-    perfLog('⏳ setupSettingsPanel()');
-    const t6 = performance.now();
     await setupSettingsPanel();
-    perfLog('✅ setupSettingsPanel()', t6);
-
-    perfLog('⏳ setupNavigation()');
-    const t7 = performance.now();
     setupNavigation();
-    perfLog('✅ setupNavigation()', t7);
 
-    perfLog('⏳ setupKeyboardShortcuts()');
-    const t8 = performance.now();
     setupKeyboardShortcuts(
         selectPreviousPaint,
         selectNextPaint,
@@ -174,35 +194,11 @@ async function init(): Promise<void> {
         },
         refreshFilterData
     );
-    perfLog('✅ setupKeyboardShortcuts()', t8);
 
-    perfLog('⏳ renderTable()');
-    const t9 = performance.now();
     await renderTable();
-    perfLog('✅ renderTable()', t9);
-
-    perfLog('⏳ paintDetails.clear()');
-    const t10 = performance.now();
-    // paintDetails.clear();
-    perfLog('✅ paintDetails.clear()', t10);
-
     updateStatusMessage(t().msgReady);
-    perfLog('🏁 Initialization complete', t0);
     console.log('Ready!');
     console.log('PaintModalManager ready:', getPaintModalManager());
 }
 
 init();
-
-// Helper
-function updateStatusMessage(message: string): void {
-    const statusMessage = document.getElementById('statusMessage');
-    if (!statusMessage) return;
-    statusMessage.textContent = message;
-    statusMessage.style.display = 'block';
-    setTimeout(() => {
-        if (statusMessage.textContent === message) {
-            statusMessage.style.display = 'none';
-        }
-    }, 3000);
-}
