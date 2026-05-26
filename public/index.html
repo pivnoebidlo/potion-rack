@@ -70,12 +70,26 @@
             </div>
         </div>
 
-        <!-- Figures View (placeholder) -->
+        <!-- Figures View -->
         <div id="figures-view" class="view">
-            <div style="display: flex; justify-content: center; align-items: center; height: 100%; color: #aaa; flex-direction: column; gap: 20px;">
-                <div style="font-size: 48px;">🧩</div>
-                <div style="font-size: 16px;">Figures feature coming soon!</div>
-                <div style="font-size: 12px;">Track your miniatures and paint usage</div>
+            <div class="toolbar">
+                <div class="filter-row">
+                    <div class="filter-group">
+                        <label for="filter-figure-status">Status</label>
+                        <select id="filter-figure-status" style="min-width: 120px;">
+                            <option value="">All</option>
+                            <option value="draft">Draft</option>
+                            <option value="in-progress">In Progress</option>
+                            <option value="completed">Completed</option>
+                        </select>
+                    </div>
+                    <div class="action-buttons">
+                        <button id="addFigureBtn" class="primary icon-btn" title="Add figure">➕</button>
+                    </div>
+                </div>
+            </div>
+            <div class="table-container" id="figures-table-container">
+                <!-- Figures table will be rendered here -->
             </div>
         </div>
 

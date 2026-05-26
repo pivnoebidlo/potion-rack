@@ -15,13 +15,6 @@ export interface Paint {
     updated_at?: string;
 }
 
-export type SortColumn = 'brand' | 'series' | 'color_name' | 'article' | 'base_color_id' | 'purchase_date' | 'rating' | 'status';
-export type SortDirection = 'asc' | 'desc';
-export * from './common';
-export * from './paint';
-export * from './settings';
-export * from './theme';
-
 export interface PaintImage {
     id: number;
     paint_id: number;
@@ -33,11 +26,16 @@ export interface PaintImage {
     size?: number;
 }
 
-export interface BaseColor {
-    id: number;
-    name: string;
-}
-
-export interface Settings {
-    [key: string]: string;
+export interface PaintData {
+    brand: string;
+    series?: string;
+    color_name: string;
+    article?: string;
+    base_color_id?: number | null;
+    rating?: number;
+    status?: string;
+    price?: number | null;
+    purchase_place?: string;
+    purchase_date?: string;
+    comment?: string;
 }

@@ -47,6 +47,7 @@ export const en: Translations = {
     modalRequired: 'Fields with * are required',
     modalSeries: 'Series',
     modalStatus: 'Status',
+    msgBackendError: 'Cannot connect to backend. Make sure the server is running.',
     msgDeleteConfirm: 'Are you sure you want to delete this paint?',
     msgDuplicatePaint: 'A paint with brand "{brand}" and color name "{color}" already exists!',
     msgErrorLoading: 'Error loading data. Is backend running?',
@@ -69,5 +70,15 @@ export const en: Translations = {
     thPurchaseDate: 'Purchase Date',
     thRating: 'Rating',
     thSeries: 'Series',
-    thStatus: 'Status'
+    thStatus: 'Status',
+    // Figures module
+    thFigureName: 'Figure Name',
+    thManufacturer: 'Manufacturer',
+    thScale: 'Scale',
+    thCreatedDate: 'Created',
+    detailsScale: 'Scale',
+    detailsMaterial: 'Material',
+    detailsPurchasePrice: 'Purchase Price',
+    detailsCompletedDate: 'Completed Date',
+    detailsDescription: 'Description'
 };

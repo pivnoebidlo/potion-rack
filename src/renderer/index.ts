@@ -26,6 +26,7 @@ import {
 } from './ui/filtersUI.js';
 import { setupSettingsPanel } from './ui/settingsUI.js';
 import { compressImage, addPaintImage } from './services/api.js';
+import { FiguresApp } from './modules/figures/index.js';
 
 console.log('Potion Rack starting...');
 
@@ -58,11 +59,24 @@ if (addBtn) {
     };
 }
 
+// Figures App
+let figuresApp: FiguresApp | null = null;
+const addFigureBtn = document.getElementById('addFigureBtn') as HTMLElement;
+if (addFigureBtn) {
+    addFigureBtn.onclick = () => {
+        if (figuresApp) {
+            figuresApp.showAddModal();
+        }
+    };
+}
+
 // Navigation between tabs
 function setupNavigation(): void {
     const navItems = document.querySelectorAll('.nav-item');
     const paintsView = document.getElementById('paints-view');
+    const figuresView = document.getElementById('figures-view');
     const settingsView = document.getElementById('settings-view');
+    const figuresTableContainer = document.getElementById('figures-table-container') as HTMLElement;
 
     navItems.forEach(item => {
         item.addEventListener('click', () => {
@@ -71,32 +85,27 @@ function setupNavigation(): void {
             item.classList.add('active');
 
             if (paintsView) paintsView.style.display = 'none';
+            if (figuresView) figuresView.style.display = 'none';
             if (settingsView) settingsView.style.display = 'none';
 
             if (tab === 'paints' && paintsView) {
                 paintsView.style.display = 'flex';
                 paintsView.style.flexDirection = 'column';
                 renderTable();
+            } else if (tab === 'figures' && figuresView) {
+                figuresView.style.display = 'flex';
+                figuresView.style.flexDirection = 'column';
+                if (!figuresApp && figuresTableContainer) {
+                    figuresApp = new FiguresApp(figuresTableContainer, detailsContent);
+                }
             } else if (tab === 'settings' && settingsView) {
                 settingsView.style.display = 'flex';
                 settingsView.style.flexDirection = 'column';
-            } else if (tab === 'figures') {
-                alert('Figures feature coming soon!');
-                if (paintsView) {
-                    paintsView.style.display = 'flex';
-                    paintsView.style.flexDirection = 'column';
-                    renderTable();
-                }
-                const paintsNav = document.querySelector('.nav-item[data-tab="paints"]');
-                if (paintsNav) paintsNav.classList.add('active');
             }
         });
     });
 }
 
-
-// Global paste handler for images
-// Global paste handler for images
 // Global paste handler for images
 document.addEventListener('paste', async (e) => {
     const currentPaintId = appState.currentSelectedId;

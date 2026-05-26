@@ -47,6 +47,7 @@ export const ru: Translations = {
     modalRequired: 'Поля с * обязательны для заполнения',
     modalSeries: 'Серия',
     modalStatus: 'Статус',
+    msgBackendError: 'Не удаётся подключиться к бэкенду. Убедитесь, что сервер запущен.',
     msgDeleteConfirm: 'Удалить эту краску?',
     msgDuplicatePaint: 'Краска с брендом "{brand}" и названием цвета "{color}" уже существует!',
     msgErrorLoading: 'Ошибка загрузки. Бэкенд запущен?',
@@ -69,5 +70,15 @@ export const ru: Translations = {
     thPurchaseDate: 'Дата покупки',
     thRating: 'Рейтинг',
     thSeries: 'Серия',
-    thStatus: 'Статус'
+    thStatus: 'Статус',
+    // Figures module
+    thFigureName: 'Название фигурки',
+    thManufacturer: 'Производитель',
+    thScale: 'Масштаб',
+    thCreatedDate: 'Создана',
+    detailsScale: 'Масштаб',
+    detailsMaterial: 'Материал',
+    detailsPurchasePrice: 'Цена покупки',
+    detailsCompletedDate: 'Дата завершения',
+    detailsDescription: 'Описание'
 };
