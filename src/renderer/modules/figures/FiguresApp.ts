@@ -22,10 +22,8 @@ export class FiguresApp {
 
     private searchInput!: HTMLInputElement;
     private statusFilter!: HTMLSelectElement;
-    private gridViewBtn!: HTMLButtonElement;
-    private listViewBtn!: HTMLButtonElement;
+    private toggleViewBtn!: HTMLButtonElement;
     private addFigureBtn!: HTMLButtonElement;
-    private backBtn!: HTMLButtonElement;
 
     constructor(container: HTMLElement) {
         this.container = container;
@@ -51,8 +49,7 @@ export class FiguresApp {
         this.container.innerHTML = `
             <div class="figures-app">
                 <div class="figures-header">
-                    <button id="back-to-paints-btn" class="btn btn-icon" title="${$t.back}">←</button>
-                    <h2>🎨 ${$t.figuresTitle}</h2>
+                    <h2>${$t.figuresTitle}</h2>
                     <div class="figures-toolbar">
                         <input type="text" id="figure-search-input" class="search-input" placeholder="${$t.searchPlaceholder}">
                         <select id="figure-status-filter" class="filter-select">
@@ -61,19 +58,19 @@ export class FiguresApp {
                             <option value="in-progress">${$t.inProgress}</option>
                             <option value="completed">${$t.completed}</option>
                         </select>
-                        <button id="grid-view-btn" class="btn btn-icon ${this.viewMode === 'grid' ? 'active' : ''}" title="${$t.gridView}">⊞</button>
-                        <button id="list-view-btn" class="btn btn-icon ${this.viewMode === 'list' ? 'active' : ''}" title="${$t.listView}">☰</button>
+                        <button id="toggle-view-btn" class="btn btn-icon" title="${this.viewMode === 'grid' ? 'Switch to list' : 'Switch to grid'}">
+                            ${this.viewMode === 'grid' ? '☰' : '⊞'}
+                        </button>
                         <button id="add-figure-btn" class="btn btn-primary">+ ${$t.addFigure}</button>
                     </div>
                 </div>
                 <div class="figures-content">
                     <div class="figures-left-panel">
-                        <div id="figures-grid-container" class="${this.viewMode === 'grid' ? '' : 'hidden'}"></div>
-                        <div id="figures-list-container" class="${this.viewMode === 'list' ? '' : 'hidden'}"></div>
+                        <div id="figures-grid-container" style="display: ${this.viewMode === 'grid' ? 'block' : 'none'};"></div>
+                        <div id="figures-list-container" style="display: ${this.viewMode === 'list' ? 'block' : 'none'};"></div>
                     </div>
                     <div class="figures-right-panel">
                         <div id="figure-details-container"></div>
-                        <div id="figure-editor-container"></div>
                     </div>
                 </div>
             </div>
@@ -81,10 +78,8 @@ export class FiguresApp {
 
         this.searchInput = this.container.querySelector('#figure-search-input') as HTMLInputElement;
         this.statusFilter = this.container.querySelector('#figure-status-filter') as HTMLSelectElement;
-        this.gridViewBtn = this.container.querySelector('#grid-view-btn') as HTMLButtonElement;
-        this.listViewBtn = this.container.querySelector('#list-view-btn') as HTMLButtonElement;
+        this.toggleViewBtn = this.container.querySelector('#toggle-view-btn') as HTMLButtonElement;
         this.addFigureBtn = this.container.querySelector('#add-figure-btn') as HTMLButtonElement;
-        this.backBtn = this.container.querySelector('#back-to-paints-btn') as HTMLButtonElement;
     }
 
     private initComponents(): void {
@@ -104,14 +99,11 @@ export class FiguresApp {
         this.searchInput?.addEventListener('input', () => this.filterFigures());
         this.statusFilter?.addEventListener('change', () => this.filterFigures());
 
-        this.gridViewBtn?.addEventListener('click', () => this.setViewMode('grid'));
-        this.listViewBtn?.addEventListener('click', () => this.setViewMode('list'));
+        this.toggleViewBtn?.addEventListener('click', () => {
+            this.setViewMode(this.viewMode === 'grid' ? 'list' : 'grid');
+        });
 
         this.addFigureBtn?.addEventListener('click', () => this.figureModalManager.showAddModal());
-
-        this.backBtn?.addEventListener('click', () => {
-            window.location.hash = '#/';
-        });
     }
 
     async loadFigures(): Promise<void> {
@@ -142,8 +134,11 @@ export class FiguresApp {
             filtered = filtered.filter(f => f.status === statusValue);
         }
 
-        this.figuresGrid.setData(filtered);
-        this.figuresList.setData(filtered);
+        if (this.viewMode === 'grid') {
+            this.figuresGrid.setData(filtered);
+        } else {
+            this.figuresList.setData(filtered);
+        }
     }
 
     private findFigureById(id: number): Figure | undefined {
@@ -178,48 +173,31 @@ export class FiguresApp {
 
     private async selectFigure(figure: Figure): Promise<void> {
         this.currentFigure = figure;
-
         await this.figureDetails.loadFigure(figure);
-
-        const editorContainer = this.container.querySelector('#figure-editor-container') as HTMLElement;
-        if (editorContainer) {
-            if (this.figureEditor) {
-                this.figureEditor.destroy();
-            }
-
-            this.figureEditor = new FigureEditor(editorContainer, figure, {
-                onSave: async (updatedFigure: Figure) => {
-                    try {
-                        await updateFigureAPI(updatedFigure.id, updatedFigure);
-                        await this.loadFigures();
-                        await this.selectFigure(updatedFigure);
-                    } catch (err) {
-                        console.error('Failed to save figure:', err);
-                        alert('Failed to save figure');
-                    }
-                },
-                onCancel: () => {
-                    this.selectFigure(figure);
-                }
-            });
-
-            this.figureEditor.render();
-            this.figureEditor.setFigure(figure);
-        }
     }
 
     private setViewMode(mode: ViewMode): void {
         this.viewMode = mode;
 
-        const gridContainer = this.container.querySelector('#figures-grid-container');
-        const listContainer = this.container.querySelector('#figures-list-container');
+        const gridContainer = this.container.querySelector('#figures-grid-container') as HTMLElement;
+        const listContainer = this.container.querySelector('#figures-list-container') as HTMLElement;
 
-        if (gridContainer) gridContainer.classList.toggle('hidden', mode !== 'grid');
-        if (listContainer) listContainer.classList.toggle('hidden', mode !== 'list');
+        if (gridContainer) {
+            gridContainer.style.display = mode === 'grid' ? 'block' : 'none';
+        }
+        if (listContainer) {
+            listContainer.style.display = mode === 'list' ? 'block' : 'none';
+        }
 
-        this.gridViewBtn?.classList.toggle('active', mode === 'grid');
-        this.listViewBtn?.classList.toggle('active', mode === 'list');
+        if (this.toggleViewBtn) {
+            this.toggleViewBtn.innerHTML = mode === 'grid' ? '☰' : '⊞';
+            this.toggleViewBtn.title = mode === 'grid' ? 'Switch to list' : 'Switch to grid';
+        }
 
         this.filterFigures();
+    }
+
+    public showAddFigureModal(): void {
+        this.figureModalManager.showAddModal();
     }
 }

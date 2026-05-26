@@ -17,10 +17,7 @@
 
     <!-- Figures Sidebar (visible only on figures tab) -->
     <div id="figures-sidebar" class="figures-sidebar" style="display: none;">
-        <div class="figures-sidebar-header">
-            <h3>Miniatures</h3>
-            <button id="addFigureSidebarBtn" class="icon-btn" title="Add figure">➕</button>
-        </div>
+        <button id="collapseLeftPanelBtn" class="collapse-btn" title="Toggle panel">◀</button>
         <div id="figures-grid-container" class="figures-grid-container"></div>
     </div>
 
@@ -82,8 +79,7 @@
         <!-- Figures Editor View -->
         <div id="figures-editor-view" class="view" style="display: none;">
             <div class="editor-toolbar">
-                <button id="saveFigureBtn" class="primary">💾 Save</button>
-                <button id="cancelFigureBtn" class="secondary">✖ Cancel</button>
+                <button id="saveFigureContentBtn" class="primary">💾 Save</button>
             </div>
             <div id="figure-editor-container" class="figure-editor-container"></div>
         </div>

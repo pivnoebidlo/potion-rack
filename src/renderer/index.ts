@@ -3,6 +3,7 @@ import { i18n, t, Language } from './i18n/index.js';
 import { updateUILanguage } from './utils/languageUpdater.js';
 import { settingsManager } from './modules/settings/SettingsManager.js';
 import { RightPanelManager } from './ui/rightPanel.js';
+import { LeftPanelManager } from './ui/leftPanel.js';
 import { appState } from './core/appState.js';
 import { setupKeyboardShortcuts } from './core/shortcuts.js';
 import {
@@ -39,6 +40,7 @@ const languageSwitcher = document.getElementById('languageSwitcher') as HTMLSele
 
 // Initialize right panel
 new RightPanelManager();
+new LeftPanelManager();
 
 // Initialize components
 initializeTableComponents();
@@ -64,42 +66,15 @@ let figuresApp: FiguresApp | null = null;
 const figuresSidebar = document.getElementById('figures-sidebar') as HTMLElement;
 const figuresGridContainer = document.getElementById('figures-grid-container') as HTMLElement;
 
-// Create figure-editor-container if not exists
-let figureEditorContainer = document.getElementById('figure-editor-container') as HTMLElement;
-if (!figureEditorContainer) {
-    console.log('Creating figure-editor-container dynamically');
-    figureEditorContainer = document.createElement('div');
-    figureEditorContainer.id = 'figure-editor-container';
-    figureEditorContainer.className = 'figure-editor-container';
-    const editorView = document.getElementById('figures-editor-view');
-    if (editorView) {
-        editorView.appendChild(figureEditorContainer);
-    } else {
-        console.error('figures-editor-view not found');
-    }
-}
-
-const addFigureSidebarBtn = document.getElementById('addFigureSidebarBtn') as HTMLElement;
-
 // Debug output
 console.log('Figures grid container:', figuresGridContainer);
-console.log('Figure editor container:', figureEditorContainer);
-console.log('Add figure button:', addFigureSidebarBtn);
 
-if (figuresGridContainer && figureEditorContainer) {
-    figuresApp = new FiguresApp(figuresGridContainer, figureEditorContainer);
+if (figuresGridContainer) {
+    figuresApp = new FiguresApp(figuresGridContainer);
+    figuresApp.init();
     console.log('FiguresApp initialized');
 } else {
-    console.error('FiguresApp not initialized: missing containers');
-}
-
-if (addFigureSidebarBtn && figuresApp) {
-    addFigureSidebarBtn.onclick = () => {
-        console.log('Add figure button clicked');
-        figuresApp.showAddModal();
-    };
-} else {
-    console.error('Add button or FiguresApp not ready');
+    console.error('FiguresApp not initialized: missing container');
 }
 
 // Navigation between tabs

@@ -963,3 +963,24 @@ input, textarea, [contenteditable="true"] {
     padding-top: 8px;
     border-top: 1px solid #444;
 }
+
+#figures-sidebar-wrapper {
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+}
+
+#collapseLeftPanelBtn {
+    background: none;
+    border: none;
+    color: #aaa;
+    cursor: pointer;
+    font-size: 14px;
+    padding: 4px 8px;
+    display: block;
+    text-align: left;
+}
+
+#collapseLeftPanelBtn:hover {
+    color: #fff;
+}
