@@ -1,86 +1,163 @@
-// src/renderer/modules/figures/components/FigureEditor.ts
-import { escapeHtml } from '../../../utils/dom.js';
-import { Figure } from '../types.js';
-import { MarkdownEditor } from '../../../components/MarkdownEditor.js';
+import { MarkdownEditor } from '../../../components/MarkdownEditor';
+import type { Figure } from '../types';
+
+export interface FigureEditorCallbacks {
+    onSave: (figure: Figure) => void;
+    onCancel: () => void;
+}
 
 export class FigureEditor {
     private container: HTMLElement;
-    private onSave: (data: Partial<Figure>) => void;
-    private currentFigure: Figure | null = null;
-    private markdownEditor: MarkdownEditor | null = null;
+    private figure: Figure | null;
+    private editor: MarkdownEditor | null = null;
+    private callbacks: FigureEditorCallbacks;
 
-    constructor(container: HTMLElement, onSave: (data: Partial<Figure>) => void) {
+    constructor(
+        container: HTMLElement,
+        figure: Figure | null,
+        callbacks: FigureEditorCallbacks
+    ) {
         this.container = container;
-        this.onSave = onSave;
+        this.figure = figure;
+        this.callbacks = callbacks;
     }
 
-    loadFigure(figure: Figure | null): void {
-        this.currentFigure = figure;
-        this.render();
+    render(): HTMLElement {
+        this.container.innerHTML = `
+      <div class="figure-editor">
+        <div class="figure-editor-header">
+          <label class="figure-editor-label" for="figure-name-input">Название</label>
+          <input
+            type="text"
+            id="figure-name-input"
+            class="figure-name-input"
+            placeholder="Введите название фигурки"
+            value="${this.escapeHtml(this.figure?.name || '')}"
+          />
+        </div>
+        <div class="figure-editor-body">
+          <label class="figure-editor-label">Описание</label>
+          <div id="markdown-editor-container"></div>
+        </div>
+        <div class="figure-editor-footer">
+          <button class="btn btn-secondary" id="cancel-edit-btn" type="button">
+            Отмена
+          </button>
+          <button class="btn btn-primary" id="save-figure-btn" type="button">
+            Сохранить
+          </button>
+        </div>
+      </div>
+    `;
+
+        const editorContainer = this.container.querySelector('#markdown-editor-container');
+        if (editorContainer) {
+            this.editor = new MarkdownEditor(editorContainer as HTMLElement, {
+                initialValue: this.figure?.description || '',
+                height: '400px',
+                placeholder: 'Введите описание фигурки...',
+                onChange: (markdown: string) => {
+                    if (this.figure) {
+                        this.figure.description = markdown;
+                    }
+                },
+            });
+        }
+
+        this.attachEventListeners();
+        return this.container;
     }
 
-    private render(): void {
-        if (!this.currentFigure) {
-            this.container.innerHTML = '<div class="editor-placeholder">Select a figure to edit</div>';
+    private attachEventListeners(): void {
+        const saveBtn = this.container.querySelector('#save-figure-btn');
+        const cancelBtn = this.container.querySelector('#cancel-edit-btn');
+        const nameInput = this.container.querySelector('#figure-name-input');
+
+        saveBtn?.addEventListener('click', () => {
+            this.save();
+        });
+
+        cancelBtn?.addEventListener('click', () => {
+            this.destroy();
+            this.callbacks.onCancel();
+        });
+
+        nameInput?.addEventListener('keydown', (e: KeyboardEvent) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                this.save();
+            }
+            if (e.key === 'Escape') {
+                this.destroy();
+                this.callbacks.onCancel();
+            }
+        });
+    }
+
+    private save(): void {
+        const nameInput = this.container.querySelector('#figure-name-input') as HTMLInputElement;
+        const name = nameInput?.value?.trim() || '';
+        const description = this.editor?.getMarkdown() || '';
+
+        if (!name) {
+            alert('Пожалуйста, введите название фигурки.');
+            nameInput?.focus();
             return;
         }
 
-        const figure = this.currentFigure;
+        const now = new Date().toISOString();
 
-        // Упрощённая форма — только редактор Markdown
-        this.container.innerHTML = `
-            <div class="figure-editor-simple">
-                <div class="form-group">
-                    <label>Name</label>
-                    <input type="text" id="editor-name" class="form-input" value="${escapeHtml(figure.name)}">
-                </div>
-                <div id="markdown-editor-container" style="height: 500px; margin: 16px 0;"></div>
-                <div style="display: flex; gap: 12px; justify-content: flex-end;">
-                    <button id="editor-save-btn" class="primary">💾 Save Changes</button>
-                </div>
-            </div>
-        `;
+        const savedFigure: Figure = {
+            id: this.figure?.id || 0,
+            name,
+            description: description || '',
+            manufacturer: this.figure?.manufacturer || '',
+            scale: this.figure?.scale || '',
+            material: this.figure?.material || 'plastic',
+            status: this.figure?.status || 'draft',
+            purchase_date: this.figure?.purchase_date,
+            purchase_price: this.figure?.purchase_price,
+            completed_date: this.figure?.completed_date,
+            notes: this.figure?.notes || '',
+            images: this.figure?.images || [],
+            paints: this.figure?.paints || [],
+            created_at: this.figure?.created_at || now,
+            updated_at: now,
+        };
 
-        // Инициализируем MarkdownEditor
-        const editorContainer = this.container.querySelector('#markdown-editor-container');
-        if (editorContainer) {
-            if (this.markdownEditor) {
-                this.markdownEditor.destroy();
-            }
-            this.markdownEditor = new MarkdownEditor(
-                editorContainer as HTMLElement,
-                figure.description || '',
-                (value: string) => {
-                    (this.container as any).tempDescription = value;
-                }
-            );
+        this.callbacks.onSave(savedFigure);
+    }
+
+    setFigure(figure: Figure): void {
+        this.figure = figure;
+        const nameInput = this.container.querySelector('#figure-name-input') as HTMLInputElement;
+        if (nameInput) {
+            nameInput.value = figure.name || '';
         }
-
-        const saveBtn = this.container.querySelector('#editor-save-btn') as HTMLButtonElement | null;
-        if (saveBtn) {
-            saveBtn.onclick = () => {
-                const name = (this.container.querySelector('#editor-name') as HTMLInputElement)?.value.trim();
-                if (!name) {
-                    alert('Name is required');
-                    return;
-                }
-                const data = this.getData();
-                this.onSave(data);
-            };
+        if (this.editor) {
+            this.editor.setMarkdown(figure.description || '');
         }
     }
 
-    private getData(): Partial<Figure> {
-        return {
-            name: (this.container.querySelector('#editor-name') as HTMLInputElement)?.value || '',
-            description: (this.container as any).tempDescription || null
-        };
+    getMarkdown(): string {
+        return this.editor?.getMarkdown() || '';
+    }
+
+    focus(): void {
+        const nameInput = this.container.querySelector('#figure-name-input') as HTMLInputElement;
+        nameInput?.focus();
     }
 
     destroy(): void {
-        if (this.markdownEditor) {
-            this.markdownEditor.destroy();
-            this.markdownEditor = null;
+        if (this.editor) {
+            this.editor.destroy();
+            this.editor = null;
         }
+    }
+
+    private escapeHtml(text: string): string {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
 }

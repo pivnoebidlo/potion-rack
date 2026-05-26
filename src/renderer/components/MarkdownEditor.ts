@@ -1,96 +1,75 @@
-// src/renderer/components/MarkdownEditor.ts
 import Editor from '@toast-ui/editor';
 import '@toast-ui/editor/dist/toastui-editor.css';
+import '@toast-ui/editor/dist/theme/toastui-editor-dark.css';
+
+export interface MarkdownEditorOptions {
+    initialValue?: string;
+    placeholder?: string;
+    height?: string;
+    onChange?: (markdown: string) => void;
+}
 
 export class MarkdownEditor {
     private editor: Editor | null = null;
     private container: HTMLElement;
-    private onChange: (value: string) => void;
+    private options: MarkdownEditorOptions;
+    private initialized: boolean = false;
 
-    constructor(container: HTMLElement, initialValue: string, onChange: (value: string) => void) {
+    constructor(container: HTMLElement, options: MarkdownEditorOptions = {}) {
         this.container = container;
-        this.onChange = onChange;
-        this.init(initialValue);
+        this.options = options;
+
+        if (this.container.hasAttribute('data-markdown-editor-initialized')) {
+            return;
+        }
+
+        this.init();
     }
 
-    private init(initialValue: string): void {
+    private init(): void {
+        if (this.initialized) return;
+
+        this.container.setAttribute('data-markdown-editor-initialized', 'true');
+        this.container.classList.add('markdown-editor-wrapper');
+
         this.editor = new Editor({
             el: this.container,
-            initialValue: initialValue,
-            initialEditType: 'wysiwyg',
-            previewStyle: 'vertical',
-            height: '100%',
+            height: this.options.height || '500px',
+            initialEditType: 'markdown',
+            previewStyle: 'tab',
             theme: 'dark',
+            placeholder: this.options.placeholder || 'Введите описание...',
+            initialValue: this.options.initialValue || '',
             usageStatistics: false,
-            toolbarItems: [
-                ['heading', 'bold', 'italic', 'strike'],
-                ['hr', 'quote'],
-                ['ul', 'ol', 'task'],
-                ['table', 'image', 'link'],
-                ['code', 'codeblock']
-            ],
-            customHTMLSanitizer: (html: string) => html
+            events: {
+                change: () => {
+                    if (this.options.onChange && this.editor) {
+                        this.options.onChange(this.editor.getMarkdown());
+                    }
+                },
+            },
         });
 
-        this.editor.on('change', () => {
-            const markdown = this.editor?.getMarkdown() || '';
-            this.onChange(markdown);
-        });
-
-        this.applyTheme();
+        this.initialized = true;
     }
 
-    private applyTheme(): void {
-        const style = document.createElement('style');
-        style.textContent = `
-            .toastui-editor-defaultUI {
-                border: 1px solid var(--border) !important;
-                border-radius: 8px !important;
-                background-color: var(--input-bg) !important;
-            }
-            .toastui-editor-toolbar {
-                background-color: var(--surface) !important;
-                border-bottom: 1px solid var(--border) !important;
-            }
-            .toastui-editor-toolbar button {
-                color: var(--text) !important;
-            }
-            .toastui-editor-toolbar button:hover {
-                background-color: var(--primary) !important;
-                color: white !important;
-            }
-            .toastui-editor-main {
-                background-color: var(--input-bg) !important;
-            }
-            .toastui-editor-contents {
-                color: var(--text) !important;
-            }
-            .toastui-editor-contents h1,
-            .toastui-editor-contents h2,
-            .toastui-editor-contents h3 {
-                color: var(--primary) !important;
-            }
-            .toastui-editor-contents a {
-                color: var(--link) !important;
-            }
-            .toastui-editor-md-preview {
-                background-color: var(--surface) !important;
-                border-left: 1px solid var(--border) !important;
-            }
-            .toastui-editor-md-preview .toastui-editor-contents {
-                background-color: var(--surface) !important;
-            }
-        `;
-        document.head.appendChild(style);
+    getMarkdown(): string {
+        return this.editor ? this.editor.getMarkdown() : '';
     }
 
-    getValue(): string {
-        return this.editor?.getMarkdown() || '';
-    }
-
-    setValue(value: string): void {
+    setMarkdown(markdown: string): void {
         if (this.editor) {
-            this.editor.setMarkdown(value);
+            this.editor.setMarkdown(markdown);
+        }
+    }
+
+    getHTML(): string {
+        return this.editor ? this.editor.getHTML() : '';
+    }
+
+    focus(): void {
+        if (this.editor) {
+            this.editor.focus();
         }
     }
 
@@ -99,6 +78,9 @@ export class MarkdownEditor {
             this.editor.destroy();
             this.editor = null;
         }
+        this.container.removeAttribute('data-markdown-editor-initialized');
+        this.container.classList.remove('markdown-editor-wrapper');
         this.container.innerHTML = '';
+        this.initialized = false;
     }
 }

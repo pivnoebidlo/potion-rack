@@ -1,104 +1,204 @@
 import { t } from '../../i18n/index.js';
+import { getAllFigures, createFigure, Figure } from '../../services/apiFigures.js';
 import { FiguresGrid } from './components/FiguresGrid.js';
+import { FiguresList } from './components/FiguresList.js';
+import { FigureDetails } from './components/FigureDetails.js';
 import { FigureEditor } from './components/FigureEditor.js';
 import { FigureModalManager } from './components/FigureModalManager.js';
-import { Figure } from './types.js';
-import { fetchFigures, fetchFigureDetails, deleteFigureAPI, updateFigureAPI } from '../../services/apiFigures.js';
+
+type ViewMode = 'grid' | 'list';
 
 export class FiguresApp {
-    private gridContainer: HTMLElement;
-    private editorContainer: HTMLElement;
-    private figuresGrid: FiguresGrid;
-    private figureEditor: FigureEditor;
-    private modalManager: FigureModalManager;
-    private currentSelectedId: number | null = null;
+    private container: HTMLElement;
     private figures: Figure[] = [];
+    private currentFigure: Figure | null = null;
+    private viewMode: ViewMode = 'grid';
 
-    constructor(gridContainer: HTMLElement, editorContainer: HTMLElement) {
-        this.gridContainer = gridContainer;
-        this.editorContainer = editorContainer;
+    private figuresGrid: FiguresGrid;
+    private figuresList: FiguresList;
+    private figureDetails: FigureDetails;
+    private figureEditor: FigureEditor | null = null;
+    private figureModalManager: FigureModalManager;
+
+    private searchInput!: HTMLInputElement;
+    private statusFilter!: HTMLSelectElement;
+    private gridViewBtn!: HTMLButtonElement;
+    private listViewBtn!: HTMLButtonElement;
+    private addFigureBtn!: HTMLButtonElement;
+    private backBtn!: HTMLButtonElement;
+
+    constructor(container: HTMLElement) {
+        this.container = container;
 
         this.figuresGrid = new FiguresGrid(
-            this.gridContainer,
-            (id) => this.selectFigure(id),
-            (id) => this.editFigure(id),
-            (id) => this.deleteFigure(id)
+            this.container.querySelector('#figures-grid-container') as HTMLElement
         );
-        this.figureEditor = new FigureEditor(this.editorContainer, async (data) => {
-            if (this.currentSelectedId) {
-                try {
-                    await updateFigureAPI(this.currentSelectedId, data);
-                    await this.refresh();
-                    // Refresh the editor with updated data
-                    const updatedFigure = await fetchFigureDetails(this.currentSelectedId);
-                    this.figureEditor.loadFigure(updatedFigure);
-                } catch (error) {
-                    console.error('Failed to save figure:', error);
-                    alert('Failed to save figure');
-                }
-            }
+        this.figuresList = new FiguresList(
+            this.container.querySelector('#figures-list-container') as HTMLElement
+        );
+        this.figureDetails = new FigureDetails(
+            this.container.querySelector('#figure-details-container') as HTMLElement
+        );
+        this.figureModalManager = new FigureModalManager(async () => {
+            await this.loadFigures();
         });
-        this.modalManager = new FigureModalManager(async () => {
-            await this.refresh();
-        });
-
-        this.loadFigures();
     }
 
-    private async loadFigures(): Promise<void> {
-        try {
-            this.figures = await fetchFigures();
-            await this.render();
-        } catch (error) {
-            console.error('Failed to load figures:', error);
-        }
-    }
-
-    private async selectFigure(id: number): Promise<void> {
-        this.currentSelectedId = id;
-        try {
-            const figure = await fetchFigureDetails(id);
-            this.figureEditor.loadFigure(figure);
-        } catch (error) {
-            console.error('Failed to load figure details:', error);
-        }
-    }
-
-    private async editFigure(id: number): Promise<void> {
-        const figure = this.figures.find(f => f.id === id);
-        if (figure) {
-            await this.modalManager.showEditModal(figure);
-        }
-    }
-
-    private async deleteFigure(id: number): Promise<void> {
-        if (confirm(t().msgDeleteConfirm)) {
-            try {
-                await deleteFigureAPI(id);
-                await this.loadFigures();
-                if (this.currentSelectedId === id) {
-                    this.currentSelectedId = null;
-                    this.figureEditor.loadFigure(null);
-                }
-                await this.render();
-            } catch (error) {
-                console.error('Failed to delete figure:', error);
-            }
-        }
-    }
-
-    private async render(): Promise<void> {
-        this.figuresGrid.setData(this.figures);
-        if (this.figures.length > 0 && !this.currentSelectedId) {
-            await this.selectFigure(this.figures[0].id);
-        }
-    }
-
-    async refresh(): Promise<void> {
+    async init(): Promise<void> {
+        this.renderLayout();
+        this.setupComponents();
+        this.attachEventListeners();
         await this.loadFigures();
     }
 
-    showAddModal(): void {
-        this.modalManager.showAddModal();
+    private renderLayout(): void {
+        const t_ = t();
+
+        this.container.innerHTML = `
+            <div class="figures-app">
+                <div class="figures-header">
+                    <button id="back-to-paints-btn" class="btn btn-icon" title="${t_('back')}">←</button>
+                    <h2>🎨 ${t_('figuresTitle')}</h2>
+                    <div class="figures-toolbar">
+                        <input type="text" id="figure-search-input" class="search-input" placeholder="${t_('searchPlaceholder')}">
+                        <select id="figure-status-filter" class="filter-select">
+                            <option value="all">${t_('allStatuses')}</option>
+                            <option value="draft">${t_('draft')}</option>
+                            <option value="in-progress">${t_('inProgress')}</option>
+                            <option value="completed">${t_('completed')}</option>
+                        </select>
+                        <button id="grid-view-btn" class="btn btn-icon ${this.viewMode === 'grid' ? 'active' : ''}" title="${t_('gridView')}">⊞</button>
+                        <button id="list-view-btn" class="btn btn-icon ${this.viewMode === 'list' ? 'active' : ''}" title="${t_('listView')}">☰</button>
+                        <button id="add-figure-btn" class="btn btn-primary">+ ${t_('addFigure')}</button>
+                    </div>
+                </div>
+                <div class="figures-content">
+                    <div class="figures-left-panel">
+                        <div id="figures-grid-container" class="${this.viewMode === 'grid' ? '' : 'hidden'}"></div>
+                        <div id="figures-list-container" class="${this.viewMode === 'list' ? '' : 'hidden'}"></div>
+                    </div>
+                    <div class="figures-right-panel">
+                        <div id="figure-details-container"></div>
+                        <div id="figure-editor-container"></div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        this.searchInput = this.container.querySelector('#figure-search-input') as HTMLInputElement;
+        this.statusFilter = this.container.querySelector('#figure-status-filter') as HTMLSelectElement;
+        this.gridViewBtn = this.container.querySelector('#grid-view-btn') as HTMLButtonElement;
+        this.listViewBtn = this.container.querySelector('#list-view-btn') as HTMLButtonElement;
+        this.addFigureBtn = this.container.querySelector('#add-figure-btn') as HTMLButtonElement;
+        this.backBtn = this.container.querySelector('#back-to-paints-btn') as HTMLButtonElement;
+    }
+
+    private setupComponents(): void {
+        this.figuresGrid.setOnSelect((figure: Figure) => this.selectFigure(figure));
+        this.figuresGrid.setOnEdit((figure: Figure) => this.editFigure(figure));
+        this.figuresGrid.setOnAdd(() => this.figureModalManager.showAddModal());
+
+        this.figuresList.setOnSelect((figure: Figure) => this.selectFigure(figure));
+        this.figuresList.setOnEdit((figure: Figure) => this.editFigure(figure));
+    }
+
+    private attachEventListeners(): void {
+        this.searchInput?.addEventListener('input', () => this.filterFigures());
+        this.statusFilter?.addEventListener('change', () => this.filterFigures());
+
+        this.gridViewBtn?.addEventListener('click', () => this.setViewMode('grid'));
+        this.listViewBtn?.addEventListener('click', () => this.setViewMode('list'));
+
+        this.addFigureBtn?.addEventListener('click', () => this.figureModalManager.showAddModal());
+
+        this.backBtn?.addEventListener('click', () => {
+            window.location.hash = '#/';
+        });
+    }
+
+    async loadFigures(): Promise<void> {
+        try {
+            this.figures = await getAllFigures();
+            this.filterFigures();
+        } catch (err) {
+            console.error('Failed to load figures:', err);
+            this.figures = [];
+            this.filterFigures();
+        }
+    }
+
+    private filterFigures(): void {
+        const searchTerm = this.searchInput?.value?.toLowerCase() || '';
+        const statusValue = this.statusFilter?.value || 'all';
+
+        let filtered = this.figures;
+
+        if (searchTerm) {
+            filtered = filtered.filter(f =>
+                f.name.toLowerCase().includes(searchTerm) ||
+                (f.manufacturer && f.manufacturer.toLowerCase().includes(searchTerm))
+            );
+        }
+
+        if (statusValue !== 'all') {
+            filtered = filtered.filter(f => f.status === statusValue);
+        }
+
+        this.figuresGrid.setFigures(filtered);
+        this.figuresGrid.render();
+
+        this.figuresList.setFigures(filtered);
+        this.figuresList.render();
+    }
+
+    private editFigure(figure: Figure): void {
+        this.figureModalManager.showEditModal(figure);
+    }
+
+    private async selectFigure(figure: Figure): Promise<void> {
+        this.currentFigure = figure;
+
+        await this.figureDetails.loadFigure(figure);
+
+        const editorContainer = this.container.querySelector('#figure-editor-container') as HTMLElement;
+        if (editorContainer) {
+            if (this.figureEditor) {
+                this.figureEditor.destroy();
+            }
+
+            this.figureEditor = new FigureEditor(editorContainer, figure, {
+                onSave: async (updatedFigure: Figure) => {
+                    try {
+                        await createFigure(updatedFigure); // или другой метод обновления, если есть
+                        await this.loadFigures();
+                        await this.selectFigure(updatedFigure);
+                    } catch (err) {
+                        console.error('Failed to save figure:', err);
+                        alert('Failed to save figure');
+                    }
+                },
+                onCancel: () => {
+                    this.selectFigure(figure);
+                }
+            });
+
+            this.figureEditor.render();
+            this.figureEditor.setFigure(figure);
+        }
+    }
+
+    private setViewMode(mode: ViewMode): void {
+        this.viewMode = mode;
+
+        const gridContainer = this.container.querySelector('#figures-grid-container');
+        const listContainer = this.container.querySelector('#figures-list-container');
+
+        if (gridContainer) gridContainer.classList.toggle('hidden', mode !== 'grid');
+        if (listContainer) listContainer.classList.toggle('hidden', mode !== 'list');
+
+        this.gridViewBtn?.classList.toggle('active', mode === 'grid');
+        this.listViewBtn?.classList.toggle('active', mode === 'list');
+
+        this.filterFigures();
     }
 }
