@@ -79,4 +79,14 @@ export interface Translations {
     detailsPurchasePrice: string;
     detailsCompletedDate: string;
     detailsDescription: string;
+    figuresTitle: string;
+    back: string;
+    searchPlaceholder: string;
+    allStatuses: string;
+    draft: string;
+    inProgress: string;
+    completed: string;
+    gridView: string;
+    listView: string;
+    addFigure: string;
 }

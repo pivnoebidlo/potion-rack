@@ -1,10 +1,10 @@
-import { t } from '../../i18n/index.js';
-import { getAllFigures, createFigure, Figure } from '../../services/apiFigures.js';
-import { FiguresGrid } from './components/FiguresGrid.js';
-import { FiguresList } from './components/FiguresList.js';
-import { FigureDetails } from './components/FigureDetails.js';
-import { FigureEditor } from './components/FigureEditor.js';
-import { FigureModalManager } from './components/FigureModalManager.js';
+import { t } from '../../i18n/index';
+import { fetchFigures, updateFigureAPI, deleteFigureAPI, Figure } from '../../services/apiFigures';
+import { FiguresGrid } from './components/FiguresGrid';
+import { FiguresList } from './components/FiguresList';
+import { FigureDetails } from './components/FigureDetails';
+import { FigureEditor } from './components/FigureEditor';
+import { FigureModalManager } from './components/FigureModalManager';
 
 type ViewMode = 'grid' | 'list';
 
@@ -14,8 +14,8 @@ export class FiguresApp {
     private currentFigure: Figure | null = null;
     private viewMode: ViewMode = 'grid';
 
-    private figuresGrid: FiguresGrid;
-    private figuresList: FiguresList;
+    private figuresGrid!: FiguresGrid;
+    private figuresList!: FiguresList;
     private figureDetails: FigureDetails;
     private figureEditor: FigureEditor | null = null;
     private figureModalManager: FigureModalManager;
@@ -30,12 +30,6 @@ export class FiguresApp {
     constructor(container: HTMLElement) {
         this.container = container;
 
-        this.figuresGrid = new FiguresGrid(
-            this.container.querySelector('#figures-grid-container') as HTMLElement
-        );
-        this.figuresList = new FiguresList(
-            this.container.querySelector('#figures-list-container') as HTMLElement
-        );
         this.figureDetails = new FigureDetails(
             this.container.querySelector('#figure-details-container') as HTMLElement
         );
@@ -46,30 +40,30 @@ export class FiguresApp {
 
     async init(): Promise<void> {
         this.renderLayout();
-        this.setupComponents();
+        this.initComponents();
         this.attachEventListeners();
         await this.loadFigures();
     }
 
     private renderLayout(): void {
-        const t_ = t();
+        const $t = t();
 
         this.container.innerHTML = `
             <div class="figures-app">
                 <div class="figures-header">
-                    <button id="back-to-paints-btn" class="btn btn-icon" title="${t_('back')}">←</button>
-                    <h2>🎨 ${t_('figuresTitle')}</h2>
+                    <button id="back-to-paints-btn" class="btn btn-icon" title="${$t.back}">←</button>
+                    <h2>🎨 ${$t.figuresTitle}</h2>
                     <div class="figures-toolbar">
-                        <input type="text" id="figure-search-input" class="search-input" placeholder="${t_('searchPlaceholder')}">
+                        <input type="text" id="figure-search-input" class="search-input" placeholder="${$t.searchPlaceholder}">
                         <select id="figure-status-filter" class="filter-select">
-                            <option value="all">${t_('allStatuses')}</option>
-                            <option value="draft">${t_('draft')}</option>
-                            <option value="in-progress">${t_('inProgress')}</option>
-                            <option value="completed">${t_('completed')}</option>
+                            <option value="all">${$t.allStatuses}</option>
+                            <option value="draft">${$t.draft}</option>
+                            <option value="in-progress">${$t.inProgress}</option>
+                            <option value="completed">${$t.completed}</option>
                         </select>
-                        <button id="grid-view-btn" class="btn btn-icon ${this.viewMode === 'grid' ? 'active' : ''}" title="${t_('gridView')}">⊞</button>
-                        <button id="list-view-btn" class="btn btn-icon ${this.viewMode === 'list' ? 'active' : ''}" title="${t_('listView')}">☰</button>
-                        <button id="add-figure-btn" class="btn btn-primary">+ ${t_('addFigure')}</button>
+                        <button id="grid-view-btn" class="btn btn-icon ${this.viewMode === 'grid' ? 'active' : ''}" title="${$t.gridView}">⊞</button>
+                        <button id="list-view-btn" class="btn btn-icon ${this.viewMode === 'list' ? 'active' : ''}" title="${$t.listView}">☰</button>
+                        <button id="add-figure-btn" class="btn btn-primary">+ ${$t.addFigure}</button>
                     </div>
                 </div>
                 <div class="figures-content">
@@ -93,13 +87,17 @@ export class FiguresApp {
         this.backBtn = this.container.querySelector('#back-to-paints-btn') as HTMLButtonElement;
     }
 
-    private setupComponents(): void {
-        this.figuresGrid.setOnSelect((figure: Figure) => this.selectFigure(figure));
-        this.figuresGrid.setOnEdit((figure: Figure) => this.editFigure(figure));
-        this.figuresGrid.setOnAdd(() => this.figureModalManager.showAddModal());
+    private initComponents(): void {
+        this.figuresGrid = new FiguresGrid(
+            this.container.querySelector('#figures-grid-container') as HTMLElement,
+            (id: number) => this.selectFigureById(id),
+            (id: number) => this.editFigureById(id),
+            (id: number) => this.deleteFigureById(id)
+        );
 
-        this.figuresList.setOnSelect((figure: Figure) => this.selectFigure(figure));
-        this.figuresList.setOnEdit((figure: Figure) => this.editFigure(figure));
+        this.figuresList = new FiguresList(
+            this.container.querySelector('#figures-list-container') as HTMLElement
+        );
     }
 
     private attachEventListeners(): void {
@@ -109,7 +107,7 @@ export class FiguresApp {
         this.gridViewBtn?.addEventListener('click', () => this.setViewMode('grid'));
         this.listViewBtn?.addEventListener('click', () => this.setViewMode('list'));
 
-        this.addFigureBtn?.addEventListener('click', () => this.figureModalManager.showAddModal());
+        this.addFigureBtn?.addEventListener('click', () => this.figureModalManager.openAddModal());
 
         this.backBtn?.addEventListener('click', () => {
             window.location.hash = '#/';
@@ -118,7 +116,7 @@ export class FiguresApp {
 
     async loadFigures(): Promise<void> {
         try {
-            this.figures = await getAllFigures();
+            this.figures = await fetchFigures();
             this.filterFigures();
         } catch (err) {
             console.error('Failed to load figures:', err);
@@ -144,15 +142,38 @@ export class FiguresApp {
             filtered = filtered.filter(f => f.status === statusValue);
         }
 
-        this.figuresGrid.setFigures(filtered);
-        this.figuresGrid.render();
-
-        this.figuresList.setFigures(filtered);
-        this.figuresList.render();
+        this.figuresGrid.setData(filtered);
+        this.figuresList.setData(filtered);
     }
 
-    private editFigure(figure: Figure): void {
-        this.figureModalManager.showEditModal(figure);
+    private findFigureById(id: number): Figure | undefined {
+        return this.figures.find(f => f.id === id);
+    }
+
+    private selectFigureById(id: number): void {
+        const figure = this.findFigureById(id);
+        if (figure) {
+            this.selectFigure(figure);
+        }
+    }
+
+    private editFigureById(id: number): void {
+        const figure = this.findFigureById(id);
+        if (figure) {
+            this.figureModalManager.openEditModal(figure);
+        }
+    }
+
+    private async deleteFigureById(id: number): Promise<void> {
+        if (confirm('Delete this figure?')) {
+            try {
+                await deleteFigureAPI(id);
+                await this.loadFigures();
+            } catch (err) {
+                console.error('Failed to delete figure:', err);
+                alert('Failed to delete figure');
+            }
+        }
     }
 
     private async selectFigure(figure: Figure): Promise<void> {
@@ -169,7 +190,7 @@ export class FiguresApp {
             this.figureEditor = new FigureEditor(editorContainer, figure, {
                 onSave: async (updatedFigure: Figure) => {
                     try {
-                        await createFigure(updatedFigure); // или другой метод обновления, если есть
+                        await updateFigureAPI(updatedFigure.id, updatedFigure);
                         await this.loadFigures();
                         await this.selectFigure(updatedFigure);
                     } catch (err) {

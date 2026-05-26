@@ -80,5 +80,15 @@ export const ru: Translations = {
     detailsMaterial: 'Материал',
     detailsPurchasePrice: 'Цена покупки',
     detailsCompletedDate: 'Дата завершения',
-    detailsDescription: 'Описание'
+    detailsDescription: 'Описание',
+    figuresTitle: 'Название фигуры',
+    back: 'back',
+    searchPlaceholder: 'Search',
+    allStatuses: 'All Statuses',
+    draft: 'Draft',
+    inProgress: 'In Progress',
+    completed: 'Completed',
+    gridView: 'Grid View',
+    listView: 'List View',
+    addFigure: 'Add Figure'
 };

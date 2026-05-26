@@ -80,5 +80,15 @@ export const en: Translations = {
     detailsMaterial: 'Material',
     detailsPurchasePrice: 'Purchase Price',
     detailsCompletedDate: 'Completed Date',
-    detailsDescription: 'Description'
+    detailsDescription: 'Description',
+    figuresTitle: 'Miniature Title',
+    back: 'Back',
+    searchPlaceholder: 'Search',
+    allStatuses: 'All Statuses',
+    draft: 'Draft',
+    inProgress: 'In Progress',
+    completed: 'Completed',
+    gridView: 'Grid View',
+    listView: 'List View',
+    addFigure: 'Add Figure'
 };
