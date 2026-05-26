@@ -1,6 +1,9 @@
-import Editor from '@toast-ui/editor';
-import '@toast-ui/editor/dist/toastui-editor.css';
-import '@toast-ui/editor/dist/theme/toastui-editor-dark.css';
+import { EditorState, Extension } from '@codemirror/state';
+import { EditorView, keymap, lineNumbers, placeholder as placeholderExt, drawSelection } from '@codemirror/view';
+import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
+import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
+import { languages } from '@codemirror/language-data';
+import { oneDark } from '@codemirror/theme-one-dark';
 
 export interface MarkdownEditorOptions {
     initialValue?: string;
@@ -10,16 +13,15 @@ export interface MarkdownEditorOptions {
 }
 
 export class MarkdownEditor {
-    private editor: Editor | null = null;
+    private view: EditorView | null = null;
     private container: HTMLElement;
     private options: MarkdownEditorOptions;
-    private initialized: boolean = false;
 
     constructor(container: HTMLElement, options: MarkdownEditorOptions = {}) {
         this.container = container;
         this.options = options;
 
-        if (this.container.hasAttribute('data-markdown-editor-initialized')) {
+        if (this.container.hasAttribute('data-codemirror-initialized')) {
             return;
         }
 
@@ -27,60 +29,90 @@ export class MarkdownEditor {
     }
 
     private init(): void {
-        if (this.initialized) return;
+        this.container.setAttribute('data-codemirror-initialized', 'true');
+        this.container.classList.add('codemirror-editor-wrapper');
 
-        this.container.setAttribute('data-markdown-editor-initialized', 'true');
-        this.container.classList.add('markdown-editor-wrapper');
-
-        this.editor = new Editor({
-            el: this.container,
-            height: this.options.height || '500px',
-            initialEditType: 'markdown',
-            previewStyle: 'tab',
-            theme: 'dark',
-            placeholder: this.options.placeholder || 'Введите описание...',
-            initialValue: this.options.initialValue || '',
-            usageStatistics: false,
-            events: {
-                change: () => {
-                    if (this.options.onChange && this.editor) {
-                        this.options.onChange(this.editor.getMarkdown());
-                    }
+        const extensions: Extension[] = [
+            oneDark,
+            history(),
+            drawSelection(),
+            placeholderExt(this.options.placeholder || 'Начните писать...'),
+            markdown({
+                base: markdownLanguage,
+                codeLanguages: languages,
+            }),
+            keymap.of([
+                ...defaultKeymap,
+                ...historyKeymap,
+            ]),
+            EditorView.updateListener.of(update => {
+                if (update.docChanged && this.options.onChange) {
+                    this.options.onChange(update.state.doc.toString());
+                }
+            }),
+            EditorView.theme({
+                '&': {
+                    height: this.options.height || '100%',
+                    fontSize: '14px',
                 },
-            },
+                '.cm-scroller': {
+                    fontFamily: 'var(--font-monospace, "JetBrains Mono", "Fira Code", monospace)',
+                    lineHeight: '1.6',
+                },
+                '.cm-content': {
+                    padding: '16px',
+                },
+                '.cm-gutters': {
+                    borderRight: '1px solid #333',
+                    backgroundColor: '#1a1a2e',
+                    color: '#555',
+                },
+                '.cm-activeLineGutter': {
+                    backgroundColor: '#222244',
+                },
+            }),
+        ];
+
+        const state = EditorState.create({
+            doc: this.options.initialValue || '',
+            extensions,
         });
 
-        this.initialized = true;
+        this.view = new EditorView({
+            state,
+            parent: this.container,
+        });
+
+        this.view.focus();
     }
 
     getMarkdown(): string {
-        return this.editor ? this.editor.getMarkdown() : '';
+        return this.view ? this.view.state.doc.toString() : '';
     }
 
     setMarkdown(markdown: string): void {
-        if (this.editor) {
-            this.editor.setMarkdown(markdown);
+        if (this.view) {
+            this.view.dispatch({
+                changes: {
+                    from: 0,
+                    to: this.view.state.doc.length,
+                    insert: markdown,
+                },
+            });
         }
-    }
-
-    getHTML(): string {
-        return this.editor ? this.editor.getHTML() : '';
     }
 
     focus(): void {
-        if (this.editor) {
-            this.editor.focus();
-        }
+        this.view?.focus();
     }
 
     destroy(): void {
-        if (this.editor) {
-            this.editor.destroy();
-            this.editor = null;
+        if (this.view) {
+            this.view.destroy();
+            this.view = null;
         }
-        this.container.removeAttribute('data-markdown-editor-initialized');
-        this.container.classList.remove('markdown-editor-wrapper');
+        this.container.removeAttribute('data-codemirror-initialized');
+        this.container.classList.remove('codemirror-editor-wrapper');
         this.container.innerHTML = '';
-        this.initialized = false;
     }
 }

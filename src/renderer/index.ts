@@ -70,7 +70,8 @@ const figuresGridContainer = document.getElementById('figures-grid-container') a
 console.log('Figures grid container:', figuresGridContainer);
 
 if (figuresGridContainer) {
-    figuresApp = new FiguresApp(figuresGridContainer);
+    const detailsContainer = document.getElementById('figure-details-container') as HTMLElement;
+    figuresApp = new FiguresApp(figuresGridContainer, detailsContainer);
     figuresApp.init();
     console.log('FiguresApp initialized');
 } else {

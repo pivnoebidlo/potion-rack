@@ -984,3 +984,56 @@ input, textarea, [contenteditable="true"] {
 #collapseLeftPanelBtn:hover {
     color: #fff;
 }
+
+/* Полный сброс стилей внутри редактора */
+#figure-editor-container * {
+    margin: revert;
+    padding: revert;
+    box-sizing: revert;
+    font-family: revert;
+}
+
+#figure-editor-container .toastui-editor-toolbar button,
+#figure-editor-container .toastui-editor-mode-switch button {
+    background: revert !important;
+    border: revert !important;
+    color: revert !important;
+    border-radius: revert !important;
+    padding: 6px 10px !important;
+    font-size: 14px !important;
+    cursor: pointer !important;
+}
+
+#figure-editor-container .toastui-editor-toolbar button:hover {
+    background: #3a3a3a !important;
+}
+
+#figure-editor-container .toastui-editor-defaultUI {
+    background: #1e1e1e !important;
+}
+
+#figure-editor-container .toastui-editor-contents {
+    background: #1e1e1e !important;
+    color: #e0e0e0 !important;
+    min-height: 400px !important;
+}
+
+/* Скрываем неиспользуемое белое поле */
+#figure-editor-container .toastui-editor-ww-container,
+#figure-editor-container .toastui-editor-md-preview {
+    display: none !important;
+}
+
+/* Растягиваем редактор на всю высоту */
+#figure-editor-container {
+    height: calc(100vh - 60px) !important;
+    overflow: hidden !important;
+}
+.codemirror-editor-wrapper {
+    height: 100%;
+}
+
+#figure-editor-container .markdown-editor-wrapper {
+    height: 100% !important;
+}
+

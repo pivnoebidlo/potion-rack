@@ -5,6 +5,7 @@ import { FiguresList } from './components/FiguresList';
 import { FigureDetails } from './components/FigureDetails';
 import { FigureEditor } from './components/FigureEditor';
 import { FigureModalManager } from './components/FigureModalManager';
+import { MarkdownEditor } from '../../components/MarkdownEditor';
 
 type ViewMode = 'grid' | 'list';
 
@@ -18,6 +19,7 @@ export class FiguresApp {
     private figuresList!: FiguresList;
     private figureDetails: FigureDetails;
     private figureEditor: FigureEditor | null = null;
+    private markdownEditor: MarkdownEditor | null = null;
     private figureModalManager: FigureModalManager;
 
     private searchInput!: HTMLInputElement;
@@ -25,12 +27,10 @@ export class FiguresApp {
     private toggleViewBtn!: HTMLButtonElement;
     private addFigureBtn!: HTMLButtonElement;
 
-    constructor(container: HTMLElement) {
+    constructor(container: HTMLElement, detailsContainer: HTMLElement) {
         this.container = container;
 
-        this.figureDetails = new FigureDetails(
-            this.container.querySelector('#figure-details-container') as HTMLElement
-        );
+        this.figureDetails = new FigureDetails(detailsContainer);
         this.figureModalManager = new FigureModalManager(async () => {
             await this.loadFigures();
         });
@@ -69,9 +69,6 @@ export class FiguresApp {
                         <div id="figures-grid-container" style="display: ${this.viewMode === 'grid' ? 'block' : 'none'};"></div>
                         <div id="figures-list-container" style="display: ${this.viewMode === 'list' ? 'block' : 'none'};"></div>
                     </div>
-                    <div class="figures-right-panel">
-                        <div id="figure-details-container"></div>
-                    </div>
                 </div>
             </div>
         `;
@@ -80,6 +77,9 @@ export class FiguresApp {
         this.statusFilter = this.container.querySelector('#figure-status-filter') as HTMLSelectElement;
         this.toggleViewBtn = this.container.querySelector('#toggle-view-btn') as HTMLButtonElement;
         this.addFigureBtn = this.container.querySelector('#add-figure-btn') as HTMLButtonElement;
+
+        const saveBtn = document.getElementById('saveFigureContentBtn');
+        saveBtn?.addEventListener('click', () => this.saveFigureContent());
     }
 
     private initComponents(): void {
@@ -173,7 +173,45 @@ export class FiguresApp {
 
     private async selectFigure(figure: Figure): Promise<void> {
         this.currentFigure = figure;
-        await this.figureDetails.loadFigure(figure);
+        this.loadMarkdownEditor(figure);
+    }
+
+    private loadMarkdownEditor(figure: Figure): void {
+        const editorContainer = document.getElementById('figure-editor-container');
+        if (!editorContainer) return;
+
+        if (this.markdownEditor) {
+            this.markdownEditor.destroy();
+        }
+
+        editorContainer.innerHTML = '';
+
+        this.markdownEditor = new MarkdownEditor(editorContainer, {
+            initialValue: figure.description || '',
+            height: '100%',
+            placeholder: 'Начните писать лог покраски...',
+            onChange: (markdown: string) => {
+                if (this.currentFigure) {
+                    this.currentFigure.description = markdown;
+                }
+            }
+        });
+    }
+
+    private async saveFigureContent(): Promise<void> {
+        if (!this.currentFigure || !this.markdownEditor) {
+            console.warn('No figure selected for saving');
+            return;
+        }
+
+        try {
+            const markdown = this.markdownEditor.getMarkdown();
+            await updateFigureAPI(this.currentFigure.id, { description: markdown });
+            console.log('Figure content saved');
+        } catch (err) {
+            console.error('Failed to save figure content:', err);
+            alert('Failed to save content');
+        }
     }
 
     private setViewMode(mode: ViewMode): void {
