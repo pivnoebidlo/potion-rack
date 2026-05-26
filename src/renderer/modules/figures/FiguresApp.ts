@@ -107,7 +107,7 @@ export class FiguresApp {
         this.gridViewBtn?.addEventListener('click', () => this.setViewMode('grid'));
         this.listViewBtn?.addEventListener('click', () => this.setViewMode('list'));
 
-        this.addFigureBtn?.addEventListener('click', () => this.figureModalManager.openAddModal());
+        this.addFigureBtn?.addEventListener('click', () => this.figureModalManager.showAddModal());
 
         this.backBtn?.addEventListener('click', () => {
             window.location.hash = '#/';
@@ -160,7 +160,7 @@ export class FiguresApp {
     private editFigureById(id: number): void {
         const figure = this.findFigureById(id);
         if (figure) {
-            this.figureModalManager.openEditModal(figure);
+            this.figureModalManager.showEditModal(figure);
         }
     }
 
