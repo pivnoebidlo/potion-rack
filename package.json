@@ -1,6 +1,7 @@
 {
   "name": "potion-rack",
   "version": "0.1.5",
+  "type": "commonjs",
   "description": "Paint Manager for Miniatures",
   "author": {
     "name": "Potion Rack Team",
@@ -59,7 +60,7 @@
     }
   },
   "devDependencies": {
-    "@electron/rebuild": "^3.6.1",
+    "@electron/rebuild": "^4.0.4",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/node": "^22.0.0",
