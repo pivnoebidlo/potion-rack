@@ -1,0 +1,145 @@
+/* ==============================================
+   Paints — Toolbar, Table, Filters, Details
+   ============================================== */
+
+/* Toolbar */
+.toolbar {
+    padding: 12px 16px;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border);
+}
+
+.filter-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: flex-end;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.filter-group label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.filter-group select,
+.filter-group input {
+    padding: 6px 10px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    font-size: 13px;
+    outline: none;
+    transition: border-color var(--transition);
+}
+
+.filter-group select:focus,
+.filter-group input:focus {
+    border-color: var(--accent);
+}
+
+.action-buttons {
+    display: flex;
+    gap: 6px;
+    margin-left: auto;
+}
+
+/* Table */
+.table-container {
+    flex: 1;
+    overflow: auto;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+thead {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+}
+
+thead th {
+    background: var(--bg-tertiary);
+    padding: 10px 12px;
+    text-align: left;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    font-size: 11px;
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid var(--border);
+    cursor: pointer;
+    user-select: none;
+    transition: color var(--transition);
+}
+
+thead th:hover {
+    color: var(--text-primary);
+}
+
+thead th.sorted {
+    color: var(--accent);
+}
+
+tbody td {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border-light);
+    color: var(--text-primary);
+}
+
+tbody tr {
+    transition: background var(--transition);
+    cursor: pointer;
+}
+
+tbody tr:hover {
+    background: var(--bg-hover);
+}
+
+tbody tr.selected {
+    background: var(--accent-light);
+}
+
+.loading {
+    text-align: center;
+    padding: 40px;
+    color: var(--text-muted);
+}
+
+/* Right Panel — Paint Details */
+.details-section {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.details-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 12px;
+}
+
+.details-label:first-child {
+    margin-top: 0;
+}
+
+.details-value {
+    font-size: 14px;
+    color: var(--text-primary);
+}
