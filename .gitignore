@@ -3,6 +3,8 @@
 /node_modules/*
 release/
 node_modules/
+scripts/*
+public/css/*.purged
 *.dmg
 *.zip
 *.db

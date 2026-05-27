@@ -1,11 +1,3 @@
-// Imports
-import './styles/theme.css';
-import './styles/main.css';
-// import './styles/layout.css';
-// import './styles/paints.css';
-// import './styles/figures.css';
-// import './styles/editor.css';
-// import './styles/components.css';
 import { i18n, t, Language } from './i18n/index.js';
 import { updateUILanguage } from './utils/languageUpdater.js';
 import { settingsManager } from './modules/settings/SettingsManager.js';
