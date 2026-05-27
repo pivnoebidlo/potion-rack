@@ -605,3 +605,435 @@ input, textarea, [contenteditable="true"] {
     color: var(--text-secondary);
     font-size: 14px;
 }
+/* Figures Grid Styles */
+.figures-grid-container {
+    flex: 1;
+    overflow: auto;
+}
+
+.figures-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 20px;
+    padding: 16px;
+}
+
+.figure-card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 12px;
+    padding: 16px;
+    transition: all 0.2s;
+    cursor: pointer;
+}
+
+.figure-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    border-color: var(--primary);
+}
+
+.figure-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 12px;
+}
+
+.figure-card-title h3 {
+    margin: 0;
+    font-size: 16px;
+    color: var(--text);
+}
+
+.figure-status {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-weight: 500;
+}
+
+.status-draft {
+    background: #6c757d;
+    color: white;
+}
+
+.status-progress {
+    background: #ffc107;
+    color: #1a1a2e;
+}
+
+.status-completed {
+    background: #28a745;
+    color: white;
+}
+
+.figure-card-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.figure-card-actions button {
+    background: none;
+    border: none;
+    font-size: 16px;
+    cursor: pointer;
+    padding: 4px;
+    opacity: 0.6;
+    transition: opacity 0.2s;
+}
+
+.figure-card-actions button:hover {
+    opacity: 1;
+}
+
+.figure-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.figure-tag {
+    font-size: 11px;
+    padding: 2px 8px;
+    background: var(--surface);
+    border-radius: 20px;
+    color: var(--text-secondary);
+}
+
+.figure-progress {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.progress-bar {
+    flex: 1;
+    height: 6px;
+    background: var(--surface);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background: var(--primary);
+    border-radius: 3px;
+    transition: width 0.3s;
+}
+
+.progress-text {
+    font-size: 11px;
+    color: var(--text-secondary);
+}
+
+.figure-description {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-bottom: 12px;
+    line-height: 1.4;
+}
+
+.figure-meta {
+    font-size: 10px;
+    color: var(--text-secondary);
+    border-top: 1px solid var(--border);
+    padding-top: 8px;
+}
+
+.figures-empty {
+    text-align: center;
+    padding: 60px;
+    color: var(--text-secondary);
+    font-size: 14px;
+}
+/* Figures Sidebar */
+.figures-sidebar {
+    width: 280px;
+    background: var(--sidebar-bg);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.figures-sidebar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+}
+
+.figures-sidebar-header h3 {
+    margin: 0;
+    font-size: 14px;
+    color: var(--primary);
+}
+
+.figures-grid-container {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px;
+}
+
+/* Уменьшаем карточки для сайдбара */
+.figures-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.figure-card {
+    padding: 12px;
+    border-radius: 8px;
+}
+
+.figure-card-title h3 {
+    font-size: 14px;
+}
+
+.figure-tags {
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.figure-tag {
+    font-size: 10px;
+    padding: 2px 6px;
+}
+
+.figure-progress {
+    margin-bottom: 8px;
+}
+
+.figure-description {
+    font-size: 11px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+/* Исправление оформления Toast UI Editor */
+#editor-container * {
+    margin: revert;
+    padding: revert;
+}
+
+#editor-container .toastui-editor-toolbar button,
+#editor-container .toastui-editor-mode-switch button,
+#editor-container .toastui-editor-popup button {
+    background: revert;
+    border: revert;
+    color: revert;
+    border-radius: revert;
+    padding: revert;
+    font-size: revert;
+    cursor: revert;
+}
+
+#editor-container .toastui-editor-toolbar button:hover,
+#editor-container .toastui-editor-mode-switch button:hover {
+    background: revert;
+}
+
+/* ==============================================
+   Исправление оформления Toast UI Editor
+   ============================================== */
+
+/* Сброс глобальных стилей для контейнера редактора */
+.markdown-editor-wrapper,
+#markdown-editor-container {
+    margin: 0;
+    padding: 0;
+}
+
+#markdown-editor-container * {
+    margin: revert;
+    padding: revert;
+}
+
+/* Кнопки тулбара — возвращаем родной вид */
+#markdown-editor-container .toastui-editor-toolbar button,
+#markdown-editor-container .toastui-editor-mode-switch button,
+#markdown-editor-container .toastui-editor-popup button,
+#markdown-editor-container .toastui-editor-popup-body button,
+#markdown-editor-container .toastui-editor-toolbar-group button {
+    background: revert;
+    border: revert;
+    color: revert;
+    border-radius: revert;
+    padding: revert;
+    font-size: revert;
+    cursor: revert;
+    font-family: revert;
+    line-height: revert;
+}
+
+#markdown-editor-container .toastui-editor-toolbar button:hover,
+#markdown-editor-container .toastui-editor-mode-switch button:hover {
+    background: revert;
+    opacity: revert;
+}
+
+/* Темный фон редактора */
+#markdown-editor-container .toastui-editor-defaultUI {
+    background: #1e1e1e;
+    border: 1px solid #444;
+    border-radius: 4px;
+}
+
+#markdown-editor-container .toastui-editor-contents {
+    background: #1e1e1e;
+    color: #e0e0e0;
+}
+
+/* Тулбар — темная тема */
+#markdown-editor-container .toastui-editor-defaultUI-toolbar {
+    background: #2a2a2a;
+    border-bottom: 1px solid #444;
+}
+
+/* Текст в режиме Markdown */
+#markdown-editor-container .toastui-editor-md-container,
+#markdown-editor-container .toastui-editor-md-preview,
+#markdown-editor-container .toastui-editor-ww-container,
+#markdown-editor-container .toastui-editor-wysiwyg {
+    background: #1e1e1e;
+    color: #e0e0e0;
+}
+
+/* Плейсхолдер */
+#markdown-editor-container .toastui-editor-contents .placeholder {
+    color: #888;
+}
+
+/* Стили для контейнера редактора фигурки */
+.figure-editor {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    height: 100%;
+    padding: 16px;
+}
+
+.figure-editor-header {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.figure-editor-label {
+    font-size: 14px;
+    font-weight: 600;
+    color: #ccc;
+    margin-bottom: 4px;
+}
+
+.figure-name-input {
+    padding: 10px 12px;
+    font-size: 16px;
+    border: 1px solid #555;
+    border-radius: 6px;
+    background: #2a2a2a;
+    color: #e0e0e0;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.figure-name-input:focus {
+    border-color: #7c8aff;
+}
+
+.figure-editor-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.figure-editor-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    padding-top: 8px;
+    border-top: 1px solid #444;
+}
+
+#figures-sidebar-wrapper {
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+}
+
+#collapseLeftPanelBtn {
+    background: none;
+    border: none;
+    color: #aaa;
+    cursor: pointer;
+    font-size: 14px;
+    padding: 4px 8px;
+    display: block;
+    text-align: left;
+}
+
+#collapseLeftPanelBtn:hover {
+    color: #fff;
+}
+
+/* Полный сброс стилей внутри редактора */
+#figure-editor-container * {
+    margin: revert;
+    padding: revert;
+    box-sizing: revert;
+    font-family: revert;
+}
+
+#figure-editor-container .toastui-editor-toolbar button,
+#figure-editor-container .toastui-editor-mode-switch button {
+    background: revert !important;
+    border: revert !important;
+    color: revert !important;
+    border-radius: revert !important;
+    padding: 6px 10px !important;
+    font-size: 14px !important;
+    cursor: pointer !important;
+}
+
+#figure-editor-container .toastui-editor-toolbar button:hover {
+    background: #3a3a3a !important;
+}
+
+#figure-editor-container .toastui-editor-defaultUI {
+    background: #1e1e1e !important;
+}
+
+#figure-editor-container .toastui-editor-contents {
+    background: #1e1e1e !important;
+    color: #e0e0e0 !important;
+    min-height: 400px !important;
+}
+
+/* Скрываем неиспользуемое белое поле */
+#figure-editor-container .toastui-editor-ww-container,
+#figure-editor-container .toastui-editor-md-preview {
+    display: none !important;
+}
+
+/* Растягиваем редактор на всю высоту */
+#figure-editor-container {
+    height: calc(100vh - 60px) !important;
+    overflow: hidden !important;
+}
+.codemirror-editor-wrapper {
+    height: 100%;
+}
+
+#figure-editor-container .markdown-editor-wrapper {
+    height: 100% !important;
+}
+

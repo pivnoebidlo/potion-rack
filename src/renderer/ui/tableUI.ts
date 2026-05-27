@@ -1,6 +1,6 @@
 import { t } from '../i18n/index.js';
 import { appState } from '../core/appState.js';
-import { escapeHtml, getStars, getStatusText } from '../utils/dom.js';
+import { escapeHtml, getStars } from '../utils/dom.js';
 import { sortPaints } from '../utils/sort.js';
 import { applyFilters, extractUniqueSeries } from '../utils/filters.js';
 import { DateFormatter } from '../utils/dateFormatter.js';

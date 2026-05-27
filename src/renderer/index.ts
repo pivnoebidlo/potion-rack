@@ -3,6 +3,7 @@ import { i18n, t, Language } from './i18n/index.js';
 import { updateUILanguage } from './utils/languageUpdater.js';
 import { settingsManager } from './modules/settings/SettingsManager.js';
 import { RightPanelManager } from './ui/rightPanel.js';
+import { LeftPanelManager } from './ui/leftPanel.js';
 import { appState } from './core/appState.js';
 import { setupKeyboardShortcuts } from './core/shortcuts.js';
 import {
@@ -26,6 +27,7 @@ import {
 } from './ui/filtersUI.js';
 import { setupSettingsPanel } from './ui/settingsUI.js';
 import { compressImage, addPaintImage } from './services/api.js';
+import { FiguresApp } from './modules/figures/index.js';
 
 console.log('Potion Rack starting...');
 
@@ -38,6 +40,7 @@ const languageSwitcher = document.getElementById('languageSwitcher') as HTMLSele
 
 // Initialize right panel
 new RightPanelManager();
+new LeftPanelManager();
 
 // Initialize components
 initializeTableComponents();
@@ -58,10 +61,29 @@ if (addBtn) {
     };
 }
 
+// Figures App
+let figuresApp: FiguresApp | null = null;
+const figuresSidebar = document.getElementById('figures-sidebar') as HTMLElement;
+const figuresGridContainer = document.getElementById('figures-grid-container') as HTMLElement;
+
+// Debug output
+console.log('Figures grid container:', figuresGridContainer);
+
+if (figuresGridContainer) {
+    const detailsContainer = document.getElementById('figure-details-container') as HTMLElement;
+    figuresApp = new FiguresApp(figuresGridContainer, detailsContainer);
+    figuresApp.init();
+    console.log('FiguresApp initialized');
+} else {
+    console.error('FiguresApp not initialized: missing container');
+}
+
 // Navigation between tabs
 function setupNavigation(): void {
     const navItems = document.querySelectorAll('.nav-item');
     const paintsView = document.getElementById('paints-view');
+    const figuresSidebar = document.getElementById('figures-sidebar');
+    const figuresEditorView = document.getElementById('figures-editor-view');
     const settingsView = document.getElementById('settings-view');
 
     navItems.forEach(item => {
@@ -70,33 +92,31 @@ function setupNavigation(): void {
             navItems.forEach(nav => nav.classList.remove('active'));
             item.classList.add('active');
 
+            // Hide all views
             if (paintsView) paintsView.style.display = 'none';
+            if (figuresEditorView) figuresEditorView.style.display = 'none';
             if (settingsView) settingsView.style.display = 'none';
+            if (figuresSidebar) figuresSidebar.style.display = 'none';
 
             if (tab === 'paints' && paintsView) {
                 paintsView.style.display = 'flex';
                 paintsView.style.flexDirection = 'column';
+                if (figuresSidebar) figuresSidebar.style.display = 'none';
                 renderTable();
+            } else if (tab === 'figures' && figuresEditorView && figuresSidebar) {
+                figuresSidebar.style.display = 'flex';
+                figuresSidebar.style.flexDirection = 'column';
+                figuresEditorView.style.display = 'flex';
+                figuresEditorView.style.flexDirection = 'column';
             } else if (tab === 'settings' && settingsView) {
                 settingsView.style.display = 'flex';
                 settingsView.style.flexDirection = 'column';
-            } else if (tab === 'figures') {
-                alert('Figures feature coming soon!');
-                if (paintsView) {
-                    paintsView.style.display = 'flex';
-                    paintsView.style.flexDirection = 'column';
-                    renderTable();
-                }
-                const paintsNav = document.querySelector('.nav-item[data-tab="paints"]');
-                if (paintsNav) paintsNav.classList.add('active');
+                if (figuresSidebar) figuresSidebar.style.display = 'none';
             }
         });
     });
 }
 
-
-// Global paste handler for images
-// Global paste handler for images
 // Global paste handler for images
 document.addEventListener('paste', async (e) => {
     const currentPaintId = appState.currentSelectedId;
@@ -124,10 +144,8 @@ document.addEventListener('paste', async (e) => {
 
                 updateStatusMessage('Image uploaded ✓');
 
-                // Обновляем таблицу
                 await renderTable();
 
-                // Обновляем галерею в правой панели
                 if (currentPaintId === appState.currentSelectedId) {
                     const { paintDetails, getBaseColorName } = await import('./ui/tableUI.js');
                     if (paintDetails) {

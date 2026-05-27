@@ -45,6 +45,7 @@ export interface Translations {
     modalRequired: string;
     modalSeries: string;
     modalStatus: string;
+    msgBackendError: string;
     msgDeleteConfirm: string;
     msgDuplicatePaint: string;
     msgErrorLoading: string;
@@ -68,4 +69,24 @@ export interface Translations {
     thRating: string;
     thSeries: string;
     thStatus: string;
+    // Figures module
+    thFigureName: string;
+    thManufacturer: string;
+    thScale: string;
+    thCreatedDate: string;
+    detailsScale: string;
+    detailsMaterial: string;
+    detailsPurchasePrice: string;
+    detailsCompletedDate: string;
+    detailsDescription: string;
+    figuresTitle: string;
+    back: string;
+    searchPlaceholder: string;
+    allStatuses: string;
+    draft: string;
+    inProgress: string;
+    completed: string;
+    gridView: string;
+    listView: string;
+    addFigure: string;
 }

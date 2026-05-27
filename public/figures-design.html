@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Миниатюры + Wiki покраски | Obsidian-style</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+            background: #1e1e2e;
+            color: #cdd6f4;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Основной лэйаут */
+        .app {
+            display: flex;
+            height: 100vh;
+        }
+
+        /* ===== ЛЕВАЯ ПАНЕЛЬ (Фигурки) ===== */
+        .figurines-panel {
+            width: 300px;
+            background: #11111b;
+            border-right: 1px solid #313244;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+
+        .panel-header {
+            padding: 20px;
+            border-bottom: 1px solid #313244;
+        }
+
+        .panel-header h2 {
+            font-size: 1.2rem;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .filter-bar {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+        }
+
+        .filter-btn {
+            background: #1e1e2e;
+            border: 1px solid #313244;
+            color: #cdd6f4;
+            padding: 4px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.75rem;
+            transition: all 0.2s;
+        }
+
+        .filter-btn:hover {
+            background: #313244;
+        }
+
+        .filter-btn.active {
+            background: #89b4fa;
+            color: #1e1e2e;
+            border-color: #89b4fa;
+        }
+
+        .new-figurine-btn {
+            width: 100%;
+            background: #89b4fa;
+            color: #1e1e2e;
+            border: none;
+            padding: 8px;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+        }
+
+        .new-figurine-btn:hover {
+            background: #74a7e8;
+            transform: translateY(-1px);
+        }
+
+        .figurines-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px;
+        }
+
+        .figurine-item {
+            background: #1e1e2e;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            border: 1px solid #313244;
+            transition: all 0.15s;
+        }
+
+        .figurine-item:hover {
+            background: #313244;
+            transform: translateX(2px);
+        }
+
+        .figurine-item.selected {
+            border-left: 3px solid #89b4fa;
+            background: #313244;
+        }
+
+        .figurine-name {
+            font-weight: 600;
+            font-size: 0.95rem;
+            margin-bottom: 4px;
+        }
+
+        .figurine-meta {
+            font-size: 0.7rem;
+            color: #a6adc8;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .status-badge {
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.65rem;
+            font-weight: 500;
+        }
+
+        .status-inprogress {
+            background: #f9e2af;
+            color: #1e1e2e;
+        }
+
+        .status-draft {
+            background: #a6e3a1;
+            color: #1e1e2e;
+        }
+
+        .status-completed {
+            background: #89b4fa;
+            color: #1e1e2e;
+        }
+
+        /* ===== ПРАВАЯ ПАНЕЛЬ (Редактор) ===== */
+        .editor-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: #181825;
+        }
+
+        .editor-toolbar {
+            background: #11111b;
+            padding: 8px 20px;
+            border-bottom: 1px solid #313244;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .mode-switch {
+            display: flex;
+            gap: 8px;
+            background: #1e1e2e;
+            padding: 4px;
+            border-radius: 8px;
+        }
+
+        .mode-btn {
+            background: transparent;
+            border: none;
+            color: #cdd6f4;
+            padding: 6px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+        }
+
+        .mode-btn:hover {
+            background: #313244;
+        }
+
+        .mode-btn.active {
+            background: #313244;
+            color: #89b4fa;
+        }
+
+        .save-btn {
+            background: #a6e3a1;
+            color: #1e1e2e;
+            border: none;
+            padding: 6px 20px;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+        }
+
+        .save-btn:hover {
+            background: #94d48f;
+            transform: scale(1.02);
+        }
+
+        /* Редактор и просмотрщик */
+        .editor-area {
+            flex: 1;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .markdown-editor {
+            width: 100%;
+            height: 100%;
+            background: #1e1e2e;
+            color: #cdd6f4;
+            border: none;
+            padding: 24px;
+            font-family: 'JetBrains Mono', 'Fira Code', 'SF Mono', 'Cascadia Code', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            resize: none;
+            outline: none;
+        }
+
+        .markdown-preview {
+            width: 100%;
+            height: 100%;
+            overflow-y: auto;
+            padding: 24px;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        /* Стили для рендера Markdown */
+        .markdown-preview h1 {
+            font-size: 1.8rem;
+            margin: 1rem 0 0.5rem;
+            color: #89b4fa;
+            border-bottom: 1px solid #313244;
+            padding-bottom: 0.3rem;
+        }
+
+        .markdown-preview h2 {
+            font-size: 1.4rem;
+            margin: 1rem 0 0.5rem;
+            color: #f9e2af;
+        }
+
+        .markdown-preview h3 {
+            font-size: 1.2rem;
+            margin: 0.8rem 0 0.4rem;
+            color: #a6e3a1;
+        }
+
+        .markdown-preview p {
+            margin: 0.5rem 0;
+        }
+
+        .markdown-preview ul, .markdown-preview ol {
+            margin-left: 1.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .markdown-preview li {
+            margin: 0.2rem 0;
+        }
+
+        .markdown-preview code {
+            background: #11111b;
+            padding: 0.1rem 0.3rem;
+            border-radius: 4px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9em;
+        }
+
+        .markdown-preview pre {
+            background: #11111b;
+            padding: 0.8rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 0.5rem 0;
+        }
+
+        .markdown-preview pre code {
+            background: none;
+            padding: 0;
+        }
+
+        .markdown-preview blockquote {
+            border-left: 3px solid #89b4fa;
+            margin: 0.5rem 0;
+            padding-left: 1rem;
+            color: #a6adc8;
+            font-style: italic;
+        }
+
+        .markdown-preview table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 0.5rem 0;
+        }
+
+        .markdown-preview th, .markdown-preview td {
+            border: 1px solid #313244;
+            padding: 0.5rem;
+            text-align: left;
+        }
+
+        .markdown-preview th {
+            background: #313244;
+        }
+
+        .markdown-preview a {
+            color: #89b4fa;
+            text-decoration: none;
+        }
+
+        .markdown-preview a:hover {
+            text-decoration: underline;
+        }
+
+        .markdown-preview img {
+            max-width: 100%;
+            border-radius: 8px;
+        }
+
+        /* Скроллбары */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #1e1e2e;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #313244;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #45475a;
+        }
+    </style>
+</head>
+<body>
+<div class="app">
+    <!-- Левая панель: список фигурок -->
+    <div class="figurines-panel">
+        <div class="panel-header">
+            <h2>📦 Мои миниатюры</h2>
+            <div class="filter-bar" id="filterBar">
+                <button class="filter-btn active" data-status="all">Все</button>
+                <button class="filter-btn" data-status="inprogress">⏳ В работе</button>
+                <button class="filter-btn" data-status="draft">📝 Черновик</button>
+                <button class="filter-btn" data-status="completed">✅ Готово</button>
+            </div>
+            <button class="new-figurine-btn" id="newFigurineBtn">+ Новая фигурка</button>
+        </div>
+        <div class="figurines-list" id="figurinesList"></div>
+    </div>
+
+    <!-- Правая панель: редактор статей -->
+    <div class="editor-panel">
+        <div class="editor-toolbar">
+            <div class="mode-switch">
+                <button class="mode-btn active" data-mode="edit">✍️ Редактирование</button>
+                <button class="mode-btn" data-mode="preview">👁️ Просмотр</button>
+            </div>
+            <button class="save-btn" id="saveBtn">💾 Сохранить (Ctrl+S)</button>
+        </div>
+        <div class="editor-area">
+            <textarea id="markdownEditor" class="markdown-editor" placeholder="# Название фигурки
+
+## Этап 1: Грунтовка
+- Краска 1
+- Краска 2
+
+## Этап 2: Базовые цвета
+- **Цвет X**
+- *Цвет Y*
+
+> Советы и заметки..."></textarea>
+            <div id="markdownPreview" class="markdown-preview" style="display: none;"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ========== ДАННЫЕ ==========
+    let figurines = [
+        {
+            id: "fig1",
+            name: "Space Marine",
+            manufacturer: "Games Workshop",
+            scale: "28mm",
+            status: "inprogress",
+            createdAt: "26.05.2026",
+            article: `# Space Marine (Ultramarine)
+
+## 🎨 Этапы покраски
+
+### 1. Грунтовка
+- **Chaos Black** (Citadel) — равномерно покрыть всю модель
+
+### 2. Базовые цвета
+- **Macragge Blue** — основная броня
+- **Leadbelcher** — металлические детали (наплечники, ранец)
+- **Abbadon Black** — подшлемник и сочленения
+
+### 3. Тени
+- *Nuln Oil* — точечно на металлику
+- *Drakenhof Nightshade* — по синему
+
+### 4. Хайлайты
+1. **Calgar Blue** — рёбра брони
+2. *Fenrisian Grey* — финальные блики
+
+### 5. Детали
+- **Retributor Armour** — золото на орнаментах
+- **Mephiston Red** — линзы на шлеме
+
+> 💡 **Совет:** Линзы сначала покрасить белым, потом красным — будет ярче и глубже.
+
+## 📝 Использованные краски
+| Бренд | Количество |
+|-------|-------------|
+| Citadel | 7 |
+| Vallejo | 2 |
+
+[Фото референс](https://example.com/ultramarine)`
+        },
+        {
+            id: "fig2",
+            name: "Ork Boy",
+            manufacturer: "Games Workshop",
+            scale: "28mm",
+            status: "draft",
+            createdAt: "26.05.2026",
+            article: `# Ork Boy
+
+## WAAAGH!
+
+### 🟢 Кожа
+- **Orruk Flesh** — база
+- *Biel-Tan Green* — тень
+- **Nurgling Green** — хайлайт
+
+### ⚙️ Броня и металл
+- **Leadbelcher**
+- *Agrax Earthshade* (грязь и потёртости)
+- **Runefang Steel** (царапины)
+
+### 🦷 Зубы и когти
+- **Ushabti Bone**
+- *Seraphim Sepia*
+
+### 👕 Ткань
+- **Rhinox Hide**
+- **Death World Forest**
+
+> **Заметка:** Чекерный узор на щите делать последним этапом.`
+        },
+        {
+            id: "fig3",
+            name: "Necron Warrior",
+            manufacturer: "Games Workshop",
+            scale: "28mm",
+            status: "completed",
+            createdAt: "20.05.2026",
+            article: `# Necron Warrior
+
+## Схема покраски
+
+### 1. Грунтовка
+- **Leadbelcher** (спрей)
+
+### 2. Каркас
+- **Nuln Oil** (полностью)
+- Сухая кисть **Necron Compound**
+
+### 3. Оружейные детали
+- **Caliban Green** (кабель-каналы)
+- **Warpstone Glow** (хайлайт)
+
+### 4. Глаза и энергия
+- **Tesseract Glow** (поверх белого)
+
+✅ *Модель готова к армии!*`
+        }
+    ];
+
+    // ========== СОСТОЯНИЕ ==========
+    let currentFilter = "all";
+    let selectedId = "fig1";
+    let currentMode = "edit"; // edit или preview
+
+    // ========== ХЕЛПЕРЫ ==========
+    function saveToLocalStorage() {
+        localStorage.setItem("figurines_obsidian_v2", JSON.stringify(figurines));
+    }
+
+    function loadFromLocalStorage() {
+        const saved = localStorage.getItem("figurines_obsidian_v2");
+        if (saved) {
+            figurines = JSON.parse(saved);
+        }
+    }
+
+    function getFigurine(id) {
+        return figurines.find(f => f.id === id);
+    }
+
+    function updateArticle(id, newArticle) {
+        const fig = getFigurine(id);
+        if (fig) {
+            fig.article = newArticle;
+            saveToLocalStorage();
+        }
+    }
+
+    // ========== ПАРСЕР MARKDOWN → HTML (улучшенный) ==========
+    function parseMarkdown(md) {
+        let html = md;
+        
+        // Экранирование HTML (безопасность)
+        html = html.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        
+        // Заголовки
+        html = html.replace(/^### (.*$)/gm, '<h3>$1</h3>');
+        html = html.replace(/^## (.*$)/gm, '<h2>$1</h2>');
+        html = html.replace(/^# (.*$)/gm, '<h1>$1</h1>');
+        
+        // Жирный и курсив
+        html = html.replace(/\*\*\*(.*?)\*\*\*/g, '<strong><em>$1</em></strong>');
+        html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
+        
+        // Списки
+        html = html.replace(/^- (.*$)/gm, '<li>$1</li>');
+        html = html.replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>');
+        
+        // Нумерованные списки
+        html = html.replace(/^\d+\. (.*$)/gm, '<li>$1</li>');
+        html = html.replace(/(<li>.*<\/li>\n?)+(?=<ul>|<\/ul>|$)/g, '<ol>$&</ol>');
+        
+        // Цитаты
+        html = html.replace(/^> (.*$)/gm, '<blockquote>$1</blockquote>');
+        
+        // Ссылки
+        html = html.replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+        
+        // Изображения
+        html = html.replace(/!\[(.*?)\]\((.*?)\)/g, '<img src="$2" alt="$1">');
+        
+        // Таблицы (простой вариант)
+        html = html.replace(/\|(.+)\|/g, (match) => {
+            const cells = match.slice(1, -1).split('|').map(cell => cell.trim());
+            return '<tr>' + cells.map(cell => `<td>${cell}</td>`).join('') + '</tr>';
+        });
+        html = html.replace(/(<tr>.*<\/tr>\n?)+/g, '<table>$&</table>');
+        
+        // Разрывы строк
+        html = html.replace(/\n\n/g, '</p><p>');
+        html = html.replace(/\n/g, '<br>');
+        
+        // Оборачиваем в параграфы
+        if (!html.startsWith('<h1') && !html.startsWith('<h2') && !html.startsWith('<h3') && !html.startsWith('<ul') && !html.startsWith('<ol') && !html.startsWith('<blockquote') && !html.startsWith('<table')) {
+            html = '<p>' + html + '</p>';
+        }
+        
+        return html;
+    }
+
+    function renderPreview() {
+        const fig = getFigurine(selectedId);
+        if (fig) {
+            const previewDiv = document.getElementById("markdownPreview");
+            previewDiv.innerHTML = parseMarkdown(fig.article);
+        }
+    }
+
+    function syncEditorToFigure() {
+        const editor = document.getElementById("markdownEditor");
+        const fig = getFigurine(selectedId);
+        if (fig && editor && fig.article !== editor.value) {
+            updateArticle(selectedId, editor.value);
+        }
+    }
+
+    function loadEditorContent() {
+        const fig = getFigurine(selectedId);
+        const editor = document.getElementById("markdownEditor");
+        if (fig && editor) {
+            editor.value = fig.article;
+            renderPreview();
+        }
+    }
+
+    function switchMode(mode) {
+        currentMode = mode;
+        const editorDiv = document.getElementById("markdownEditor");
+        const previewDiv = document.getElementById("markdownPreview");
+        const editBtn = document.querySelector(".mode-btn[data-mode='edit']");
+        const previewBtn = document.querySelector(".mode-btn[data-mode='preview']");
+        
+        if (mode === "edit") {
+            editorDiv.style.display = "block";
+            previewDiv.style.display = "none";
+            editBtn.classList.add("active");
+            previewBtn.classList.remove("active");
+            // Фокус в редактор
+            editorDiv.focus();
+        } else {
+            syncEditorToFigure(); // Сохраняем перед просмотром
+            renderPreview();
+            editorDiv.style.display = "none";
+            previewDiv.style.display = "block";
+            editBtn.classList.remove("active");
+            previewBtn.classList.add("active");
+        }
+    }
+
+    // ========== РЕНДЕР СПИСКА ФИГУРОК ==========
+    function renderFigurinesList() {
+        const filtered = figurines.filter(f => {
+            if (currentFilter === "all") return true;
+            return f.status === currentFilter;
+        });
+        
+        const container = document.getElementById("figurinesList");
+        
+        if (filtered.length === 0) {
+            container.innerHTML = '<div style="padding: 20px; text-align: center; color: #a6adc8;">Нет фигурок<br>Создайте новую ➕</div>';
+            return;
+        }
+        
+        container.innerHTML = filtered.map(fig => `
+            <div class="figurine-item ${selectedId === fig.id ? 'selected' : ''}" data-id="${fig.id}">
+                <div class="figurine-name">${escapeHtml(fig.name)}</div>
+                <div class="figurine-meta">
+                    <span>🏭 ${escapeHtml(fig.manufacturer)}</span>
+                    <span>📏 ${fig.scale}</span>
+                    <span class="status-badge status-${fig.status}">
+                        ${fig.status === 'inprogress' ? '⏳ В работе' : fig.status === 'draft' ? '📝 Черновик' : '✅ Готово'}
+                    </span>
+                </div>
+                <div class="figurine-meta" style="margin-top: 4px;">
+                    <span>📅 ${fig.createdAt}</span>
+                </div>
+            </div>
+        `).join("");
+        
+        // Обработчики кликов
+        document.querySelectorAll(".figurine-item").forEach(el => {
+            el.addEventListener("click", () => {
+                const id = el.dataset.id;
+                if (id && id !== selectedId) {
+                    if (currentMode === "edit") {
+                        syncEditorToFigure();
+                    }
+                    selectedId = id;
+                    loadEditorContent();
+                    renderFigurinesList();
+                }
+            });
+        });
+    }
+
+    function escapeHtml(str) {
+        return str.replace(/[&<>]/g, m => {
+            if (m === '&') return '&amp;';
+            if (m === '<') return '&lt;';
+            if (m === '>') return '&gt;';
+            return m;
+        });
+    }
+
+    function createNewFigurine() {
+        const newId = "fig_" + Date.now();
+        const newFig = {
+            id: newId,
+            name: "Новая фигурка",
+            manufacturer: "Unknown",
+            scale: "28mm",
+            status: "draft",
+            createdAt: new Date().toLocaleDateString(),
+            article: `# Новая фигурка\n\n## Этапы покраски\n\n### 1. Грунтовка\n- \n\n### 2. Базовые цвета\n- \n\n### 3. Тени\n- \n\n### 4. Хайлайты\n- \n\n> Добавьте свои заметки здесь...`
+        };
+        figurines.push(newFig);
+        saveToLocalStorage();
+        selectedId = newId;
+        loadEditorContent();
+        renderFigurinesList();
+        // Переключаемся в режим редактирования
+        if (currentMode !== "edit") {
+            switchMode("edit");
+        }
+    }
+
+    function deleteFigurine(id) {
+        if (confirm("Удалить фигурку и все записи о покраске?")) {
+            const index = figurines.findIndex(f => f.id === id);
+            if (index !== -1) {
+                figurines.splice(index, 1);
+                saveToLocalStorage();
+                if (figurines.length > 0) {
+                    selectedId = figurines[0].id;
+                } else {
+                    // Создаём фигурку по умолчанию
+                    createNewFigurine();
+                }
+                loadEditorContent();
+                renderFigurinesList();
+            }
+        }
+    }
+
+    // ========== ИНИЦИАЛИЗАЦИЯ ==========
+    function init() {
+        loadFromLocalStorage();
+        
+        if (figurines.length === 0) {
+            figurines = [{
+                id: "default",
+                name: "Пример",
+                manufacturer: "Games Workshop",
+                scale: "28mm",
+                status: "draft",
+                createdAt: new Date().toLocaleDateString(),
+                article: `# Добро пожаловать!
+
+## Это ваш дневник покраски
+
+**Obsidian-стиль** редактор позволяет:
+- Писать этапы в Markdown
+- Видеть результат в режиме просмотра
+- Хранить все статьи локально
+
+### Попробуйте:
+1. Напишите **жирный текст**
+2. Добавьте *курсив*
+3. Создайте список:
+- Пункт 1
+- Пункт 2
+
+> Сохраняется автоматически!`
+            }];
+            selectedId = figurines[0].id;
+        } else {
+            selectedId = figurines[0].id;
+        }
+        
+        loadEditorContent();
+        renderFigurinesList();
+        
+        // Обработчики фильтров
+        document.querySelectorAll(".filter-btn").forEach(btn => {
+            btn.addEventListener("click", () => {
+                currentFilter = btn.dataset.status;
+                document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
+                btn.classList.add("active");
+                renderFigurinesList();
+            });
+        });
+        
+        // Новая фигурка
+        document.getElementById("newFigurineBtn").addEventListener("click", createNewFigurine);
+        
+        // Сохранение
+        document.getElementById("saveBtn").addEventListener("click", () => {
+            if (currentMode === "edit") {
+                syncEditorToFigure();
+            }
+            const btn = document.getElementById("saveBtn");
+            const originalText = btn.textContent;
+            btn.textContent = "✓ Сохранено!";
+            setTimeout(() => {
+                btn.textContent = originalText;
+            }, 1500);
+        });
+        
+        // Переключение режимов
+        document.querySelectorAll(".mode-btn").forEach(btn => {
+            btn.addEventListener("click", () => {
+                switchMode(btn.dataset.mode);
+            });
+        });
+        
+        // Ctrl+S / Cmd+S
+        document.addEventListener("keydown", (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                e.preventDefault();
+                if (currentMode === "edit") {
+                    syncEditorToFigure();
+                }
+                const btn = document.getElementById("saveBtn");
+                const originalText = btn.textContent;
+                btn.textContent = "✓ Сохранено!";
+                setTimeout(() => {
+                    btn.textContent = originalText;
+                }, 1500);
+            }
+        });
+        
+        // Автосохранение при вводе
+        const editor = document.getElementById("markdownEditor");
+        editor.addEventListener("input", () => {
+            syncEditorToFigure();
+        });
+        
+        // Ctrl+E для переключения режимов
+        document.addEventListener("keydown", (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'e') {
+                e.preventDefault();
+                switchMode(currentMode === "edit" ? "preview" : "edit");
+            }
+        });
+    }
+    
+    init();
+</script>
+</body>
+</html>
