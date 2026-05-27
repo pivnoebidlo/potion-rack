@@ -1,13 +1,19 @@
 import { defineConfig } from 'vite';
 import path from 'path';
+import tailwindcss from '@tailwindcss/vite';
+import react from '@vitejs/plugin-react';
 
 export default defineConfig({
+    plugins: [
+        tailwindcss(),
+        react(),
+    ],
     root: path.resolve(__dirname, 'src/renderer'),
     build: {
         outDir: path.resolve(__dirname, 'dist/renderer'),
         emptyOutDir: true,
         rollupOptions: {
-            input: path.resolve(__dirname, 'src/renderer/index.ts'),
+            input: path.resolve(__dirname, 'src/renderer/index.tsx'),
             output: {
                 format: 'es',
                 entryFileNames: 'index.js',
@@ -22,6 +28,8 @@ export default defineConfig({
     },
     optimizeDeps: {
         include: [
+            'react',
+            'react-dom',
             'codemirror',
             '@codemirror/state',
             '@codemirror/view',

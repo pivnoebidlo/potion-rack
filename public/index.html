@@ -16,12 +16,6 @@
         <div class="nav-item" data-tab="settings" title="Settings">⚙️</div>
     </div>
 
-    <!-- Figures Sidebar (visible only on figures tab) -->
-    <div id="figures-sidebar" class="figures-sidebar" style="display: none;">
-        <button id="collapseLeftPanelBtn" class="collapse-btn" title="Toggle panel">◀</button>
-        <div id="figures-grid-container" class="figures-grid-container"></div>
-    </div>
-
     <!-- Main content -->
     <div class="main-container">
         <!-- Paints View -->
@@ -77,15 +71,8 @@
             </div>
         </div>
 
-        <!-- Figures Editor View -->
-        <div id="figures-editor-view" class="view" style="display: none;">
-            <div id="figure-details-container"></div>
-            <div class="editor-toolbar">
-                <button id="togglePreviewBtn" class="primary">👁 Preview</button>
-                <button id="saveFigureContentBtn" class="primary">💾 Save</button>
-            </div>
-            <div id="figure-editor-container" class="figure-editor-container"></div>
-        </div>
+        <!-- Figures App (React) -->
+        <div id="figures-app-root" style="display: none;"></div>
 
         <!-- Settings View -->
         <div id="settings-view" class="view">
