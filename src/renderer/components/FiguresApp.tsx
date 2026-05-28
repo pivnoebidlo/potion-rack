@@ -6,24 +6,15 @@ import { languages } from '@codemirror/language-data';
 import { oneDark } from '@codemirror/theme-one-dark';
 import { EditorView } from '@codemirror/view';
 import { marked } from 'marked';
+import styles from './FiguresApp.module.css';
 
 function FigureCard({ figure, selected, onClick }: { figure: Figure; selected: boolean; onClick: () => void }) {
     return (
         <div
             onClick={onClick}
-            className={`p-3 rounded-lg border cursor-pointer transition ${
-                selected ? 'border-blue-500 bg-blue-900/40' : 'border-gray-700 hover:border-gray-500 bg-gray-800'
-            }`}
+            className={`${styles.card} ${selected ? styles.cardSelected : styles.cardDefault}`}
         >
-            <div className="font-medium text-sm">{figure.name}</div>
-            <div className="flex items-center gap-2 mt-1">
-                <span className={`text-xs px-2 py-0.5 rounded-full ${
-                    figure.status === 'completed' ? 'bg-green-900 text-green-300' :
-                        figure.status === 'in-progress' ? 'bg-blue-900 text-blue-300' :
-                            'bg-yellow-900 text-yellow-300'
-                }`}>{figure.status}</span>
-                {figure.manufacturer && <span className="text-xs text-gray-500">{figure.manufacturer}</span>}
-            </div>
+            {figure.name}
         </div>
     );
 }
@@ -32,18 +23,20 @@ function MarkdownEditor({ content, onChange, onSave }: { content: string; onChan
     const [preview, setPreview] = useState(false);
 
     return (
-        <div className="flex flex-col h-full">
-            <div className="flex gap-2 mb-3">
-                <button onClick={() => setPreview(!preview)} className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 rounded text-sm">
+        <div className={styles.editorRoot}>
+            <div className={styles.editorToolbar}>
+                <button onClick={() => setPreview(!preview)} className={styles.editorBtn}>
                     {preview ? '✏️ Edit' : '👁 Preview'}
                 </button>
-                <button onClick={onSave} className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 rounded text-sm">💾 Save</button>
+                <button onClick={onSave} className={`${styles.editorBtn} ${styles.editorBtnPrimary}`}>
+                    💾 Save
+                </button>
             </div>
             {preview ? (
-                <div className="flex-1 p-4 overflow-y-auto bg-gray-800 rounded-lg border border-gray-700 text-gray-200"
+                <div className={styles.previewPane}
                      dangerouslySetInnerHTML={{ __html: marked.parse(content) as string }} />
             ) : (
-                <div className="flex-1 border border-gray-700 rounded-lg overflow-hidden">
+                <div className={styles.editorPane}>
                     <CodeMirror
                         value={content}
                         onChange={onChange}
@@ -97,87 +90,95 @@ export default function FiguresApp() {
         await loadFigures();
     };
 
+    const panelWidth = leftPanelCollapsed ? 40 : 256;
+
     return (
-        <div className="flex h-full w-full bg-gray-900 text-white">
+        <div className={styles.root}>
+            <a href="index.html" className={styles.backBtn}>🎨 Paints</a>
+
             {/* Левая панель */}
             <div
-                className="relative border-r border-gray-700 bg-gray-900 transition-all duration-300"
-                style={{ width: leftPanelCollapsed ? 40 : 256 }}
+                className={styles.leftPanel}
+                style={{
+                    width: panelWidth,
+                    minWidth: panelWidth,
+                    maxWidth: panelWidth,
+                }}
             >
-                {/* Кнопка сворачивания */}
                 <button
                     onClick={() => setLeftPanelCollapsed(!leftPanelCollapsed)}
-                    className="absolute top-2 right-2 z-10 px-1.5 py-1 bg-gray-700 hover:bg-gray-600 rounded text-xs text-gray-400 transition"
-                    title={leftPanelCollapsed ? 'Show panel' : 'Hide panel'}
+                    className={styles.collapseBtn}
+                    style={{ top: 8, left: panelWidth === 40 ? 4 : 228 }}
                 >
                     {leftPanelCollapsed ? '▶' : '◀'}
                 </button>
 
-                {/* Содержимое панели */}
-                <div className="flex flex-col h-full" style={{ display: leftPanelCollapsed ? 'none' : 'flex' }}>
-                    <div className="p-3 space-y-2 border-b border-gray-700">
-                        <input type="text" placeholder="Search..." value={search} onChange={e => setSearch(e.target.value)}
-                               className="w-full px-3 py-1.5 bg-gray-700 border border-gray-600 rounded text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500" />
-                        <div className="flex gap-2">
-                            <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
-                                    className="flex-1 px-2 py-1.5 bg-gray-700 border border-gray-600 rounded text-sm text-white">
-                                <option value="all">All</option>
-                                <option value="draft">Draft</option>
-                                <option value="in-progress">In Progress</option>
-                                <option value="completed">Completed</option>
-                            </select>
-                            <button onClick={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')}
-                                    className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 rounded text-sm">
-                                {viewMode === 'grid' ? '☰' : '⊞'}
-                            </button>
-                        </div>
+                <div className={styles.searchBox}>
+                    <input
+                        type="text" placeholder="Search..." value={search}
+                        onChange={e => setSearch(e.target.value)}
+                        className={styles.searchInput}
+                    />
+                    <div className={styles.filterRow}>
+                        <select
+                            value={statusFilter}
+                            onChange={e => setStatusFilter(e.target.value)}
+                            className={styles.filterSelect}
+                        >
+                            <option value="all">All</option>
+                            <option value="draft">Draft</option>
+                            <option value="in-progress">In Progress</option>
+                            <option value="completed">Completed</option>
+                        </select>
+                        <button
+                            onClick={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')}
+                            className={styles.viewToggleBtn}
+                        >
+                            {viewMode === 'grid' ? '☰' : '⊞'}
+                        </button>
                     </div>
-                    <div className="flex-1 overflow-y-auto p-2 space-y-2">
-                        {viewMode === 'grid' ? (
-                            filtered.map(f => (
-                                <FigureCard key={f.id} figure={f} selected={selectedId === f.id} onClick={() => setSelectedId(f.id)} />
-                            ))
-                        ) : (
-                            filtered.map(f => (
-                                <div key={f.id} onClick={() => setSelectedId(f.id)}
-                                     className={`p-2 rounded cursor-pointer text-sm ${selectedId === f.id ? 'bg-blue-600' : 'hover:bg-gray-700'}`}>
-                                    {f.name}
-                                </div>
-                            ))
-                        )}
-                        {filtered.length === 0 && <div className="text-gray-500 text-sm text-center py-8">No figures yet</div>}
-                    </div>
+                </div>
+
+                <div className={styles.figureList}>
+                    {viewMode === 'grid' ? (
+                        filtered.map(f => (
+                            <FigureCard key={f.id} figure={f} selected={selectedId === f.id} onClick={() => setSelectedId(f.id)} />
+                        ))
+                    ) : (
+                        filtered.map(f => (
+                            <div
+                                key={f.id}
+                                onClick={() => setSelectedId(f.id)}
+                                className={`${styles.listItem} ${selectedId === f.id ? styles.listItemSelected : ''}`}
+                            >
+                                {f.name}
+                            </div>
+                        ))
+                    )}
+                    {filtered.length === 0 && (
+                        <div className={styles.emptyState}>No figures yet</div>
+                    )}
                 </div>
             </div>
 
             {/* Центральная панель */}
-            <div className="flex-1 flex flex-col overflow-hidden">
+            <div className={styles.centerPanel}>
                 {selected ? (
-                    <div className="flex flex-col h-full">
-                        <div className="p-4 bg-gray-800 border-b border-gray-700">
-                            <div className="flex justify-between items-start">
-                                <div>
-                                    <h2 className="text-lg font-bold">{selected.name}</h2>
-                                    <div className="flex gap-3 mt-1 text-sm text-gray-400">
-                                        <span>{selected.status}</span>
-                                        {selected.manufacturer && <span>🏭 {selected.manufacturer}</span>}
-                                        {selected.scale && <span>📏 {selected.scale}</span>}
-                                    </div>
-                                </div>
-                                <div className="flex gap-2">
-                                    <button onClick={async () => { if (confirm('Delete?')) { await deleteFigureAPI(selected.id); setSelectedId(null); await loadFigures(); } }}
-                                            className="px-3 py-1.5 bg-red-600 hover:bg-red-700 rounded text-sm">🗑</button>
-                                </div>
+                    <>
+                        <div className={styles.centerHeader}>
+                            <div className={styles.centerTitle}>{selected.name}</div>
+                            <div className={styles.centerMeta}>
+                                <span>{selected.status}</span>
+                                {selected.manufacturer && <span>🏭 {selected.manufacturer}</span>}
+                                {selected.scale && <span>📏 {selected.scale}</span>}
                             </div>
                         </div>
-                        <div className="flex-1 p-4 overflow-hidden">
+                        <div className={styles.centerEditor}>
                             <MarkdownEditor content={editorContent} onChange={setEditorContent} onSave={handleSave} />
                         </div>
-                    </div>
+                    </>
                 ) : (
-                    <div className="flex-1 flex items-center justify-center text-gray-500">
-                        Select a figure to start writing
-                    </div>
+                    <div className={styles.centerEmpty}>Select a figure to start writing</div>
                 )}
             </div>
         </div>

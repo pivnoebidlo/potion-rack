@@ -1,11 +1,11 @@
 import { defineConfig } from 'vite';
 import path from 'path';
-import tailwindcss from '@tailwindcss/vite';
+// import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 
 export default defineConfig({
     plugins: [
-        tailwindcss(),
+        // tailwindcss(),
         react(),
     ],
     root: path.resolve(__dirname, 'src/renderer'),
@@ -13,10 +13,13 @@ export default defineConfig({
         outDir: path.resolve(__dirname, 'dist/renderer'),
         emptyOutDir: true,
         rollupOptions: {
-            input: path.resolve(__dirname, 'src/renderer/index.tsx'),
+            input: {
+                index: path.resolve(__dirname, 'src/renderer/index.tsx'),
+                figures: path.resolve(__dirname, 'src/renderer/figures-main.tsx'),
+            },
             output: {
                 format: 'es',
-                entryFileNames: 'index.js',
+                entryFileNames: '[name].js',
             },
         },
     },

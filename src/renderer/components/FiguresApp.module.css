@@ -1,0 +1,227 @@
+/* Корневой контейнер */
+.root {
+    display: flex;
+    height: 100vh;
+    width: 100%;
+    background: #111827;
+    color: #e0e0e0;
+}
+
+/* Кнопка возврата */
+.backBtn {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    z-index: 20;
+    padding: 4px 8px;
+    background: #555;
+    color: #fff;
+    border-radius: 4px;
+    text-decoration: none;
+    font-size: 12px;
+}
+.backBtn:hover {
+    background: #666;
+}
+
+/* Левая панель */
+.leftPanel {
+    display: flex;
+    flex-direction: column;
+    background: #1a1a2e;
+    border-right: 1px solid #333;
+    transition: width 0.3s;
+    overflow: hidden;
+}
+
+/* Кнопка сворачивания */
+.collapseBtn {
+    position: absolute;
+    z-index: 10;
+    padding: 2px 6px;
+    background: #555;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+}
+.collapseBtn:hover {
+    background: #666;
+}
+
+/* Поиск и фильтры */
+.searchBox {
+    padding: 12px;
+    border-bottom: 1px solid #333;
+    margin-top: 32px;
+}
+.searchInput {
+    width: 100%;
+    padding: 6px;
+    background: #333;
+    border: 1px solid #555;
+    color: #fff;
+    border-radius: 4px;
+    font-size: 13px;
+    box-sizing: border-box;
+}
+.searchInput:focus {
+    outline: none;
+    border-color: #3b82f6;
+}
+.searchInput::placeholder {
+    color: #888;
+}
+.filterRow {
+    display: flex;
+    gap: 4px;
+    margin-top: 8px;
+}
+.filterSelect {
+    flex: 1;
+    padding: 6px;
+    background: #333;
+    border: 1px solid #555;
+    color: #fff;
+    border-radius: 4px;
+    font-size: 13px;
+}
+.filterSelect:focus {
+    outline: none;
+}
+.viewToggleBtn {
+    padding: 6px 10px;
+    background: #555;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+.viewToggleBtn:hover {
+    background: #666;
+}
+
+/* Список фигурок */
+.figureList {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px;
+}
+.emptyState {
+    color: #666;
+    text-align: center;
+    padding: 32px;
+    font-size: 13px;
+}
+
+/* Карточка фигурки */
+.card {
+    padding: 10px;
+    margin-bottom: 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    color: #e0e0e0;
+    border: 1px solid transparent;
+}
+.cardDefault {
+    background: #2a2a4a;
+}
+.cardSelected {
+    background: #1e3a5f;
+    border-color: #3b82f6;
+}
+.listItem {
+    padding: 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 13px;
+    color: #e0e0e0;
+}
+.listItemSelected {
+    background: #3b82f6;
+}
+
+/* Центральная панель */
+.centerPanel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: #111827;
+    min-width: 0;
+}
+.centerHeader {
+    padding: 16px;
+    background: #1e1e3a;
+    border-bottom: 1px solid #333;
+}
+.centerTitle {
+    font-weight: bold;
+    font-size: 18px;
+    color: #e0e0e0;
+}
+.centerMeta {
+    display: flex;
+    gap: 12px;
+    margin-top: 4px;
+    font-size: 13px;
+    color: #999;
+}
+.centerEditor {
+    flex: 1;
+    padding: 16px;
+    overflow: hidden;
+}
+.centerEmpty {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #666;
+}
+
+/* Markdown Editor */
+.editorRoot {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+.editorToolbar {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+.editorBtn {
+    padding: 6px 12px;
+    background: #555;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 13px;
+}
+.editorBtn:hover {
+    background: #666;
+}
+.editorBtnPrimary {
+    background: #3b82f6;
+}
+.editorBtnPrimary:hover {
+    background: #2563eb;
+}
+.previewPane {
+    flex: 1;
+    padding: 16px;
+    overflow-y: auto;
+    background: #1e1e2e;
+    border-radius: 8px;
+    border: 1px solid #333;
+    color: #e0e0e0;
+}
+.editorPane {
+    flex: 1;
+    border: 1px solid #333;
+    border-radius: 8px;
+    overflow: hidden;
+}
