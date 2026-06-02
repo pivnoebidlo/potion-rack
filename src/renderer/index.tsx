@@ -35,7 +35,11 @@ function setupNavigation(): void {
             item.classList.add('active');
 
             if (tab === 'figures') {
-                window.location.href = 'figures.html';
+                if ((window as any).electronAPI?.navigate) {
+                    (window as any).electronAPI.navigate('figures');
+                } else {
+                    window.location.href = 'figures.html';
+                }
                 return;
             }
 
