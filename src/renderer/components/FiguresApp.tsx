@@ -1,4 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import { ViewPlugin, ViewUpdate, Decoration, DecorationSet, WidgetType } from '@codemirror/view';
+import { useMemo } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { fetchFigures, updateFigureAPI, deleteFigureAPI, createFigureAPI, Figure } from '../services/apiFigures';
 import CodeMirror from '@uiw/react-codemirror';
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
@@ -23,11 +25,201 @@ function FigureCard({ figure, selected, onClick, onDoubleClick }: {
     );
 }
 
+// Виджет для отображения превью изображения в редакторе
+class ImagePreviewWidget extends WidgetType {
+    constructor(readonly base64: string, readonly alt: string, readonly from: number, readonly to: number, readonly view: EditorView) {
+        super();
+    }
+    toDOM() {
+        const container = document.createElement('span');
+        container.style.display = 'inline-block';
+        container.style.margin = '4px 0';
+        container.style.verticalAlign = 'middle';
+        container.style.position = 'relative';
+
+        const img = document.createElement('img');
+        img.src = this.base64;
+        img.alt = this.alt;
+        img.style.maxWidth = '200px';
+        img.style.maxHeight = '200px';
+        img.style.borderRadius = '6px';
+        img.style.display = 'block';
+        img.style.objectFit = 'cover';
+
+        // Кнопка удаления
+        const deleteBtn = document.createElement('button');
+        deleteBtn.textContent = '✕';
+        deleteBtn.style.position = 'absolute';
+        deleteBtn.style.top = '4px';
+        deleteBtn.style.right = '4px';
+        deleteBtn.style.background = 'rgba(0,0,0,0.6)';
+        deleteBtn.style.color = '#fff';
+        deleteBtn.style.border = 'none';
+        deleteBtn.style.borderRadius = '50%';
+        deleteBtn.style.width = '20px';
+        deleteBtn.style.height = '20px';
+        deleteBtn.style.fontSize = '12px';
+        deleteBtn.style.cursor = 'pointer';
+        deleteBtn.style.display = 'none';
+
+        container.addEventListener('mouseenter', () => { deleteBtn.style.display = 'block'; });
+        container.addEventListener('mouseleave', () => { deleteBtn.style.display = 'none'; });
+        deleteBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.view.dispatch({
+                changes: { from: this.from, to: this.to }
+            });
+        });
+
+        container.appendChild(img);
+        container.appendChild(deleteBtn);
+        return container;
+    }
+}
+
+
 function MarkdownEditor({ content, onChange, onSave }: { content: string; onChange: (v: string) => void; onSave: () => void }) {
     const [preview, setPreview] = useState(false);
+    const editorContainerRef = useRef<HTMLDivElement>(null);
+    const editorViewRef = useRef<EditorView | null>(null);
+
+    // Плагин для отображения миниатюр
+    const imagePreviewPlugin = useMemo(() => {
+        return ViewPlugin.fromClass(
+            class {
+                decorations: DecorationSet;
+                constructor(readonly view: EditorView) {
+                    this.decorations = this.buildDecorations(view);
+                }
+                update(update: ViewUpdate) {
+                    if (update.docChanged || update.viewportChanged) {
+                        this.decorations = this.buildDecorations(update.view);
+                    }
+                }
+                buildDecorations(view: EditorView) {
+                    const widgets: { from: number; to: number; value: Decoration }[] = [];
+                    const doc = view.state.doc.toString();
+                    const regex = /!\[([^\]]*)\]\((data:image\/[^;]+;base64,[^)]+)\)/g;
+                    let match;
+                    while ((match = regex.exec(doc)) !== null) {
+                        const from = match.index;
+                        const to = from + match[0].length;
+                        const base64 = match[2];
+                        const widget = Decoration.replace({
+                            widget: new ImagePreviewWidget(base64, match[1], from, to, view),
+                        });
+                        widgets.push({ from, to, value: widget });
+                    }
+                    return Decoration.set(widgets);
+                }
+            },
+            { decorations: v => v.decorations }
+        );
+    }, []);
+
+    // Обработчик Backspace для удаления изображений
+    useEffect(() => {
+        const container = editorContainerRef.current;
+        if (!container) return;
+
+        const handleKeyDown = (e: KeyboardEvent) => {
+            const view = editorViewRef.current;
+            if (!view || !view.hasFocus) return;
+
+            if (e.key === 'Backspace') {
+                const { from, to } = view.state.selection.main;
+                if (from !== to) return;
+
+                const doc = view.state.doc.toString();
+                const beforeCursor = doc.substring(0, from);
+                console.log('beforeCursor:', JSON.stringify(beforeCursor.slice(-50))); // последние 50 символов
+                console.log('from:', from);
+
+                const regex = /!\[([^\]]*)\]\((data:image\/[^;]+;base64,[^)]+)\)/;
+                const match = regex.exec(beforeCursor);
+                console.log('match:', match);
+                if (match && (match.index + match[0].length === from)) {
+                    console.log('SHOULD DELETE');
+                    e.preventDefault();
+                    view.dispatch({
+                        changes: { from: match.index, to: from }
+                    });
+                }
+            }
+        };
+
+        container.addEventListener('keydown', handleKeyDown);
+        return () => container.removeEventListener('keydown', handleKeyDown);
+    }, []);
+
+    // Вставка изображений
+    useEffect(() => {
+        const container = editorContainerRef.current;
+        if (!container) return;
+
+        const handlePaste = async (e: ClipboardEvent) => {
+            const view = editorViewRef.current;
+            if (!view || !view.hasFocus) return;
+
+            const items = e.clipboardData?.items;
+            if (!items) return;
+
+            for (const item of Array.from(items)) {
+                if (item.type.startsWith('image/')) {
+                    e.preventDefault();
+                    const file = item.getAsFile();
+                    if (file) {
+                        try {
+                            const compressed = await compressImage(file, 240, 240, 0.7);
+                            const imageMarkdown = `![${file.name}](${compressed})`;
+
+                            // Вставляем в позицию курсора
+                            const { from } = view.state.selection.main;
+                            view.dispatch({
+                                changes: { from, insert: imageMarkdown + '\n' }
+                            });
+
+                            // Обновляем состояние через onChange
+                            onChange(view.state.doc.toString());
+                        } catch (err) {
+                            console.error('Failed to insert image:', err);
+                        }
+                    }
+                    return;
+                }
+            }
+        };
+
+        container.addEventListener('paste', handlePaste);
+        return () => container.removeEventListener('paste', handlePaste);
+    }, [onChange]);
+
+    // Сжатие изображения
+    const compressImage = (file: File, maxWidth: number, maxHeight: number, quality: number): Promise<string> => {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const scale = Math.min(maxWidth / img.width, maxHeight / img.height, 1);
+                    canvas.width = Math.round(img.width * scale);
+                    canvas.height = Math.round(img.height * scale);
+                    const ctx = canvas.getContext('2d');
+                    if (!ctx) { reject(new Error('Canvas not available')); return; }
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    resolve(canvas.toDataURL('image/jpeg', quality));
+                };
+                img.onerror = reject;
+                img.src = reader.result as string;
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
+    };
 
     return (
-        <div className={styles.editorRoot}>
+        <div className={styles.editorRoot} ref={editorContainerRef}>
             <div className={styles.editorToolbar}>
                 <button onClick={() => setPreview(!preview)} className={styles.editorBtn}>
                     {preview ? '✏️ Edit' : '👁 Preview'}
@@ -44,10 +236,14 @@ function MarkdownEditor({ content, onChange, onSave }: { content: string; onChan
                     <CodeMirror
                         value={content}
                         onChange={onChange}
+                        onCreateEditor={(view) => {
+                            editorViewRef.current = view;
+                        }}
                         extensions={[
                             markdown({ base: markdownLanguage, codeLanguages: languages }),
                             oneDark,
                             EditorView.lineWrapping,
+                            imagePreviewPlugin,
                             EditorView.theme({
                                 '.cm-gutters': { display: 'none' },
                                 '.cm-activeLineGutter': { display: 'none' },
