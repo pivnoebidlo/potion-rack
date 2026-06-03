@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Potion Rack</title>
-    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/theme.css">
+    <link rel="stylesheet" href="css/main.css">
 </head>
 <body>
 <div class="app-container">
@@ -15,11 +16,8 @@
         <div class="nav-item" data-tab="settings" title="Settings">⚙️</div>
     </div>
 
-    <!-- Figures Sidebar (visible only on figures tab) -->
-    <div id="figures-sidebar" class="figures-sidebar" style="display: none;">
-        <button id="collapseLeftPanelBtn" class="collapse-btn" title="Toggle panel">◀</button>
-        <div id="figures-grid-container" class="figures-grid-container"></div>
-    </div>
+    <!-- Figures App (React) -->
+    <div id="figures-app-root" style="display: none;"></div>
 
     <!-- Main content -->
     <div class="main-container">
@@ -70,19 +68,10 @@
                     </tr>
                     </thead>
                     <tbody id="tableBody">
-                    <tr><td colspan="9" class="loading">Loading...<\/td><\/tr>
+                    <tr><td colspan="9" class="loading">Loading...</td></tr>
                     </tbody>
                 </table>
             </div>
-        </div>
-
-        <!-- Figures Editor View -->
-        <div id="figures-editor-view" class="view" style="display: none;">
-            <div class="editor-toolbar">
-                <button id="togglePreviewBtn" class="primary">👁 Preview</button>
-                <button id="saveFigureContentBtn" class="primary">💾 Save</button>
-            </div>
-            <div id="figure-editor-container" class="figure-editor-container"></div>
         </div>
 
         <!-- Settings View -->

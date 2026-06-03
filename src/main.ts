@@ -2,17 +2,14 @@ import { app, BrowserWindow, Menu, dialog, ipcMain } from 'electron';
 import path from 'path';
 import fs from 'fs';
 import { startServer } from './server';
-//import { version } from '../package.json';
 const packageJson = require('../package.json');
 const version = packageJson.version;
 
 let mainWindow: BrowserWindow | null = null;
 let serverStarted = false;
 
-// Logging setup
 const logPath = path.join(app.getPath('userData'), 'logs', `app-${new Date().toISOString().split('T')[0]}.log`);
 
-// Ensure log directory exists
 try {
     fs.mkdirSync(path.dirname(logPath), { recursive: true });
 } catch (err) {
@@ -29,10 +26,8 @@ function writeLog(level: string, message: string): void {
     }
 }
 
-// Dialog handlers for backup
 ipcMain.handle('dialog:showSaveDialog', async (event, options) => {
     if (!mainWindow) return { canceled: true, filePath: null };
-
     const result = await dialog.showSaveDialog(mainWindow, {
         title: options.title || 'Save Backup',
         defaultPath: options.defaultPath || `potion-rack-backup-${new Date().toISOString().split('T')[0]}.prbackup`,
@@ -40,13 +35,11 @@ ipcMain.handle('dialog:showSaveDialog', async (event, options) => {
             { name: 'Potion Rack Backup', extensions: ['prbackup', 'json'] }
         ]
     });
-
     return { canceled: result.canceled, filePath: result.filePath };
 });
 
 ipcMain.handle('dialog:showOpenDialog', async (event, options) => {
     if (!mainWindow) return { canceled: true, filePaths: [] };
-
     const result = await dialog.showOpenDialog(mainWindow, {
         title: options.title || 'Open Backup',
         filters: options.filters || [
@@ -54,7 +47,6 @@ ipcMain.handle('dialog:showOpenDialog', async (event, options) => {
         ],
         properties: ['openFile']
     });
-
     return { canceled: result.canceled, filePaths: result.filePaths };
 });
 
@@ -76,12 +68,21 @@ ipcMain.handle('file:read', async (event, filePath: string) => {
     }
 });
 
-// IPC handler for app version
 ipcMain.handle('get-app-version', () => {
     return version;
 });
 
-// Window controls
+// Навигация между страницами
+ipcMain.handle('navigate', (event, page: string) => {
+    if (mainWindow) {
+        if (page === 'figures') {
+            mainWindow.loadFile(path.join(__dirname, '../dist/renderer/figures.html'));
+        } else if (page === 'paints') {
+            mainWindow.loadFile(path.join(__dirname, '../public/index.html'));
+        }
+    }
+});
+
 ipcMain.on('window-minimize', () => {
     if (mainWindow) mainWindow.minimize();
 });
@@ -113,7 +114,6 @@ function createWindow() {
 
     mainWindow.loadFile(path.join(__dirname, '../public/index.html'));
 
-    // Open DevTools only in development
     if (!app.isPackaged) {
         mainWindow.webContents.openDevTools();
     }
@@ -123,7 +123,6 @@ function createWindow() {
     });
 }
 
-// App lifecycle
 app.whenReady().then(() => {
     startServer();
     serverStarted = true;
@@ -147,7 +146,6 @@ app.on('before-quit', () => {
     console.log('Potion Rack is shutting down...');
 });
 
-// Handle uncaught errors
 process.on('uncaughtException', (error) => {
     console.error('Uncaught Exception:', error);
 });

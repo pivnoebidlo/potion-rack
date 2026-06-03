@@ -2,7 +2,8 @@
   "compilerOptions": {
     "target": "ES2020",
     "module": "ES2020",
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
     "lib": ["ES2020", "DOM"],
     "outDir": "./dist/renderer",
     "rootDir": "./src/renderer",
@@ -13,6 +14,6 @@
     "forceConsistentCasingInFileNames": true,
     "allowSyntheticDefaultImports": true
   },
-  "include": ["src/renderer/**/*.ts"],
+  "include": ["src/renderer/**/*.ts", "src/renderer/**/*.tsx"],
   "exclude": ["node_modules", "dist"]
 }
