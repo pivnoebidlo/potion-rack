@@ -16,10 +16,8 @@
     border: 1px solid var(--border);
     border-radius: var(--radius-xl);
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
-    min-width: 420px;
+    min-width: 450px;
     max-width: 520px;
-    max-height: 80vh;
-    overflow-y: auto;
 }
 
 .header {
@@ -86,6 +84,38 @@
     min-height: 80px;
 }
 
+.row {
+    display: flex;
+    gap: 12px;
+}
+.row .group {
+    flex: 1;
+}
+
+.stars {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    padding-top: 4px;
+}
+
+.star {
+    cursor: pointer;
+    font-size: 22px;
+    color: var(--star-inactive);
+    transition: color 0.1s;
+    background: none;
+    border: none;
+    padding: 0;
+    line-height: 1;
+}
+.starActive {
+    color: var(--star-active);
+}
+.star:hover {
+    color: var(--star-active);
+}
+
 .footer {
     display: flex;
     justify-content: flex-end;
@@ -101,7 +131,6 @@
     font-size: var(--font-size-sm);
     font-weight: 600;
     cursor: pointer;
-    transition: background 0.2s;
 }
 .btnCancel {
     background: var(--bg-hover);
@@ -114,3 +143,7 @@
     color: #fff;
 }
 .btnSave:hover { background: var(--accent-hover); }
+.btnSave:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}

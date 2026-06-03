@@ -1,35 +1,26 @@
-import { en } from './locales/en.js';
-import { ru } from './locales/ru.js';
-import { Translations } from './locales/types.js';
+import en from './en';
+import ru from './ru';
 
-export type Language = 'en' | 'ru';
+const translations: Record<string, typeof en> = { en, ru };
+let currentLang: 'en' | 'ru' = 'en';
 
-class I18n {
-    private currentLanguage: Language = 'en';
-    private translations = { en, ru };
+// Загружаем сохранённый язык
+try {
+    const saved = localStorage.getItem('potion-rack-language');
+    if (saved === 'en' || saved === 'ru') currentLang = saved;
+} catch (e) {}
 
-    constructor() {
-        const saved = localStorage.getItem('potion-rack-language') as Language;
-        if (saved && this.translations[saved]) {
-            this.currentLanguage = saved;
-        }
-    }
-
-    t(): Translations {
-        return this.translations[this.currentLanguage];
-    }
-
-    getLanguage(): Language {
-        return this.currentLanguage;
-    }
-
-    setLanguage(lang: Language): void {
-        if (this.translations[lang]) {
-            this.currentLanguage = lang;
-            localStorage.setItem('potion-rack-language', lang);
-        }
-    }
+export function t() {
+    return translations[currentLang];
 }
 
-export const i18n = new I18n();
-export const t = () => i18n.t();
+export function setLanguage(lang: 'en' | 'ru') {
+    currentLang = lang;
+    try {
+        localStorage.setItem('potion-rack-language', lang);
+    } catch (e) {}
+}
+
+export function getLanguage() {
+    return currentLang;
+}
