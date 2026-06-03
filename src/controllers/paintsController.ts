@@ -12,7 +12,12 @@ export class PaintsController {
 
     getAll = (req: Request, res: Response): void => {
         try {
-            const rows = this.db.prepare(`SELECT * FROM paints ORDER BY brand, color_name`).all();
+            const rows = this.db.prepare(`
+                SELECT p.*, bc.name as base_color_name
+                FROM paints p
+                         LEFT JOIN base_colors bc ON p.base_color_id = bc.id
+                ORDER BY p.brand, p.color_name
+            `).all();
             res.json(rows);
         } catch (err) {
             console.error('GET /api/paints error:', err);

@@ -1,6 +1,6 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
-import FiguresApp from './components/FiguresApp';
+import PaintsApp from './components/PaintsApp';
 import './themes/base.css';
 import './themes/midnight.css';
 import './themes/light.css';
@@ -12,10 +12,10 @@ try {
     savedTheme = localStorage.getItem('potion-rack-theme');
 } catch (e) {}
 
-const root = createRoot(document.getElementById('figures-root')!);
+const root = createRoot(document.getElementById('paints-root')!);
 
 if (savedTheme) {
     document.documentElement.setAttribute('data-theme', savedTheme);
 }
 
-root.render(<FiguresApp />);
+root.render(<PaintsApp />);
