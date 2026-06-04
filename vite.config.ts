@@ -15,8 +15,9 @@ export default defineConfig({
         emptyOutDir: true,
         rollupOptions: {
             input: {
-                index: path.resolve(__dirname, 'src/renderer/index.tsx'),
                 figures: path.resolve(__dirname, 'src/renderer/figures.html'),
+                paints: path.resolve(__dirname, 'src/renderer/paints.html'),
+                settings: path.resolve(__dirname, 'src/renderer/settings.html'),
             },
             output: {
                 format: 'es',

@@ -1,0 +1,30 @@
+[data-theme="retro"] {
+    --bg-primary: #000080;
+    --bg-secondary: #000080;
+    --bg-tertiary: #000060;
+    --bg-input: #000080;
+    --bg-hover: #0000ff;
+    --text-primary: #c0c0c0;
+    --text-secondary: #a0a0a0;
+    --text-muted: #808080;
+    --border: #c0c0c0;
+    --border-light: #808080;
+    --accent: #ffff00;
+    --accent-hover: #ffff80;
+    --accent-light: rgba(255, 255, 0, 0.2);
+    --danger: #ff4444;
+    --danger-hover: #cc0000;
+    --font-sans: 'Courier New', 'Lucida Console', 'Consolas', monospace;
+    --font-mono: 'Courier New', 'Lucida Console', 'Consolas', monospace;
+    --font-size-xs: 11px;
+    --font-size-sm: 12px;
+    --font-size-md: 13px;
+    --font-size-lg: 14px;
+    --font-size-xl: 16px;
+    --radius-sm: 0px;
+    --radius-md: 0px;
+    --radius-lg: 0px;
+    --radius-xl: 0px;
+    --star-active: #ffff00;
+    --star-inactive: #666;
+}

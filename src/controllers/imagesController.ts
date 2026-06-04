@@ -11,11 +11,22 @@ export class ImagesController {
     getAll = (req: Request, res: Response): void => {
         try {
             const rows = this.db.prepare(`
-                SELECT id, paint_id, content_type, filename, is_primary, created_at, LENGTH(image_data) as size
+                SELECT id, paint_id, content_type, filename, is_primary, created_at, image_data
                 FROM paint_images WHERE paint_id = ?
                 ORDER BY is_primary DESC, created_at ASC
             `).all(req.params.id);
-            res.json(rows);
+
+            const result = (rows as any[]).map((row: any) => ({
+                id: row.id,
+                paint_id: row.paint_id,
+                content_type: row.content_type,
+                filename: row.filename,
+                is_primary: row.is_primary,
+                created_at: row.created_at,
+                image_data: row.image_data ? Buffer.from(row.image_data).toString('base64') : null,
+            }));
+
+            res.json(result);
         } catch (err) {
             console.error('GET /api/paints/:id/images error:', err);
             res.status(500).json({ error: (err as Error).message });

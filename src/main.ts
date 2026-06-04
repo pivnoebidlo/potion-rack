@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Menu, dialog, ipcMain } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron';
 import path from 'path';
 import fs from 'fs';
 import { startServer } from './server';
@@ -31,9 +31,7 @@ ipcMain.handle('dialog:showSaveDialog', async (event, options) => {
     const result = await dialog.showSaveDialog(mainWindow, {
         title: options.title || 'Save Backup',
         defaultPath: options.defaultPath || `potion-rack-backup-${new Date().toISOString().split('T')[0]}.prbackup`,
-        filters: options.filters || [
-            { name: 'Potion Rack Backup', extensions: ['prbackup', 'json'] }
-        ]
+        filters: options.filters || [{ name: 'Potion Rack Backup', extensions: ['prbackup', 'json'] }]
     });
     return { canceled: result.canceled, filePath: result.filePath };
 });
@@ -42,69 +40,45 @@ ipcMain.handle('dialog:showOpenDialog', async (event, options) => {
     if (!mainWindow) return { canceled: true, filePaths: [] };
     const result = await dialog.showOpenDialog(mainWindow, {
         title: options.title || 'Open Backup',
-        filters: options.filters || [
-            { name: 'Potion Rack Backup', extensions: ['prbackup', 'json'] }
-        ],
+        filters: options.filters || [{ name: 'Potion Rack Backup', extensions: ['prbackup', 'json'] }],
         properties: ['openFile']
     });
     return { canceled: result.canceled, filePaths: result.filePaths };
 });
 
 ipcMain.handle('file:save', async (event, filePath: string, data: string) => {
-    try {
-        fs.writeFileSync(filePath, data, 'utf8');
-        return { success: true };
-    } catch (error) {
-        return { success: false, error: (error as Error).message };
-    }
+    try { fs.writeFileSync(filePath, data, 'utf8'); return { success: true }; }
+    catch (error) { return { success: false, error: (error as Error).message }; }
 });
 
 ipcMain.handle('file:read', async (event, filePath: string) => {
-    try {
-        const data = fs.readFileSync(filePath, 'utf8');
-        return { success: true, data };
-    } catch (error) {
-        return { success: false, error: (error as Error).message };
-    }
+    try { const data = fs.readFileSync(filePath, 'utf8'); return { success: true, data }; }
+    catch (error) { return { success: false, error: (error as Error).message }; }
 });
 
-ipcMain.handle('get-app-version', () => {
-    return version;
-});
+ipcMain.handle('get-app-version', () => version);
 
-// Навигация между страницами
 ipcMain.handle('navigate', (event, page: string) => {
     if (mainWindow) {
         if (page === 'figures') {
             mainWindow.loadFile(path.join(__dirname, '../dist/renderer/figures.html'));
         } else if (page === 'paints') {
-            mainWindow.loadFile(path.join(__dirname, '../public/index.html'));
+            mainWindow.loadFile(path.join(__dirname, '../dist/renderer/paints.html'));
+        } else if (page === 'settings') {
+            mainWindow.loadFile(path.join(__dirname, '../dist/renderer/settings.html'));
         }
     }
 });
 
-ipcMain.on('window-minimize', () => {
-    if (mainWindow) mainWindow.minimize();
-});
-
+ipcMain.on('window-minimize', () => { if (mainWindow) mainWindow.minimize(); });
 ipcMain.on('window-maximize', () => {
-    if (mainWindow) {
-        if (mainWindow.isMaximized()) {
-            mainWindow.unmaximize();
-        } else {
-            mainWindow.maximize();
-        }
-    }
+    if (mainWindow) { if (mainWindow.isMaximized()) mainWindow.unmaximize(); else mainWindow.maximize(); }
 });
-
-ipcMain.on('window-close', () => {
-    if (mainWindow) mainWindow.close();
-});
+ipcMain.on('window-close', () => { if (mainWindow) mainWindow.close(); });
 
 function createWindow() {
     mainWindow = new BrowserWindow({
-        width: 1400,
-        height: 900,
+        width: 1400, height: 900,
         webPreferences: {
             nodeIntegration: false,
             contextIsolation: true,
@@ -112,54 +86,23 @@ function createWindow() {
         }
     });
 
-    mainWindow.loadFile(path.join(__dirname, '../public/index.html'));
-
-    if (!app.isPackaged) {
-        mainWindow.webContents.openDevTools();
-    }
-
-    mainWindow.on('closed', () => {
-        mainWindow = null;
+    mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+        if (url.startsWith('http://') || url.startsWith('https://')) {
+            shell.openExternal(url);
+        }
+        return { action: 'deny' };
     });
+
+    mainWindow.loadFile(path.join(__dirname, '../dist/renderer/paints.html'));
+    if (!app.isPackaged) mainWindow.webContents.openDevTools();
+    mainWindow.on('closed', () => { mainWindow = null; });
 }
 
-app.whenReady().then(() => {
-    startServer();
-    serverStarted = true;
-    createWindow();
-});
-
-app.on('window-all-closed', () => {
-    if (serverStarted) {
-        console.log('Shutting down server...');
-    }
-    app.quit();
-});
-
-app.on('activate', () => {
-    if (mainWindow === null) {
-        createWindow();
-    }
-});
-
-app.on('before-quit', () => {
-    console.log('Potion Rack is shutting down...');
-});
-
-process.on('uncaughtException', (error) => {
-    console.error('Uncaught Exception:', error);
-});
-
-process.on('unhandledRejection', (reason) => {
-    console.error('Unhandled Rejection:', reason);
-});
-
-process.on('SIGINT', () => {
-    console.log('Received SIGINT, shutting down...');
-    app.quit();
-});
-
-process.on('SIGTERM', () => {
-    console.log('Received SIGTERM, shutting down...');
-    app.quit();
-});
+app.whenReady().then(() => { startServer(); serverStarted = true; createWindow(); });
+app.on('window-all-closed', () => { if (serverStarted) console.log('Shutting down server...'); app.quit(); });
+app.on('activate', () => { if (mainWindow === null) createWindow(); });
+app.on('before-quit', () => console.log('Potion Rack is shutting down...'));
+process.on('uncaughtException', (error) => console.error('Uncaught Exception:', error));
+process.on('unhandledRejection', (reason) => console.error('Unhandled Rejection:', reason));
+process.on('SIGINT', () => { console.log('Received SIGINT, shutting down...'); app.quit(); });
+process.on('SIGTERM', () => { console.log('Received SIGTERM, shutting down...'); app.quit(); });
