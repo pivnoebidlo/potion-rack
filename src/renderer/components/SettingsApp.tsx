@@ -14,6 +14,8 @@ export default function SettingsApp() {
     const [version, setVersion] = useState('');
     const [importConfirmOpen, setImportConfirmOpen] = useState(false);
     const [importFile, setImportFile] = useState<File | null>(null);
+    const [figuresPath, setFiguresPath] = useState('');
+    const [pathStatus, setPathStatus] = useState<'ok' | 'unavailable'>('ok');
 
     const $t = t();
 
@@ -36,6 +38,15 @@ export default function SettingsApp() {
     }, [theme]);
 
     useEffect(() => {
+        const savedPath = localStorage.getItem('potion-rack-figures-path');
+        if (savedPath) {
+            setFiguresPath(savedPath);
+        } else if ((window as any).electronAPI?.getDefaultFiguresPath) {
+            (window as any).electronAPI.getDefaultFiguresPath().then((p: string) => setFiguresPath(p));
+        }
+    }, []);
+
+    useEffect(() => {
         const tabs: SettingsTab[] = ['general', 'appearance', 'data'];
         const handleKeyDown = (e: KeyboardEvent) => {
             const tag = (e.target as HTMLElement).tagName;
@@ -55,6 +66,24 @@ export default function SettingsApp() {
         if (page === 'paints') window.location.href = 'paints.html';
         else if (page === 'figures') window.location.href = 'figures.html';
         else window.location.href = 'settings.html';
+    };
+
+    const handleSelectFolder = async () => {
+        const api = (window as any).electronAPI;
+        if (!api?.selectFiguresDirectory) {
+            showToast('Folder selection not available in browser', 'info');
+            return;
+        }
+        const selectedPath = await api.selectFiguresDirectory();
+        if (selectedPath) {
+            setFiguresPath(selectedPath);
+            localStorage.setItem('potion-rack-figures-path', selectedPath);
+            setPathStatus('ok');
+            if (api.setFiguresPath) {
+                await api.setFiguresPath(selectedPath);
+            }
+            showToast($t.pathChanged || 'Path updated', 'success');
+        }
     };
 
     const handleExport = async () => {
@@ -176,13 +205,39 @@ export default function SettingsApp() {
                     {tab === 'data' && (
                         <div className={styles.section}>
                             <div className={styles.sectionTitle}>{$t.data}</div>
+
+                            {/* ─── Папка статей ─── */}
+                            <div className={styles.setting}>
+                                <div className={styles.settingInfo}>
+                                    <div className={styles.settingLabel}>📁 {$t.figuresPath}</div>
+                                    <div className={styles.settingDesc}>{$t.figuresPathDesc}</div>
+                                    {figuresPath && (
+                                        <div className={pathStatus === 'ok' ? styles.pathOk : styles.pathUnavailable}>
+                                            <span className={styles.statusDot} />
+                                            {pathStatus === 'ok' ? $t.pathAvailable : $t.pathUnavailable}
+                                        </div>
+                                    )}
+                                </div>
+                                <div className={styles.settingControl}>
+                                    <div className={styles.pathDisplay} title={figuresPath}>
+                                        {figuresPath || '—'}
+                                    </div>
+                                    <button
+                                        className={`${styles.btn} ${styles.btnSecondary} ${styles.btnFixed}`}
+                                        onClick={handleSelectFolder}
+                                    >
+                                        📂 {$t.selectFolder}
+                                    </button>
+                                </div>
+                            </div>
+
                             <div className={styles.setting}>
                                 <div className={styles.settingInfo}>
                                     <div className={styles.settingLabel}>{$t.exportBackup}</div>
                                     <div className={styles.settingDesc}>{$t.exportBackupDesc}</div>
                                 </div>
                                 <div className={styles.settingControl}>
-                                    <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={handleExport}>📤 {$t.export}</button>
+                                    <button className={`${styles.btn} ${styles.btnSecondary} ${styles.btnFixed}`} onClick={handleExport}>📤 {$t.export}</button>
                                 </div>
                             </div>
                             <div className={styles.setting}>
@@ -191,7 +246,7 @@ export default function SettingsApp() {
                                     <div className={styles.settingDesc}>{$t.importBackupDesc}</div>
                                 </div>
                                 <div className={styles.settingControl}>
-                                    <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={handleImport}>📥 {$t.import}</button>
+                                    <button className={`${styles.btn} ${styles.btnSecondary} ${styles.btnFixed}`} onClick={handleImport}>📥 {$t.import}</button>
                                 </div>
                             </div>
                             <div className={styles.setting}>

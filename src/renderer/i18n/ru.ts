@@ -88,4 +88,21 @@ export default {
     edit: 'Правка',
     saveContent: 'Сохранить',
     editorPlaceholder: 'Начните писать лог покраски...',
+
+    figuresPath: 'Папка статей',
+    figuresPathDesc: 'Папка, в которой хранятся статьи и изображения раздела «Фигурки». Можно указать любую папку на диске — в том числе внутри облачного хранилища.',
+    selectFolder: 'Выбрать',
+    pathAvailable: 'Папка доступна для записи',
+    pathUnavailable: 'Папка недоступна',
+    pathChanged: 'Путь к папке статей изменён',
+    // Context menu
+    newFigure: 'Новая фигурка',
+    newFolder: 'Новая папка',
+    rename: 'Переименовать',
+    deleteFolder: 'Удалить папку',
+    renameFolder: 'Новое имя папки:',
+    renameFigure: 'Новое имя фигурки:',
+    deleteFolderTitle: 'Удалить папку',
+    deleteFolderConfirm: 'Удалить папку «{path}» и все фигурки в ней?',
+
 };

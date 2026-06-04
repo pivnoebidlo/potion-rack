@@ -94,4 +94,20 @@ export default {
     edit: 'Edit',
     saveContent: 'Save',
     editorPlaceholder: 'Start writing your painting log...',
+
+    figuresPath: 'Articles Folder',
+    figuresPathDesc: 'Folder where «Figures» section articles and images are stored. You can point to any folder on your disk — including cloud storage.',
+    selectFolder: 'Choose',
+    pathAvailable: 'Folder is writable',
+    pathUnavailable: 'Folder is not accessible',
+    pathChanged: 'Articles folder path updated',
+    // Context menu
+    newFigure: 'New Figure',
+    newFolder: 'New Folder',
+    rename: 'Rename',
+    deleteFolder: 'Delete Folder',
+    renameFolder: 'New folder name:',
+    renameFigure: 'New figure name:',
+    deleteFolderTitle: 'Delete Folder',
+    deleteFolderConfirm: 'Delete folder "{path}" and all figures in it?',
 };

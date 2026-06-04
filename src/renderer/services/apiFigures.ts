@@ -1,9 +1,22 @@
-import { Figure } from '../modules/figures/types.js';
+// Тип Figure (временно здесь, позже вынесем в отдельный файл)
+export interface Figure {
+    id: number;
+    name: string;
+    manufacturer?: string;
+    scale?: string;
+    material?: string;
+    status: string;
+    purchase_date?: string;
+    purchase_price?: number;
+    completed_date?: string;
+    description?: string;
+    content?: string;
+    folder_path?: string;
+    created_at?: string;
+    updated_at?: string;
+}
 
 const API_BASE = 'http://127.0.0.1:8765/api';
-
-// Re-export Figure type
-export type { Figure };
 
 export async function fetchFigures(): Promise<Figure[]> {
     const response = await fetch(`${API_BASE}/figures`);

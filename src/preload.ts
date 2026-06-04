@@ -11,10 +11,24 @@ contextBridge.exposeInMainWorld('electronAPI', {
     maximizeWindow: () => ipcRenderer.send('window-maximize'),
     closeWindow: () => ipcRenderer.send('window-close'),
 
-    readArticle: (figureName: string) => ipcRenderer.invoke('article:read', figureName),
-    writeArticle: (figureName: string, content: string) => ipcRenderer.invoke('article:write', figureName, content),
-    deleteArticle: (figureName: string) => ipcRenderer.invoke('article:delete', figureName),
-    saveImage: (figureName: string, fileName: string, base64Data: string) => ipcRenderer.invoke('article:saveImage', figureName, fileName, base64Data),
-    listImages: (figureName: string) => ipcRenderer.invoke('article:listImages', figureName),
-    deleteImage: (figureName: string, fileName: string) => ipcRenderer.invoke('article:deleteImage', figureName, fileName),
+    // Статьи
+    readArticle: (folderPath: string, figureName: string) => ipcRenderer.invoke('article:read', folderPath, figureName),
+    writeArticle: (folderPath: string, figureName: string, content: string) => ipcRenderer.invoke('article:write', folderPath, figureName, content),
+    deleteArticle: (folderPath: string, figureName: string) => ipcRenderer.invoke('article:delete', folderPath, figureName),
+    saveImage: (folderPath: string, figureName: string, fileName: string, base64Data: string) => ipcRenderer.invoke('article:saveImage', folderPath, figureName, fileName, base64Data),
+    listImages: (folderPath: string, figureName: string) => ipcRenderer.invoke('article:listImages', folderPath, figureName),
+    deleteImage: (folderPath: string, figureName: string, fileName: string) => ipcRenderer.invoke('article:deleteImage', folderPath, figureName, fileName),
+    createFolder: (folderPath: string) => ipcRenderer.invoke('folder:create', folderPath),
+    deleteFolder: (folderPath: string) => ipcRenderer.invoke('folder:delete', folderPath),
+    // Дерево папок
+    listFolders: () => ipcRenderer.invoke('figures:listFolders'),
+
+    // Управление путём к папке статей
+    selectFiguresDirectory: () => ipcRenderer.invoke('dialog:selectFiguresDirectory'),
+    getDefaultFiguresPath: () => ipcRenderer.invoke('get-default-figures-path'),
+    setFiguresPath: (newPath: string) => ipcRenderer.invoke('set-figures-path', newPath),
+
+    renameFolder: (oldPath: string, newPath: string) => ipcRenderer.invoke('folder:rename', oldPath, newPath),
+    renameFigureFolder: (folderPath: string, oldName: string, newName: string) => ipcRenderer.invoke('figure:renameFolder', folderPath, oldName, newName),
 });
+

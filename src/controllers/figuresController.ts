@@ -37,7 +37,7 @@ export class FiguresController {
     async create(req: Request, res: Response): Promise<void> {
         try {
             const db = getDatabase();
-            const { name, manufacturer, scale, material, status, purchase_date, purchase_price, completed_date, description, content } = req.body;
+            const { name, manufacturer, scale, material, status, purchase_date, purchase_price, completed_date, description, content, folder_path } = req.body;
 
             if (!name) {
                 res.status(400).json({ error: 'Name is required' });
@@ -46,8 +46,8 @@ export class FiguresController {
 
             const now = new Date().toISOString();
             const result = db.prepare(`
-                INSERT INTO figures (name, manufacturer, scale, material, status, purchase_date, purchase_price, completed_date, description, content, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO figures (name, manufacturer, scale, material, status, purchase_date, purchase_price, completed_date, description, content, folder_path, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `).run(
                 name,
                 manufacturer || null,
@@ -59,6 +59,7 @@ export class FiguresController {
                 completed_date || null,
                 description || null,
                 content || null,
+                folder_path || null,
                 now,
                 now
             );
@@ -75,7 +76,7 @@ export class FiguresController {
         try {
             const db = getDatabase();
             const { id } = req.params;
-            const { name, manufacturer, scale, material, status, purchase_date, purchase_price, completed_date, description, content } = req.body;
+            const { name, manufacturer, scale, material, status, purchase_date, purchase_price, completed_date, description, content, folder_path } = req.body;
 
             const figure = db.prepare('SELECT * FROM figures WHERE id = ?').get(id) as any;
             if (!figure) {
@@ -89,7 +90,7 @@ export class FiguresController {
                                    name = ?, manufacturer = ?, scale = ?, material = ?,
                                    status = ?, purchase_date = ?, purchase_price = ?,
                                    completed_date = ?, description = ?,
-                                   content = ?, updated_at = ?
+                                   content = ?, folder_path = ?, updated_at = ?
                 WHERE id = ?
             `).run(
                 name ?? figure.name,
@@ -102,6 +103,7 @@ export class FiguresController {
                 completed_date ?? figure.completed_date,
                 description ?? figure.description,
                 content ?? figure.content,
+                folder_path !== undefined ? folder_path : figure.folder_path,
                 now,
                 id
             );
