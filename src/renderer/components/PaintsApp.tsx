@@ -1,8 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import styles from './PaintsApp.module.css';
 import PaintModal from './PaintModal';
+import ConfirmModal from './ConfirmModal';
 import placeholderImg from '../images/placeholder.png';
 import { t } from '../i18n';
+import { showToast } from './Toast';
 
 interface Paint {
     id: number;
@@ -52,7 +54,13 @@ export default function PaintsApp() {
     const [isResizing, setIsResizing] = useState(false);
     const [hoverMain, setHoverMain] = useState(false);
 
+    const [confirmOpen, setConfirmOpen] = useState(false);
+    const [confirmTitle, setConfirmTitle] = useState('');
+    const [confirmMessage, setConfirmMessage] = useState('');
+    const [confirmAction, setConfirmAction] = useState<() => void>(() => {});
+
     const commentRef = useRef<HTMLTextAreaElement>(null);
+    const commentTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const selectedRowRef = useRef<HTMLTableRowElement>(null);
     const tableContainerRef = useRef<HTMLDivElement>(null);
 
@@ -189,34 +197,75 @@ export default function PaintsApp() {
         const method = data.id ? 'PUT' : 'POST';
 
         try {
-            const res = await fetch(url, {
-                method,
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data),
-            });
-
-            if (res.status === 409) {
-                const err = await res.json();
-                alert(err.message || $t.duplicatePaint);
-                return;
-            }
-
+            const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+            if (res.status === 409) { const err = await res.json(); showToast(err.message || $t.duplicatePaint, 'error'); return; }
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
             await loadPaints();
-        } catch (err) {
-            console.error('Save failed:', err);
-            alert('Failed to save paint. Please try again.');
-        }
+        } catch (err) { console.error('Save failed:', err); showToast('Failed to save paint', 'error'); }
     };
 
-    const handleUpdateComment = async (id: number, comment: string) => { await fetch(`http://127.0.0.1:8765/api/paints/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ comment }) }); setPaints(prev => prev.map(p => p.id === id ? { ...p, comment } : p)); };
-    const handleUpdateStatus = async (id: number, status: string) => { await fetch(`http://127.0.0.1:8765/api/paints/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status }) }); setPaints(prev => prev.map(p => p.id === id ? { ...p, status } : p)); };
-    const handleUpdateRating = async (id: number, rating: number) => { await fetch(`http://127.0.0.1:8765/api/paints/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ rating }) }); setPaints(prev => prev.map(p => p.id === id ? { ...p, rating } : p)); };
-    const handleDeletePaint = async (id: number) => { if (!confirm($t.deleteConfirm)) return; await fetch(`http://127.0.0.1:8765/api/paints/${id}`, { method: 'DELETE' }); setSelectedId(null); await loadPaints(); };
-    const handleUploadImage = async (file: File) => { if (!selectedId) return; const r = new FileReader(); r.onload = async () => { const b64 = r.result as string; await fetch(`http://127.0.0.1:8765/api/paints/${selectedId}/images`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ image_data: b64.split(',')[1], content_type: file.type, filename: file.name }) }); await loadImages(selectedId); }; r.readAsDataURL(file); };
-    const handleDeleteImage = async (imgId: number) => { if (!selectedId || !confirm($t.deletePhotoConfirm)) return; await fetch(`http://127.0.0.1:8765/api/paints/${selectedId}/images/${imgId}`, { method: 'DELETE' }); await loadImages(selectedId); };
-    const handleSetPrimary = async (imgId: number) => { if (!selectedId) return; await fetch(`http://127.0.0.1:8765/api/paints/${selectedId}/images/${imgId}/primary`, { method: 'PUT' }); await loadImages(selectedId); };
+    const handleUpdateComment = async (id: number, comment: string) => {
+        setPaints(prev => prev.map(p => p.id === id ? { ...p, comment } : p));
+        if (commentTimerRef.current) clearTimeout(commentTimerRef.current);
+        commentTimerRef.current = setTimeout(async () => {
+            await fetch(`http://127.0.0.1:8765/api/paints/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ comment }) });
+        }, 500);
+    };
+
+    const handleUpdateStatus = async (id: number, status: string) => {
+        await fetch(`http://127.0.0.1:8765/api/paints/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status }) });
+        setPaints(prev => prev.map(p => p.id === id ? { ...p, status } : p));
+    };
+
+    const handleUpdateRating = async (id: number, rating: number) => {
+        await fetch(`http://127.0.0.1:8765/api/paints/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ rating }) });
+        setPaints(prev => prev.map(p => p.id === id ? { ...p, rating } : p));
+    };
+
+    const handleDeletePaint = async (id: number) => {
+        setConfirmTitle($t.deletePaint);
+        setConfirmMessage($t.deleteConfirm);
+        setConfirmAction(() => async () => {
+            await fetch(`http://127.0.0.1:8765/api/paints/${id}`, { method: 'DELETE' });
+            setSelectedId(null);
+            await loadPaints();
+            showToast($t.deletePaint + ' — OK', 'success');
+            setConfirmOpen(false);
+        });
+        setConfirmOpen(true);
+    };
+
+    const handleUploadImage = async (file: File) => {
+        if (!selectedId) return;
+        try {
+            const r = new FileReader();
+            r.onload = async () => {
+                const b64 = r.result as string;
+                await fetch(`http://127.0.0.1:8765/api/paints/${selectedId}/images`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ image_data: b64.split(',')[1], content_type: file.type, filename: file.name }) });
+                await loadImages(selectedId);
+                showToast('Photo uploaded', 'success');
+            };
+            r.readAsDataURL(file);
+        } catch (err) { console.error('Failed to upload image:', err); showToast('Failed to upload image', 'error'); }
+    };
+
+    const handleDeleteImage = (imgId: number) => {
+        setConfirmTitle($t.deletePhoto);
+        setConfirmMessage($t.deletePhotoConfirm);
+        setConfirmAction(() => async () => {
+            await fetch(`http://127.0.0.1:8765/api/paints/${selectedId}/images/${imgId}`, { method: 'DELETE' });
+            await loadImages(selectedId!);
+            showToast('Photo deleted', 'success');
+            setConfirmOpen(false);
+        });
+        setConfirmOpen(true);
+    };
+
+    const handleSetPrimary = async (imgId: number) => {
+        if (!selectedId) return;
+        await fetch(`http://127.0.0.1:8765/api/paints/${selectedId}/images/${imgId}/primary`, { method: 'PUT' });
+        await loadImages(selectedId);
+    };
 
     useEffect(() => {
         const hp = (e: ClipboardEvent) => { if (!selectedId) return; const items = e.clipboardData?.items; if (!items) return; for (const item of Array.from(items)) { if (item.type.startsWith('image/')) { e.preventDefault(); const f = item.getAsFile(); if (f) handleUploadImage(f); return; } } };
@@ -227,10 +276,7 @@ export default function PaintsApp() {
 
     return (
         <div style={{ display: 'flex', height: '100vh', width: '100%', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
-            <div style={{
-                width: 48, minWidth: 48, background: 'var(--bg-tertiary)', borderRight: '1px solid var(--border)',
-                display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 8,
-            }}>
+            <div style={{ width: 48, minWidth: 48, background: 'var(--bg-tertiary)', borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 8 }}>
                 <div onClick={() => navigateTo('paints')} style={{ width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 'var(--radius-sm)', cursor: 'pointer', marginBottom: 4, color: 'var(--accent)', background: 'var(--accent-light)' }}>🎨</div>
                 <div onClick={() => navigateTo('figures')} style={{ width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 'var(--radius-sm)', cursor: 'pointer', marginBottom: 4, color: 'var(--text-secondary)' }} onMouseEnter={e => (e.target as HTMLElement).style.background = 'var(--bg-hover)'} onMouseLeave={e => (e.target as HTMLElement).style.background = 'none'}>🧩</div>
                 <div onClick={() => navigateTo('settings')} style={{ width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 'var(--radius-sm)', cursor: 'pointer', marginBottom: 4, color: 'var(--text-secondary)' }} onMouseEnter={e => (e.target as HTMLElement).style.background = 'var(--bg-hover)'} onMouseLeave={e => (e.target as HTMLElement).style.background = 'none'}>⚙️</div>
@@ -251,40 +297,13 @@ export default function PaintsApp() {
 
                     <div className={styles.tableContainer} ref={tableContainerRef}>
                         <table className={styles.table}>
-                            <thead className={styles.tableHead}>
-                            <tr>
-                                <th onClick={() => handleSort('brand')}>{$t.brand} {sortColumn === 'brand' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}</th>
-                                <th onClick={() => handleSort('series')}>{$t.series} {sortColumn === 'series' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}</th>
-                                <th onClick={() => handleSort('color_name')}>{$t.colorName} {sortColumn === 'color_name' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}</th>
-                                <th onClick={() => handleSort('article')}>{$t.article} {sortColumn === 'article' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}</th>
-                                <th onClick={() => handleSort('base_color_name')}>{$t.baseColor} {sortColumn === 'base_color_name' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}</th>
-                                <th onClick={() => handleSort('purchase_date')}>{$t.purchaseDate} {sortColumn === 'purchase_date' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}</th>
-                                <th onClick={() => handleSort('price')}>{$t.price} {sortColumn === 'price' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}</th>
-                                <th onClick={() => handleSort('rating')}>{$t.rating} {sortColumn === 'rating' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}</th>
-                                <th onClick={() => handleSort('status')}>{$t.status} {sortColumn === 'status' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}</th>
-                                <th></th>
-                            </tr>
-                            </thead>
+                            <thead className={styles.tableHead}><tr><th onClick={() => handleSort('brand')}>{$t.brand} {sortColumn === 'brand' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}</th><th onClick={() => handleSort('series')}>{$t.series} {sortColumn === 'series' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}</th><th onClick={() => handleSort('color_name')}>{$t.colorName} {sortColumn === 'color_name' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}</th><th onClick={() => handleSort('article')}>{$t.article} {sortColumn === 'article' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}</th><th onClick={() => handleSort('base_color_name')}>{$t.baseColor} {sortColumn === 'base_color_name' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}</th><th onClick={() => handleSort('purchase_date')}>{$t.purchaseDate} {sortColumn === 'purchase_date' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}</th><th onClick={() => handleSort('price')}>{$t.price} {sortColumn === 'price' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}</th><th onClick={() => handleSort('rating')}>{$t.rating} {sortColumn === 'rating' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}</th><th onClick={() => handleSort('status')}>{$t.status} {sortColumn === 'status' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}</th><th></th></tr></thead>
                             <tbody>
                             {filtered.map(paint => (
                                 <tr key={paint.id} ref={selectedId === paint.id ? selectedRowRef : null} className={`${styles.tableRow} ${selectedId === paint.id ? styles.tableRowSelected : ''}`} onClick={() => setSelectedId(paint.id)} onDoubleClick={() => { setEditingPaint(paint); setModalOpen(true); }}>
-                                    <td className={styles.tableCell}>{paint.brand}</td>
-                                    <td className={styles.tableCell}>{paint.series || '-'}</td>
-                                    <td className={styles.tableCell}>{paint.color_name}</td>
-                                    <td className={styles.tableCell}>{paint.article || '-'}</td>
-                                    <td className={styles.tableCell}>{paint.base_color_name || '-'}</td>
-                                    <td className={styles.tableCell}>{paint.purchase_date || '-'}</td>
-                                    <td className={styles.tableCell}>{paint.price != null ? paint.price : '-'}</td>
-                                    <td className={styles.tableCell} onClick={e => e.stopPropagation()}>
-                                        {Array.from({ length: 5 }, (_, i) => (
-                                            <span key={i} onClick={() => handleUpdateRating(paint.id, i + 1)} style={{ cursor: 'pointer', color: i < (paint.rating || 0) ? 'var(--star-active)' : 'var(--star-inactive)', fontSize: '16px' }}>★</span>
-                                        ))}
-                                    </td>
-                                    <td className={styles.tableCell} onClick={e => e.stopPropagation()}>
-                                        <select value={paint.status || 'instock'} onChange={(e) => handleUpdateStatus(paint.id, e.target.value)} style={{ background: 'var(--bg-input)', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)', fontSize: 'var(--font-size-sm)', padding: '2px 4px', cursor: 'pointer', outline: 'none' }}>
-                                            <option value="instock">{$t.inStock}</option><option value="low">{$t.low}</option><option value="out">{$t.outOfStock}</option><option value="ordered">{$t.ordered}</option>
-                                        </select>
-                                    </td>
+                                    <td className={styles.tableCell}>{paint.brand}</td><td className={styles.tableCell}>{paint.series || '-'}</td><td className={styles.tableCell}>{paint.color_name}</td><td className={styles.tableCell}>{paint.article || '-'}</td><td className={styles.tableCell}>{paint.base_color_name || '-'}</td><td className={styles.tableCell}>{paint.purchase_date || '-'}</td><td className={styles.tableCell}>{paint.price != null ? paint.price : '-'}</td>
+                                    <td className={styles.tableCell} onClick={e => e.stopPropagation()}>{Array.from({ length: 5 }, (_, i) => <span key={i} onClick={() => handleUpdateRating(paint.id, i + 1)} style={{ cursor: 'pointer', color: i < (paint.rating || 0) ? 'var(--star-active)' : 'var(--star-inactive)', fontSize: '16px' }}>★</span>)}</td>
+                                    <td className={styles.tableCell} onClick={e => e.stopPropagation()}><select value={paint.status || 'instock'} onChange={(e) => handleUpdateStatus(paint.id, e.target.value)} style={{ background: 'var(--bg-input)', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)', fontSize: 'var(--font-size-sm)', padding: '2px 4px', cursor: 'pointer', outline: 'none' }}><option value="instock">{$t.inStock}</option><option value="low">{$t.low}</option><option value="out">{$t.outOfStock}</option><option value="ordered">{$t.ordered}</option></select></td>
                                     <td className={styles.tableCell}><button className={styles.iconBtn} onClick={e => { e.stopPropagation(); handleDeletePaint(paint.id); }}>🗑</button></td>
                                 </tr>
                             ))}
@@ -292,7 +311,6 @@ export default function PaintsApp() {
                         </table>
                         {filtered.length === 0 && !loading && <div className={styles.emptyState}>{$t.noPaints}</div>}
                     </div>
-
                     <div className={styles.statusBar}><span>{$t.totalPaints}: {filtered.length}</span><span>&nbsp;|&nbsp;</span><span>{$t.brands}: {brands.length}</span></div>
                 </div>
 
@@ -300,34 +318,30 @@ export default function PaintsApp() {
                     <div style={{ width: '4px', cursor: 'col-resize', background: isResizing ? 'var(--accent)' : 'var(--border)', transition: isResizing ? 'none' : 'background 0.2s', flexShrink: 0 }} onMouseDown={() => setIsResizing(true)} />
                     <div className={`${styles.rightPanel} ${rightPanelCollapsed ? styles.rightPanelCollapsed : ''}`} style={{ width: rightPanelCollapsed ? 32 : rightPanelWidth, minWidth: rightPanelCollapsed ? 32 : rightPanelWidth }}>
                         <button className={styles.collapseBtn} onClick={() => setRightPanelCollapsed(!rightPanelCollapsed)}>{rightPanelCollapsed ? '◀' : '▶'}</button>
-                        {!rightPanelCollapsed && (
-                            <div className={styles.panelContent}>
-                                {(() => { const p = paints.find(x => x.id === selectedId); if (!p) return null; return (<>
-                                    <div style={{ fontSize: 'var(--font-size-lg)', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '2px', textAlign: 'center' }}>{p.brand} – {p.color_name}</div>
-                                    {p.series && <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-secondary)', textAlign: 'center', marginBottom: '12px' }}>[{p.series}]</div>}
-                                    {selectedImageId && images.length > 0 ? (<>
-                                        <div className={styles.galleryMain} onMouseEnter={() => setHoverMain(true)} onMouseLeave={() => setHoverMain(false)}>
-                                            <img src={`data:${images.find(i => i.id === selectedImageId)?.content_type || 'image/jpeg'};base64,${images.find(i => i.id === selectedImageId)?.image_data}`} alt="Selected paint" />
-                                            {hoverMain && (<div style={{ position: 'absolute', bottom: '8px', left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: '10px' }}>
-                                                <button onClick={(e) => { e.stopPropagation(); const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*'; inp.onchange = (ev) => { const f = (ev.target as HTMLInputElement).files?.[0]; if (f) handleUploadImage(f); }; inp.click(); }} style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'rgba(0,0,0,0.6)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', color: '#fff' }}>➕</button>
-                                                <button onClick={(e) => { e.stopPropagation(); handleSetPrimary(selectedImageId); }} style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'rgba(0,0,0,0.6)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', color: 'var(--star-active)' }}>★</button>
-                                                <button onClick={(e) => { e.stopPropagation(); handleDeleteImage(selectedImageId); }} style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'rgba(0,0,0,0.6)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', color: '#fff' }}>🗑</button>
-                                            </div>)}
-                                        </div>
-                                        <div className={styles.galleryThumbnails}>{images.map((img: any) => (<div key={img.id} className={`${styles.thumbnail} ${selectedImageId === img.id ? styles.thumbnailActive : ''}`} onClick={() => setSelectedImageId(img.id)}><img src={`data:${img.content_type || 'image/jpeg'};base64,${img.image_data}`} alt={img.filename} /></div>))}</div>
-                                    </>) : (
-                                        <div className={styles.galleryMain} onMouseEnter={() => setHoverMain(true)} onMouseLeave={() => setHoverMain(false)}><img src={placeholderImg} alt="No photo" style={{ opacity: 0.3 }} />{hoverMain && (<div style={{ position: 'absolute', bottom: '8px', left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: '10px' }}><button onClick={(e) => { e.stopPropagation(); const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*'; inp.onchange = (ev) => { const f = (ev.target as HTMLInputElement).files?.[0]; if (f) handleUploadImage(f); }; inp.click(); }} style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'rgba(0,0,0,0.6)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', color: '#fff' }}>➕</button></div>)}</div>
-                                    )}
-                                    <div style={{ borderTop: '1px solid var(--border)', margin: '16px 0 12px' }} />
-                                    <div className={styles.detailsLabel}>{$t.comment}</div>
-                                    <textarea ref={commentRef} value={p.comment || ''} onChange={(e) => { handleUpdateComment(p.id, e.target.value); e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }} style={{ width: '100%', minHeight: '40px', padding: '8px', background: 'var(--bg-input)', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)', fontSize: 'var(--font-size-sm)', resize: 'none', outline: 'none', boxSizing: 'border-box', overflow: 'hidden' }} placeholder={$t.commentPlaceholder} />
-                                </>); })()}
-                            </div>
-                        )}
+                        {!rightPanelCollapsed && (<div className={styles.panelContent}>
+                            {(() => { const p = paints.find(x => x.id === selectedId); if (!p) return null; return (<>
+                                <div style={{ fontSize: 'var(--font-size-lg)', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '2px', textAlign: 'center' }}>{p.brand} – {p.color_name}</div>
+                                {p.series && <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-secondary)', textAlign: 'center', marginBottom: '12px' }}>[{p.series}]</div>}
+                                {selectedImageId && images.length > 0 ? (<>
+                                    <div className={styles.galleryMain} onMouseEnter={() => setHoverMain(true)} onMouseLeave={() => setHoverMain(false)}><img src={`data:${images.find(i => i.id === selectedImageId)?.content_type || 'image/jpeg'};base64,${images.find(i => i.id === selectedImageId)?.image_data}`} alt="Selected paint" />
+                                        {hoverMain && (<div style={{ position: 'absolute', bottom: '8px', left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: '10px' }}>
+                                            <button onClick={(e) => { e.stopPropagation(); const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*'; inp.onchange = (ev) => { const f = (ev.target as HTMLInputElement).files?.[0]; if (f) handleUploadImage(f); }; inp.click(); }} style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'rgba(0,0,0,0.6)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', color: '#fff' }}>➕</button>
+                                            <button onClick={(e) => { e.stopPropagation(); handleSetPrimary(selectedImageId); }} style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'rgba(0,0,0,0.6)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', color: 'var(--star-active)' }}>★</button>
+                                            <button onClick={(e) => { e.stopPropagation(); handleDeleteImage(selectedImageId); }} style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'rgba(0,0,0,0.6)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', color: '#fff' }}>🗑</button>
+                                        </div>)}
+                                    </div>
+                                    <div className={styles.galleryThumbnails}>{images.map((img: any) => (<div key={img.id} className={`${styles.thumbnail} ${selectedImageId === img.id ? styles.thumbnailActive : ''}`} onClick={() => setSelectedImageId(img.id)}><img src={`data:${img.content_type || 'image/jpeg'};base64,${img.image_data}`} alt={img.filename} /></div>))}</div>
+                                </>) : (<div className={styles.galleryMain} onMouseEnter={() => setHoverMain(true)} onMouseLeave={() => setHoverMain(false)}><img src={placeholderImg} alt="No photo" style={{ opacity: 0.3 }} />{hoverMain && (<div style={{ position: 'absolute', bottom: '8px', left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: '10px' }}><button onClick={(e) => { e.stopPropagation(); const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*'; inp.onchange = (ev) => { const f = (ev.target as HTMLInputElement).files?.[0]; if (f) handleUploadImage(f); }; inp.click(); }} style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'rgba(0,0,0,0.6)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', color: '#fff' }}>➕</button></div>)}</div>)}
+                                <div style={{ borderTop: '1px solid var(--border)', margin: '16px 0 12px' }} />
+                                <div className={styles.detailsLabel}>{$t.comment}</div>
+                                <textarea ref={commentRef} value={p.comment || ''} onChange={(e) => { handleUpdateComment(p.id, e.target.value); e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }} style={{ width: '100%', minHeight: '40px', padding: '8px', background: 'var(--bg-input)', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)', fontSize: 'var(--font-size-sm)', resize: 'none', outline: 'none', boxSizing: 'border-box', overflow: 'hidden' }} placeholder={$t.commentPlaceholder} />
+                            </>); })()}
+                        </div>)}
                     </div>
                 </>)}
             </div>
             {modalOpen && <PaintModal paint={editingPaint} brands={brands} series={series} baseColors={baseColors} onSave={handleSavePaint} onClose={() => setModalOpen(false)} />}
+            {confirmOpen && <ConfirmModal title={confirmTitle} message={confirmMessage} onConfirm={confirmAction} onCancel={() => setConfirmOpen(false)} />}
         </div>
     );
 }

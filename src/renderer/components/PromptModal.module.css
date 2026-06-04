@@ -1,0 +1,75 @@
+.overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 400;
+}
+
+.modal {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 20px 24px;
+    min-width: 340px;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+}
+
+.title {
+    font-size: var(--font-size-md);
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 14px;
+}
+
+.input {
+    width: 100%;
+    padding: 8px 12px;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    font-size: var(--font-size-md);
+    font-family: inherit;
+    outline: none;
+    margin-bottom: 16px;
+}
+.input:focus {
+    border-color: var(--accent);
+}
+
+.buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+.btnCancel {
+    padding: 7px 16px;
+    border: 1px solid var(--border);
+    background: var(--bg-hover);
+    color: var(--text-primary);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    font-size: var(--font-size-sm);
+    font-family: inherit;
+}
+.btnCancel:hover {
+    background: var(--border);
+}
+
+.btnOk {
+    padding: 7px 16px;
+    border: none;
+    background: var(--accent);
+    color: #fff;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    font-size: var(--font-size-sm);
+    font-family: inherit;
+}
+.btnOk:hover {
+    background: var(--accent-hover);
+}

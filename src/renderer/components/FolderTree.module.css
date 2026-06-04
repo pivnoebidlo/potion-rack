@@ -1,0 +1,59 @@
+.tree {
+    padding: 6px 0;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.treeRow {
+    display: flex;
+    align-items: center;
+    padding: 3px 10px;
+    cursor: pointer;
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    gap: 4px;
+    user-select: none;
+    border-left: 3px solid transparent;
+    min-height: 28px;
+    transition: all 0.1s;
+}
+.treeRow:hover {
+    background: var(--bg-hover);
+}
+
+.folder {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.figure {
+    font-weight: 400;
+}
+
+.selected {
+    background: var(--accent-light);
+    color: var(--accent);
+    border-left-color: var(--accent);
+}
+
+.arrow {
+    width: 14px;
+    text-align: center;
+    font-size: 9px;
+    flex-shrink: 0;
+    color: var(--text-muted);
+}
+
+.name {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.empty {
+    padding: 20px;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: var(--font-size-sm);
+}

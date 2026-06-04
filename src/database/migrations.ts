@@ -127,6 +127,16 @@ export function initDatabase(db: Database.Database): void {
                         ADD COLUMN content TEXT;
                 `);
             }
+        },
+        {
+            version: 6,
+            name: 'Add folder_path to figures',
+            up: (db: Database.Database) => {
+                db.exec(`
+                ALTER TABLE figures
+                    ADD COLUMN folder_path TEXT;
+            `);
+            }
         }
     ];
 
