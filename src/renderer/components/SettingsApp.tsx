@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import styles from './SettingsApp.module.css';
 import { t, setLanguage, getLanguage } from '../i18n';
+import { showToast } from './Toast';
 
 type SettingsTab = 'general' | 'appearance' | 'data';
 
@@ -11,6 +12,8 @@ export default function SettingsApp() {
     const [autoBackup, setAutoBackup] = useState(false);
     const [backupInterval, setBackupInterval] = useState(7);
     const [version, setVersion] = useState('');
+    const [importConfirmOpen, setImportConfirmOpen] = useState(false);
+    const [importFile, setImportFile] = useState<File | null>(null);
 
     const $t = t();
 
@@ -65,9 +68,10 @@ export default function SettingsApp() {
             a.download = `potion-rack-backup-${new Date().toISOString().split('T')[0]}.prbackup`;
             a.click();
             URL.revokeObjectURL(url);
+            showToast('Backup exported', 'success');
         } catch (err) {
             console.error('Export failed:', err);
-            alert('Export failed');
+            showToast('Export failed', 'error');
         }
     };
 
@@ -75,30 +79,39 @@ export default function SettingsApp() {
         const input = document.createElement('input');
         input.type = 'file';
         input.accept = '.prbackup,.json';
-        input.onchange = async (e) => {
+        input.onchange = (e) => {
             const file = (e.target as HTMLInputElement).files?.[0];
-            if (!file) return;
-            try {
-                const text = await file.text();
-                const data = JSON.parse(text);
-                await fetch('http://127.0.0.1:8765/api/backup/import', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(data),
-                });
-                alert('Import successful!');
-            } catch (err) {
-                console.error('Import failed:', err);
-                alert('Import failed');
+            if (file) {
+                setImportFile(file);
+                setImportConfirmOpen(true);
             }
         };
         input.click();
     };
 
+    const performImport = async () => {
+        if (!importFile) return;
+        try {
+            const text = await importFile.text();
+            const data = JSON.parse(text);
+            await fetch('http://127.0.0.1:8765/api/backup/import', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data),
+            });
+            setImportConfirmOpen(false);
+            setImportFile(null);
+            showToast('Import successful!', 'success');
+        } catch (err) {
+            console.error('Import failed:', err);
+            showToast('Import failed', 'error');
+        }
+    };
+
     const handleReset = async () => {
         if (!confirm('Delete ALL data? This cannot be undone!')) return;
-        if (!confirm('Are you really sure? Type YES to confirm:')) return;
-        alert('Reset not implemented yet');
+        if (!confirm('Are you really sure?')) return;
+        showToast('Reset not implemented yet', 'info');
     };
 
     return (
@@ -126,15 +139,7 @@ export default function SettingsApp() {
                                     <div className={styles.settingDesc}>{$t.languageDesc}</div>
                                 </div>
                                 <div className={styles.settingControl}>
-                                    <select
-                                        className={styles.select}
-                                        value={language}
-                                        onChange={e => {
-                                            const lang = e.target.value as 'en' | 'ru';
-                                            setLanguageState(lang);
-                                            setLanguage(lang);
-                                        }}
-                                    >
+                                    <select className={styles.select} value={language} onChange={e => { const lang = e.target.value as 'en' | 'ru'; setLanguageState(lang); setLanguage(lang); }}>
                                         <option value="en">English</option>
                                         <option value="ru">Русский</option>
                                     </select>
@@ -223,6 +228,28 @@ export default function SettingsApp() {
                     )}
                 </div>
             </div>
+
+            {importConfirmOpen && (
+                <div style={{
+                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                    background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200,
+                }}>
+                    <div style={{
+                        background: 'var(--bg-secondary)', border: '1px solid var(--border)',
+                        borderRadius: 'var(--radius-xl)', padding: '24px', minWidth: '400px',
+                        boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+                    }}>
+                        <div style={{ fontSize: 'var(--font-size-lg)', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '12px' }}>{$t.importBackup}</div>
+                        <div style={{ color: 'var(--text-secondary)', marginBottom: '20px', fontSize: 'var(--font-size-sm)' }}>
+                            This will replace all existing data with the backup. Are you sure?
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+                            <button onClick={() => { setImportConfirmOpen(false); setImportFile(null); }} style={{ padding: '8px 16px', background: 'var(--bg-hover)', color: 'var(--text-primary)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: 'var(--font-size-sm)' }}>{$t.cancel}</button>
+                            <button onClick={performImport} style={{ padding: '8px 16px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: 'var(--font-size-sm)' }}>{$t.import}</button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
