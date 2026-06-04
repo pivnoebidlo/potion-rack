@@ -9,90 +9,86 @@ let mainWindow: BrowserWindow | null = null;
 let serverStarted = false;
 
 const logPath = path.join(app.getPath('userData'), 'logs', `app-${new Date().toISOString().split('T')[0]}.log`);
-
-try {
-    fs.mkdirSync(path.dirname(logPath), { recursive: true });
-} catch (err) {
-    console.error('Failed to create log directory:', err);
-}
+try { fs.mkdirSync(path.dirname(logPath), { recursive: true }); } catch (err) { console.error('Failed to create log directory:', err); }
 
 function writeLog(level: string, message: string): void {
     const timestamp = new Date().toISOString();
     const logLine = `[${timestamp}] [${level.toUpperCase()}] ${message}\n`;
-    try {
-        fs.appendFileSync(logPath, logLine);
-    } catch (err) {
-        console.error('Failed to write log:', err);
-    }
+    try { fs.appendFileSync(logPath, logLine); } catch (err) { console.error('Failed to write log:', err); }
 }
 
 ipcMain.handle('dialog:showSaveDialog', async (event, options) => {
     if (!mainWindow) return { canceled: true, filePath: null };
-    const result = await dialog.showSaveDialog(mainWindow, {
-        title: options.title || 'Save Backup',
-        defaultPath: options.defaultPath || `potion-rack-backup-${new Date().toISOString().split('T')[0]}.prbackup`,
-        filters: options.filters || [{ name: 'Potion Rack Backup', extensions: ['prbackup', 'json'] }]
-    });
+    const result = await dialog.showSaveDialog(mainWindow, { title: options.title || 'Save Backup', defaultPath: options.defaultPath || `potion-rack-backup-${new Date().toISOString().split('T')[0]}.prbackup`, filters: options.filters || [{ name: 'Potion Rack Backup', extensions: ['prbackup', 'json'] }] });
     return { canceled: result.canceled, filePath: result.filePath };
 });
-
 ipcMain.handle('dialog:showOpenDialog', async (event, options) => {
     if (!mainWindow) return { canceled: true, filePaths: [] };
-    const result = await dialog.showOpenDialog(mainWindow, {
-        title: options.title || 'Open Backup',
-        filters: options.filters || [{ name: 'Potion Rack Backup', extensions: ['prbackup', 'json'] }],
-        properties: ['openFile']
-    });
+    const result = await dialog.showOpenDialog(mainWindow, { title: options.title || 'Open Backup', filters: options.filters || [{ name: 'Potion Rack Backup', extensions: ['prbackup', 'json'] }], properties: ['openFile'] });
     return { canceled: result.canceled, filePaths: result.filePaths };
 });
-
-ipcMain.handle('file:save', async (event, filePath: string, data: string) => {
-    try { fs.writeFileSync(filePath, data, 'utf8'); return { success: true }; }
-    catch (error) { return { success: false, error: (error as Error).message }; }
-});
-
-ipcMain.handle('file:read', async (event, filePath: string) => {
-    try { const data = fs.readFileSync(filePath, 'utf8'); return { success: true, data }; }
-    catch (error) { return { success: false, error: (error as Error).message }; }
-});
-
+ipcMain.handle('file:save', async (event, filePath: string, data: string) => { try { fs.writeFileSync(filePath, data, 'utf8'); return { success: true }; } catch (error) { return { success: false, error: (error as Error).message }; } });
+ipcMain.handle('file:read', async (event, filePath: string) => { try { const data = fs.readFileSync(filePath, 'utf8'); return { success: true, data }; } catch (error) { return { success: false, error: (error as Error).message }; } });
 ipcMain.handle('get-app-version', () => version);
 
 ipcMain.handle('navigate', (event, page: string) => {
     if (mainWindow) {
-        if (page === 'figures') {
-            mainWindow.loadFile(path.join(__dirname, '../dist/renderer/figures.html'));
-        } else if (page === 'paints') {
-            mainWindow.loadFile(path.join(__dirname, '../dist/renderer/paints.html'));
-        } else if (page === 'settings') {
-            mainWindow.loadFile(path.join(__dirname, '../dist/renderer/settings.html'));
-        }
+        if (page === 'figures') mainWindow.loadFile(path.join(__dirname, '../dist/renderer/figures.html'));
+        else if (page === 'paints') mainWindow.loadFile(path.join(__dirname, '../dist/renderer/paints.html'));
+        else if (page === 'settings') mainWindow.loadFile(path.join(__dirname, '../dist/renderer/settings.html'));
     }
 });
 
-ipcMain.on('window-minimize', () => { if (mainWindow) mainWindow.minimize(); });
-ipcMain.on('window-maximize', () => {
-    if (mainWindow) { if (mainWindow.isMaximized()) mainWindow.unmaximize(); else mainWindow.maximize(); }
+// Статьи — файловая система
+const dataPath = path.join(app.getPath('userData'), 'figures');
+try { fs.mkdirSync(dataPath, { recursive: true }); } catch (e) {}
+
+function slugify(name: string): string {
+    return name.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_\-а-яё]/gi, '').substring(0, 100);
+}
+
+ipcMain.handle('article:read', (event, figureName: string) => {
+    const slug = slugify(figureName);
+    const filePath = path.join(dataPath, slug, `${slug}.md`);
+    try { if (fs.existsSync(filePath)) return fs.readFileSync(filePath, 'utf8'); } catch (e) { console.error('Read article error:', e); }
+    return '';
 });
+
+ipcMain.handle('article:write', (event, figureName: string, content: string) => {
+    const slug = slugify(figureName);
+    const dir = path.join(dataPath, slug);
+    const filePath = path.join(dir, `${slug}.md`);
+    try { fs.mkdirSync(dir, { recursive: true }); fs.writeFileSync(filePath, content, 'utf8'); return { success: true }; } catch (e) { console.error('Write article error:', e); return { success: false }; }
+});
+
+ipcMain.handle('article:saveImage', (event, figureName: string, fileName: string, base64Data: string) => {
+    const slug = slugify(figureName);
+    const dir = path.join(dataPath, slug, 'images');
+    try { fs.mkdirSync(dir, { recursive: true }); const ext = fileName.split('.').pop() || 'jpg'; const newName = `img_${Date.now()}.${ext}`; const filePath = path.join(dir, newName); fs.writeFileSync(filePath, Buffer.from(base64Data, 'base64')); return { success: true, path: `./images/${newName}` }; }
+    catch (e) { console.error('Save image error:', e); return { success: false }; }
+});
+
+ipcMain.handle('article:listImages', (event, figureName: string) => {
+    const slug = slugify(figureName);
+    const dir = path.join(dataPath, slug, 'images');
+    try { if (fs.existsSync(dir)) { const files = fs.readdirSync(dir).map(f => `./images/${f}`); return files; } } catch (e) { console.error('List images error:', e); }
+    return [];
+});
+
+ipcMain.handle('article:delete', (event, figureName: string) => {
+    const slug = slugify(figureName);
+    const dir = path.join(dataPath, slug);
+    try { if (fs.existsSync(dir)) fs.rmSync(dir, { recursive: true, force: true }); return { success: true }; }
+    catch (e) { console.error('Delete article error:', e); return { success: false }; }
+});
+
+ipcMain.on('window-minimize', () => { if (mainWindow) mainWindow.minimize(); });
+ipcMain.on('window-maximize', () => { if (mainWindow) { if (mainWindow.isMaximized()) mainWindow.unmaximize(); else mainWindow.maximize(); } });
 ipcMain.on('window-close', () => { if (mainWindow) mainWindow.close(); });
 
 function createWindow() {
-    mainWindow = new BrowserWindow({
-        width: 1400, height: 900,
-        webPreferences: {
-            nodeIntegration: false,
-            contextIsolation: true,
-            preload: path.join(__dirname, 'preload.js')
-        }
-    });
-
-    mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-        if (url.startsWith('http://') || url.startsWith('https://')) {
-            shell.openExternal(url);
-        }
-        return { action: 'deny' };
-    });
-
+    mainWindow = new BrowserWindow({ width: 1400, height: 900, webPreferences: { nodeIntegration: false, contextIsolation: true, preload: path.join(__dirname, 'preload.js') } });
+    mainWindow.webContents.setWindowOpenHandler(({ url }) => { if (url.startsWith('http://') || url.startsWith('https://')) shell.openExternal(url); return { action: 'deny' }; });
     mainWindow.loadFile(path.join(__dirname, '../dist/renderer/paints.html'));
     if (!app.isPackaged) mainWindow.webContents.openDevTools();
     mainWindow.on('closed', () => { mainWindow = null; });

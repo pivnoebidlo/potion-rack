@@ -20,16 +20,53 @@ export default function FigureModal({ figure, onSave, onClose }: FigureModalProp
     const [description, setDescription] = useState(figure?.description || '');
     const [saving, setSaving] = useState(false);
 
-    useEffect(() => { if (figure) { setName(figure.name || ''); setManufacturer(figure.manufacturer || ''); setScale(figure.scale || ''); setMaterial(figure.material || 'plastic'); setStatus(figure.status || 'draft'); setDescription(figure.description || ''); } }, [figure]);
+    useEffect(() => {
+        if (figure) {
+            setName(figure.name || '');
+            setManufacturer(figure.manufacturer || '');
+            setScale(figure.scale || '');
+            setMaterial(figure.material || 'plastic');
+            setStatus(figure.status || 'draft');
+            setDescription(figure.description || '');
+        }
+    }, [figure]);
 
-    const handleSave = async () => { if (!name.trim()) return; setSaving(true); try { await onSave({ id: figure?.id, name: name.trim(), manufacturer: manufacturer.trim() || undefined, scale: scale.trim() || undefined, material, status, description: description.trim() || undefined }); onClose(); } catch (err) { console.error('Save failed:', err); } finally { setSaving(false); } };
+    // Закрытие по Escape
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') onClose();
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [onClose]);
+
+    const handleSave = async () => {
+        if (!name.trim()) return;
+        setSaving(true);
+        try {
+            await onSave({
+                id: figure?.id,
+                name: name.trim(),
+                manufacturer: manufacturer.trim() || undefined,
+                scale: scale.trim() || undefined,
+                material,
+                status,
+                description: description.trim() || undefined,
+            });
+            onClose();
+        } catch (err) {
+            console.error('Save failed:', err);
+        } finally {
+            setSaving(false);
+        }
+    };
 
     return (
         <div id="figure-modal-overlay" className={styles.overlay} onClick={onClose}>
             <div className={styles.modal} onClick={e => e.stopPropagation()}>
                 <div className={styles.header}><div className={styles.title}>{isEdit ? $t.editFigure : $t.addFigure}</div><button className={styles.closeBtn} onClick={onClose}>✕</button></div>
                 <div className={styles.body}>
-                    <div className={styles.group}><label className={styles.label}>{$t.colorName} *</label><input className={styles.input} value={name} onChange={e => setName(e.target.value)} placeholder={$t.colorName} autoFocus /></div>
+                    <div className={styles.group}><label className={styles.label}>{$t.figureName} *</label><input className={styles.input} value={name} onChange={e => setName(e.target.value)} placeholder={$t.figureName} autoFocus /></div>
                     <div className={styles.group}><label className={styles.label}>{$t.manufacturer}</label><input className={styles.input} value={manufacturer} onChange={e => setManufacturer(e.target.value)} placeholder="e.g. Games Workshop" /></div>
                     <div className={styles.group}><label className={styles.label}>{$t.scale}</label><input className={styles.input} value={scale} onChange={e => setScale(e.target.value)} placeholder="e.g. 28mm" /></div>
                     <div className={styles.group}><label className={styles.label}>{$t.material}</label><select className={styles.select} value={material} onChange={e => setMaterial(e.target.value as Figure['material'])}><option value="plastic">{$t.plastic}</option><option value="resin">{$t.resin}</option><option value="metal">{$t.metal}</option><option value="other">{$t.other}</option></select></div>

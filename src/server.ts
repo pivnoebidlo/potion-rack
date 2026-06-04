@@ -9,13 +9,19 @@ import { setupSettingsRoutes } from './routes/settings';
 import { setupStatsRoutes } from './routes/stats';
 import { setupBackupRoutes } from './routes/backup';
 import { setupFiguresRoutes } from './routes/figures.js';
-
+import path from 'path';
+import { app as electronApp } from 'electron';
 
 const app = express();
 const PORT = 8765;
 
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
+
+// Раздача статики из папки figures (для изображений в статьях)
+const figuresDataPath = path.join(electronApp.getPath('userData'), 'figures');
+console.log('Figures data path:', figuresDataPath);
+app.use('/figures-data', express.static(figuresDataPath));
 
 // Initialize database
 const db = getDatabase();
