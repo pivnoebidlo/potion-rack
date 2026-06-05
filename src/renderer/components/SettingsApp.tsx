@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import styles from './SettingsApp.module.css';
 import { t, setLanguage, getLanguage } from '../i18n';
-import { showToast } from './Toast';
 
 type SettingsTab = 'general' | 'appearance' | 'data';
 
@@ -9,13 +8,13 @@ export default function SettingsApp() {
     const [tab, setTab] = useState<SettingsTab>('general');
     const [theme, setTheme] = useState('midnight');
     const [language, setLanguageState] = useState(getLanguage());
-    const [autoBackup, setAutoBackup] = useState(false);
-    const [backupInterval, setBackupInterval] = useState(7);
     const [version, setVersion] = useState('');
     const [importConfirmOpen, setImportConfirmOpen] = useState(false);
     const [importFile, setImportFile] = useState<File | null>(null);
     const [figuresPath, setFiguresPath] = useState('');
-    const [pathStatus, setPathStatus] = useState<'ok' | 'unavailable'>('ok');
+    const [dbPath, setDbPath] = useState('');
+    const [showStatusIndicators, setShowStatusIndicators] = useState(true);
+    const [showCounters, setShowCounters] = useState(true);
 
     const $t = t();
 
@@ -23,7 +22,7 @@ export default function SettingsApp() {
         if ((window as any).electronAPI?.getAppVersion) {
             (window as any).electronAPI.getAppVersion().then((v: string) => setVersion(v));
         } else {
-            setVersion('0.1.5');
+            setVersion('0.3.0');
         }
     }, []);
 
@@ -44,6 +43,25 @@ export default function SettingsApp() {
         } else if ((window as any).electronAPI?.getDefaultFiguresPath) {
             (window as any).electronAPI.getDefaultFiguresPath().then((p: string) => setFiguresPath(p));
         }
+    }, []);
+
+    useEffect(() => {
+        const savedPath = localStorage.getItem('potion-rack-db-path');
+        if (savedPath) {
+            setDbPath(savedPath);
+        } else if ((window as any).electronAPI?.getDbPath) {
+            (window as any).electronAPI.getDbPath().then((p: string) => setDbPath(p));
+        }
+    }, []);
+
+    useEffect(() => {
+        const saved = localStorage.getItem('potion-rack-show-indicators');
+        if (saved !== null) setShowStatusIndicators(saved === 'true');
+    }, []);
+
+    useEffect(() => {
+        const saved = localStorage.getItem('potion-rack-show-counters');
+        if (saved !== null) setShowCounters(saved === 'true');
     }, []);
 
     useEffect(() => {
@@ -70,19 +88,27 @@ export default function SettingsApp() {
 
     const handleSelectFolder = async () => {
         const api = (window as any).electronAPI;
-        if (!api?.selectFiguresDirectory) {
-            showToast('Folder selection not available in browser', 'info');
-            return;
-        }
+        if (!api?.selectFiguresDirectory) return;
         const selectedPath = await api.selectFiguresDirectory();
         if (selectedPath) {
             setFiguresPath(selectedPath);
             localStorage.setItem('potion-rack-figures-path', selectedPath);
-            setPathStatus('ok');
             if (api.setFiguresPath) {
                 await api.setFiguresPath(selectedPath);
             }
-            showToast($t.pathChanged || 'Path updated', 'success');
+        }
+    };
+
+    const handleSelectDbPath = async () => {
+        const api = (window as any).electronAPI;
+        if (!api?.selectDbPath) return;
+        const selectedPath = await api.selectDbPath();
+        if (selectedPath) {
+            setDbPath(selectedPath);
+            localStorage.setItem('potion-rack-db-path', selectedPath);
+            if (api.setDbPath) {
+                await api.setDbPath(selectedPath);
+            }
         }
     };
 
@@ -97,10 +123,8 @@ export default function SettingsApp() {
             a.download = `potion-rack-backup-${new Date().toISOString().split('T')[0]}.prbackup`;
             a.click();
             URL.revokeObjectURL(url);
-            showToast('Backup exported', 'success');
         } catch (err) {
             console.error('Export failed:', err);
-            showToast('Export failed', 'error');
         }
     };
 
@@ -130,17 +154,14 @@ export default function SettingsApp() {
             });
             setImportConfirmOpen(false);
             setImportFile(null);
-            showToast('Import successful!', 'success');
         } catch (err) {
             console.error('Import failed:', err);
-            showToast('Import failed', 'error');
         }
     };
 
     const handleReset = async () => {
         if (!confirm('Delete ALL data? This cannot be undone!')) return;
         if (!confirm('Are you really sure?')) return;
-        showToast('Reset not implemented yet', 'info');
     };
 
     return (
@@ -199,6 +220,36 @@ export default function SettingsApp() {
                                     </select>
                                 </div>
                             </div>
+                            <div className={styles.setting}>
+                                <div className={styles.settingInfo}>
+                                    <div className={styles.settingLabel}>{$t.showStatusIndicators || 'Статус-индикаторы'}</div>
+                                    <div className={styles.settingDesc}>{$t.showStatusIndicatorsDesc || 'Показывать кружки статуса у фигурок в дереве'}</div>
+                                </div>
+                                <div className={styles.settingControl}>
+                                    <label className={styles.toggle}>
+                                        <input type="checkbox" checked={showStatusIndicators} onChange={e => {
+                                            setShowStatusIndicators(e.target.checked);
+                                            localStorage.setItem('potion-rack-show-indicators', e.target.checked.toString());
+                                        }} />
+                                        <span className={styles.slider}></span>
+                                    </label>
+                                </div>
+                            </div>
+                            <div className={styles.setting}>
+                                <div className={styles.settingInfo}>
+                                    <div className={styles.settingLabel}>{$t.showCounters || 'Счётчики в папках'}</div>
+                                    <div className={styles.settingDesc}>{$t.showCountersDesc || 'Показывать количество фигурок рядом с именем папки'}</div>
+                                </div>
+                                <div className={styles.settingControl}>
+                                    <label className={styles.toggle}>
+                                        <input type="checkbox" checked={showCounters} onChange={e => {
+                                            setShowCounters(e.target.checked);
+                                            localStorage.setItem('potion-rack-show-counters', e.target.checked.toString());
+                                        }} />
+                                        <span className={styles.slider}></span>
+                                    </label>
+                                </div>
+                            </div>
                         </div>
                     )}
 
@@ -206,28 +257,29 @@ export default function SettingsApp() {
                         <div className={styles.section}>
                             <div className={styles.sectionTitle}>{$t.data}</div>
 
-                            {/* ─── Папка статей ─── */}
                             <div className={styles.setting}>
                                 <div className={styles.settingInfo}>
-                                    <div className={styles.settingLabel}>📁 {$t.figuresPath}</div>
+                                    <div className={styles.settingLabel}>{$t.figuresPath}</div>
                                     <div className={styles.settingDesc}>{$t.figuresPathDesc}</div>
-                                    {figuresPath && (
-                                        <div className={pathStatus === 'ok' ? styles.pathOk : styles.pathUnavailable}>
-                                            <span className={styles.statusDot} />
-                                            {pathStatus === 'ok' ? $t.pathAvailable : $t.pathUnavailable}
-                                        </div>
-                                    )}
                                 </div>
                                 <div className={styles.settingControl}>
-                                    <div className={styles.pathDisplay} title={figuresPath}>
-                                        {figuresPath || '—'}
-                                    </div>
-                                    <button
-                                        className={`${styles.btn} ${styles.btnSecondary} ${styles.btnFixed}`}
-                                        onClick={handleSelectFolder}
-                                    >
+                                    <button className={`${styles.btn} ${styles.btnSecondary} ${styles.btnFixed}`} onClick={handleSelectFolder}>
                                         📂 {$t.selectFolder}
                                     </button>
+                                    {figuresPath && <div className={styles.pathText}>{figuresPath}</div>}
+                                </div>
+                            </div>
+
+                            <div className={styles.setting}>
+                                <div className={styles.settingInfo}>
+                                    <div className={styles.settingLabel}>{$t.dbPath || 'База данных'}</div>
+                                    <div className={styles.settingDesc}>{$t.dbPathDesc || 'Расположение файла базы данных SQLite'}</div>
+                                </div>
+                                <div className={styles.settingControl}>
+                                    <button className={`${styles.btn} ${styles.btnSecondary} ${styles.btnFixed}`} onClick={handleSelectDbPath}>
+                                        📂 {$t.selectFolder}
+                                    </button>
+                                    {dbPath && <div className={styles.pathText}>{dbPath}</div>}
                                 </div>
                             </div>
 
@@ -249,30 +301,10 @@ export default function SettingsApp() {
                                     <button className={`${styles.btn} ${styles.btnSecondary} ${styles.btnFixed}`} onClick={handleImport}>📥 {$t.import}</button>
                                 </div>
                             </div>
-                            <div className={styles.setting}>
+
+                            <div className={styles.setting} style={{ marginTop: 24, borderTop: '1px solid var(--danger)', paddingTop: 16 }}>
                                 <div className={styles.settingInfo}>
-                                    <div className={styles.settingLabel}>{$t.autoBackup}</div>
-                                    <div className={styles.settingDesc}>{$t.autoBackupDesc}</div>
-                                </div>
-                                <div className={styles.settingControl}>
-                                    <label className={styles.toggle}>
-                                        <input type="checkbox" checked={autoBackup} onChange={e => setAutoBackup(e.target.checked)} />
-                                        <span className={styles.slider}></span>
-                                    </label>
-                                </div>
-                            </div>
-                            <div className={styles.setting}>
-                                <div className={styles.settingInfo}>
-                                    <div className={styles.settingLabel}>{$t.backupInterval}</div>
-                                    <div className={styles.settingDesc}>{$t.backupIntervalDesc}</div>
-                                </div>
-                                <div className={styles.settingControl}>
-                                    <input className={styles.numberInput} type="number" value={backupInterval} min={1} max={30} onChange={e => setBackupInterval(Number(e.target.value))} />
-                                </div>
-                            </div>
-                            <div className={styles.setting} style={{ marginTop: 24, borderTop: '1px solid #dc2626', paddingTop: 16 }}>
-                                <div className={styles.settingInfo}>
-                                    <div className={styles.settingLabel} style={{ color: '#dc2626' }}>{$t.resetData}</div>
+                                    <div className={styles.settingLabel} style={{ color: 'var(--danger)' }}>{$t.resetData}</div>
                                     <div className={styles.settingDesc}>{$t.resetDataDesc}</div>
                                 </div>
                                 <div className={styles.settingControl}>
@@ -296,7 +328,7 @@ export default function SettingsApp() {
                     }}>
                         <div style={{ fontSize: 'var(--font-size-lg)', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '12px' }}>{$t.importBackup}</div>
                         <div style={{ color: 'var(--text-secondary)', marginBottom: '20px', fontSize: 'var(--font-size-sm)' }}>
-                            This will replace all existing data with the backup. Are you sure?
+                            {$t.importBackupDesc}
                         </div>
                         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
                             <button onClick={() => { setImportConfirmOpen(false); setImportFile(null); }} style={{ padding: '8px 16px', background: 'var(--bg-hover)', color: 'var(--text-primary)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: 'var(--font-size-sm)' }}>{$t.cancel}</button>

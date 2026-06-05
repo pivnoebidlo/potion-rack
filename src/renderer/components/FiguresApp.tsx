@@ -1,4 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import { marked } from 'marked';
+import { EditorView } from '@codemirror/view';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { fetchFigures, updateFigureAPI, deleteFigureAPI, createFigureAPI, Figure } from '../services/apiFigures';
 import styles from './FiguresApp.module.css';
 import FigureModal from './FigureModal';
@@ -7,7 +9,7 @@ import PromptModal from './PromptModal';
 import FolderTree, { FolderTarget } from './FolderTree';
 import ContextMenu from './ContextMenu';
 import MarkdownEditor from './MarkdownEditor';
-import placeholderImg from '../images/placeholder.png';
+import TocPanel from './TocPanel';
 import { t } from '../i18n';
 
 export default function FiguresApp() {
@@ -25,20 +27,21 @@ export default function FiguresApp() {
     const [confirmTitle, setConfirmTitle] = useState('');
     const [confirmMessage, setConfirmMessage] = useState('');
     const [confirmAction, setConfirmAction] = useState<() => void>(() => {});
-    const [images, setImages] = useState<any[]>([]);
-    const [selectedImageId, setSelectedImageId] = useState<number | null>(null);
-    const [hoverMain, setHoverMain] = useState(false);
-    const [contextMenu, setContextMenu] = useState<{
-        x: number;
-        y: number;
-        target: FolderTarget;
-    } | null>(null);
+    const [contextMenu, setContextMenu] = useState<{ x: number; y: number; target: FolderTarget } | null>(null);
     const [newFigureFolder, setNewFigureFolder] = useState<string>('');
     const [promptOpen, setPromptOpen] = useState(false);
     const [promptTitle, setPromptTitle] = useState('');
     const [promptDefault, setPromptDefault] = useState('');
     const [promptCallback, setPromptCallback] = useState<(value: string) => void>(() => {});
     const [diskFolders, setDiskFolders] = useState<string[]>([]);
+    const [infoCollapsed, setInfoCollapsed] = useState(false);
+    const [tocCollapsed, setTocCollapsed] = useState(false);
+    const [helpCollapsed, setHelpCollapsed] = useState(true);
+    const [showIndicators, setShowIndicators] = useState(true);
+    const [showCounters, setShowCounters] = useState(true);
+
+
+    const editorViewRef = useRef<EditorView | null>(null);
 
     const loadFigures = useCallback(async () => { try { setFigures(await fetchFigures()); } catch (err) { console.error(err); } }, []);
     useEffect(() => { loadFigures(); }, [loadFigures]);
@@ -46,23 +49,29 @@ export default function FiguresApp() {
     const loadDiskFolders = async () => {
         try {
             const api = (window as any).electronAPI;
-            if (api?.listFolders) {
-                const folders = await api.listFolders();
-                setDiskFolders(folders.map((f: any) => f.path));
-            }
-        } catch (err) {
-            console.error('Failed to load folders:', err);
-        }
+            if (api?.listFolders) { const folders = await api.listFolders(); setDiskFolders(folders.map((f: any) => f.path)); }
+        } catch (err) { console.error('Failed to load folders:', err); }
     };
     useEffect(() => { loadDiskFolders(); }, []);
-
-    const filtered = figures.filter(f => {
-        if (search && !f.name.toLowerCase().includes(search.toLowerCase())) return false;
-        if (selectedFolder && f.folder_path !== selectedFolder) return false;
-        return true;
-    });
+    useEffect(() => {
+        const saved = localStorage.getItem('potion-rack-show-indicators');
+        if (saved !== null) setShowIndicators(saved === 'true');
+    }, []);
+    useEffect(() => {
+        const saved = localStorage.getItem('potion-rack-show-counters');
+        if (saved !== null) setShowCounters(saved === 'true');
+    }, []);
 
     const selected = figures.find(f => f.id === selectedId);
+
+    const allFiguresInFolder = selectedFolder
+        ? figures.filter(f => f.folder_path === selectedFolder || f.folder_path?.startsWith(selectedFolder + '/'))
+        : [];
+
+    const filtered = allFiguresInFolder.filter(f => {
+        if (search && !f.name.toLowerCase().includes(search.toLowerCase())) return false;
+        return true;
+    });
 
     useEffect(() => {
         if (selected) {
@@ -71,24 +80,13 @@ export default function FiguresApp() {
                     const cleaned = content.replace(/!\[([^\]]*)\]\(data:image\/[^;]+;base64,[^)]+\)/g, '[$1 - old image]');
                     setEditorContent(cleaned || selected.content || '');
                 });
-            } else {
-                setEditorContent(selected.content || '');
-            }
+            } else { setEditorContent(selected.content || ''); }
         }
     }, [selected]);
 
-    useEffect(() => {
-        // Временно отключено для отладки
-        const handleKeyDown = (e: KeyboardEvent) => {};
-        window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
-    }, []);
-
     const handleSave = async () => {
         if (!selected) return;
-        if ((window as any).electronAPI?.writeArticle) {
-            await (window as any).electronAPI.writeArticle(selected.folder_path || '', selected.name, editorContent);
-        }
+        if ((window as any).electronAPI?.writeArticle) await (window as any).electronAPI.writeArticle(selected.folder_path || '', selected.name, editorContent);
         await updateFigureAPI(selected.id, { content: editorContent });
         await loadFigures();
     };
@@ -99,40 +97,23 @@ export default function FiguresApp() {
         setConfirmTitle($t.deleteFigure); setConfirmMessage($t.deleteFigureConfirm);
         setConfirmAction(() => async () => {
             const figure = figures.find(f => f.id === id);
-            if (figure && (window as any).electronAPI?.deleteArticle) {
-                await (window as any).electronAPI.deleteArticle(figure.folder_path || '', figure.name);
-            }
-            await deleteFigureAPI(id);
-            setSelectedId(null);
-            await loadFigures();
-            setConfirmOpen(false);
+            if (figure && (window as any).electronAPI?.deleteArticle) await (window as any).electronAPI.deleteArticle(figure.folder_path || '', figure.name);
+            await deleteFigureAPI(id); setSelectedId(null); await loadFigures(); setConfirmOpen(false);
         });
         setConfirmOpen(true);
     };
 
-    const handleContextMenu = (e: React.MouseEvent, target: FolderTarget) => {
-        setContextMenu({ x: e.clientX, y: e.clientY, target });
-    };
+    const handleContextMenu = (e: React.MouseEvent, target: FolderTarget) => setContextMenu({ x: e.clientX, y: e.clientY, target });
 
-    const handleNewFigure = (folderPath: string) => {
-        setNewFigureFolder(folderPath);
-        setEditingFigure(null);
-        setModalOpen(true);
-    };
+    const handleNewFigure = (folderPath: string) => { setNewFigureFolder(folderPath); setEditingFigure(null); setModalOpen(true); };
 
     const handleNewFolder = async (parentPath: string) => {
-        setPromptTitle($t.newFolder);
-        setPromptDefault('');
+        setPromptTitle($t.newFolder); setPromptDefault('');
         setPromptCallback(() => async (name: string) => {
             if (!name) return;
             const fullPath = parentPath ? `${parentPath}/${name}` : name;
-            try {
-                await (window as any).electronAPI?.createFolder(fullPath);
-                await loadDiskFolders();
-                await loadFigures();
-            } catch (err) {
-                console.error('Failed to create folder:', err);
-            }
+            try { await (window as any).electronAPI?.createFolder(fullPath); await loadDiskFolders(); await loadFigures(); }
+            catch (err) { console.error('Failed to create folder:', err); }
         });
         setPromptOpen(true);
     };
@@ -140,41 +121,36 @@ export default function FiguresApp() {
     const handleRename = async (target: FolderTarget) => {
         if (target.type === 'folder') {
             const currentName = target.path.split('/').pop() || '';
-            setPromptTitle($t.renameFolder);
-            setPromptDefault(currentName);
+            setPromptTitle($t.renameFolder); setPromptDefault(currentName);
             setPromptCallback(() => async (newName: string) => {
                 if (!newName || newName === currentName) return;
                 try {
-                    const parts = target.path.split('/');
-                    parts[parts.length - 1] = newName;
-                    const newPath = parts.join('/');
-
-                    // Переименовываем папку на диске
+                    const parts = target.path.split('/'); parts[parts.length - 1] = newName; const newPath = parts.join('/');
                     await (window as any).electronAPI?.renameFolder(target.path, newPath);
-
-                    // Обновляем folder_path у ВСЕХ фигурок, чей путь начинается с target.path
-                    const figsToUpdate = figures.filter(f =>
-                        f.folder_path === target.path || f.folder_path?.startsWith(target.path + '/')
-                    );
+                    const figsToUpdate = figures.filter(f => f.folder_path === target.path || f.folder_path?.startsWith(target.path + '/'));
                     for (const fig of figsToUpdate) {
-                        const updatedPath = fig.folder_path === target.path
-                            ? newPath
-                            : newPath + fig.folder_path!.substring(target.path.length);
+                        const updatedPath = fig.folder_path === target.path ? newPath : newPath + fig.folder_path!.substring(target.path.length);
                         await updateFigureAPI(fig.id, { folder_path: updatedPath });
                     }
-
                     if (selectedFolder === target.path || selectedFolder?.startsWith(target.path + '/')) {
-                        const updatedSelected = selectedFolder === target.path
-                            ? newPath
-                            : newPath + selectedFolder.substring(target.path.length);
+                        const updatedSelected = selectedFolder === target.path ? newPath : newPath + selectedFolder.substring(target.path.length);
                         setSelectedFolder(updatedSelected);
                     }
-
-                    await loadDiskFolders();
+                    await loadDiskFolders(); await loadFigures();
+                } catch (err) { console.error('Failed to rename folder:', err); }
+            });
+            setPromptOpen(true);
+        } else if (target.type === 'figure' && target.figureId) {
+            const figure = figures.find(f => f.id === target.figureId);
+            if (!figure) return;
+            setPromptTitle($t.renameFigure); setPromptDefault(figure.name);
+            setPromptCallback(() => async (newName: string) => {
+                if (!newName || newName === figure.name) return;
+                try {
+                    await (window as any).electronAPI?.renameFigureFolder(figure.folder_path || '', figure.name, newName);
+                    await updateFigureAPI(figure.id, { name: newName });
                     await loadFigures();
-                } catch (err) {
-                    console.error('Failed to rename folder:', err);
-                }
+                } catch (err) { console.error('Failed to rename figure:', err); }
             });
             setPromptOpen(true);
         }
@@ -182,60 +158,92 @@ export default function FiguresApp() {
 
     const handleDeleteTarget = (target: FolderTarget) => {
         if (target.type === 'folder') {
-            setConfirmTitle($t.deleteFolderTitle);
-            setConfirmMessage($t.deleteFolderConfirm.replace('{path}', target.path));
+            setConfirmTitle($t.deleteFolderTitle); setConfirmMessage($t.deleteFolderConfirm.replace('{path}', target.path));
             setConfirmAction(() => async () => {
-                // Найти ВСЕ фигурки в этой папке и всех вложенных
-                const figsToDelete = figures.filter(f =>
-                    f.folder_path === target.path || f.folder_path?.startsWith(target.path + '/')
-                );
-
-                // Удалить статьи с диска
-                for (const fig of figsToDelete) {
-                    if ((window as any).electronAPI?.deleteArticle) {
-                        await (window as any).electronAPI.deleteArticle(fig.folder_path || '', fig.name);
-                    }
+                const figsInFolder = figures.filter(f => f.folder_path === target.path || f.folder_path?.startsWith(target.path + '/'));
+                for (const fig of figsInFolder) {
+                    if ((window as any).electronAPI?.deleteArticle) await (window as any).electronAPI.deleteArticle(fig.folder_path || '', fig.name);
                     await deleteFigureAPI(fig.id);
                 }
-
-                // Удалить папку с диска (рекурсивно)
                 await (window as any).electronAPI?.deleteFolder?.(target.path);
-
-                // Сбросить выбор, если был выбран элемент внутри удаляемой папки
-                if (selectedFolder === target.path || selectedFolder?.startsWith(target.path + '/')) {
-                    setSelectedFolder('');
-                }
-                if (selected && (selected.folder_path === target.path || selected.folder_path?.startsWith(target.path + '/'))) {
-                    setSelectedId(null);
-                }
-
-                setConfirmOpen(false);
-                await loadDiskFolders();
-                await loadFigures();
+                setConfirmOpen(false); setSelectedId(null); setSelectedFolder('');
+                await loadDiskFolders(); await loadFigures();
             });
             setConfirmOpen(true);
-        } else if (target.type === 'figure' && target.figureId) {
-            handleDeleteFigure(target.figureId);
-        }
+        } else if (target.type === 'figure' && target.figureId) handleDeleteFigure(target.figureId);
+    };
+
+    const handleMoveFigure = async (figureId: number, figureName: string, oldFolderPath: string, newFolderPath: string) => {
+        try {
+            await (window as any).electronAPI?.moveFigure(oldFolderPath, figureName, newFolderPath);
+            await updateFigureAPI(figureId, { folder_path: newFolderPath || null });
+            if (selectedId === figureId) setSelectedId(null);
+            await loadDiskFolders(); await loadFigures();
+        } catch (err) { console.error('Failed to move figure:', err); }
+    };
+
+    const handleExportPdf = async (target: FolderTarget) => {
+        if (target.type !== 'figure' || !target.figureId) return;
+        const figure = figures.find(f => f.id === target.figureId);
+        if (!figure) return;
+        try {
+            const content = await (window as any).electronAPI?.readArticle(figure.folder_path || '', figure.name);
+            const slug = (figure.folder_path ? `${figure.folder_path}/` : '') + figure.name
+                .toLowerCase()
+                .replace(/\s+/g, '_')
+                .replace(/[<>:"/\\|?*]/g, '');
+            const safeSlug = encodeURIComponent(slug);
+            const resolvedContent = (content || '').replace(/\(\.\/images\//g, `(http://127.0.0.1:8765/figures-data/${safeSlug}/images/`).replace(/\(\.\.\/images\//g, `(http://127.0.0.1:8765/figures-data/${safeSlug}/images/`);
+            console.log('Export PDF — figure.name:', figure.name);
+            console.log('Export PDF — folder_path:', figure.folder_path);
+            console.log('Export PDF — slug:', slug);
+            const htmlContent = marked(resolvedContent);
+            await (window as any).electronAPI?.exportPdf(figure.folder_path || '', figure.name, htmlContent);
+        } catch (err) { console.error('Export PDF failed:', err); }
+    };
+
+    const handleMoveFolder = async (oldPath: string, newPath: string) => {
+        try {
+            await (window as any).electronAPI?.moveFolder(oldPath, newPath);
+            const figsToUpdate = figures.filter(f => f.folder_path === oldPath || f.folder_path?.startsWith(oldPath + '/'));
+            for (const fig of figsToUpdate) {
+                const updatedPath = fig.folder_path === oldPath ? newPath : newPath + fig.folder_path!.substring(oldPath.length);
+                await updateFigureAPI(fig.id, { folder_path: updatedPath });
+            }
+            if (selectedFolder === oldPath || selectedFolder?.startsWith(oldPath + '/')) {
+                const updatedSelected = selectedFolder === oldPath ? newPath : newPath + selectedFolder.substring(oldPath.length);
+                setSelectedFolder(updatedSelected);
+            }
+            await loadDiskFolders(); await loadFigures();
+        } catch (err) { console.error('Failed to move folder:', err); }
+    };
+
+    const handleScrollToLine = (line: number) => {
+        const view = editorViewRef.current;
+        if (!view) return;
+        const pos = view.state.doc.line(line).from;
+        view.dispatch({ selection: { anchor: pos, head: pos } });
+        view.dispatch({ effects: EditorView.scrollIntoView(pos, { y: 'center' }) });
+        view.focus();
     };
 
     const statusTag = (s: string) => { if (s === 'draft') return styles.tagNew; if (s === 'in-progress') return styles.tagProgress; if (s === 'completed') return styles.tagDone; return ''; };
     const statusLabel = (s: string) => { if (s === 'draft') return $t.draft; if (s === 'in-progress') return $t.inProgress; if (s === 'completed') return $t.completed; return s; };
 
-    const loadImages = useCallback(async (figureId: number) => { try { const res = await fetch(`http://127.0.0.1:8765/api/figures/${figureId}/images`); const data = await res.json(); setImages(data); setSelectedImageId(data.length > 0 ? data[0].id : null); } catch (err) { console.error(err); } }, []);
-    useEffect(() => { if (selectedId) loadImages(selectedId); else { setImages([]); setSelectedImageId(null); } }, [selectedId, loadImages]);
+    const folderStats = selectedFolder ? {
+        total: allFiguresInFolder.length,
+        inProgress: allFiguresInFolder.filter(f => f.status === 'in-progress').length,
+        completed: allFiguresInFolder.filter(f => f.status === 'completed').length,
+        subFolders: diskFolders.filter(f => f.startsWith(selectedFolder + '/')).length,
+    } : null;
 
-    const handleUploadImage = async (file: File) => { if (!selectedId) return; const r = new FileReader(); r.onload = async () => { const b64 = r.result as string; await fetch(`http://127.0.0.1:8765/api/figures/${selectedId}/images`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ image_data: b64.split(',')[1], content_type: file.type, filename: file.name }) }); await loadImages(selectedId); }; r.readAsDataURL(file); };
-
-    const handleDeleteImage = (imgId: number) => { setConfirmTitle($t.deletePhoto); setConfirmMessage($t.deletePhotoConfirm); setConfirmAction(() => async () => { await fetch(`http://127.0.0.1:8765/api/figures/${selectedId}/images/${imgId}`, { method: 'DELETE' }); await loadImages(selectedId!); setConfirmOpen(false); }); setConfirmOpen(true); };
-
-    const handleSetPrimary = async (imgId: number) => { if (!selectedId) return; await fetch(`http://127.0.0.1:8765/api/figures/${selectedId}/images/${imgId}/primary`, { method: 'PUT' }); await loadImages(selectedId); };
-
-    useEffect(() => { const hp = (e: ClipboardEvent) => { if (!selectedId) return; const items = e.clipboardData?.items; if (!items) return; for (const item of Array.from(items)) { if (item.type.startsWith('image/')) { e.preventDefault(); const f = item.getAsFile(); if (f) handleUploadImage(f); return; } } }; document.addEventListener('paste', hp); return () => document.removeEventListener('paste', hp); }, [selectedId]);
-    console.log('RENDER — selectedId:', selectedId, 'selectedFolder:', selectedFolder);
     return (
         <div className={styles.root}>
-            <div className={styles.sidebar}><div className={styles.sidebarItem} onClick={() => navigateTo('paints')}>🎨</div><div className={`${styles.sidebarItem} ${styles.sidebarItemActive}`}>🧩</div><div className={styles.sidebarItem} onClick={() => navigateTo('settings')}>⚙️</div></div>
+            <div className={styles.sidebar}>
+                <div className={styles.sidebarItem} onClick={() => navigateTo('paints')}>🎨</div>
+                <div className={`${styles.sidebarItem} ${styles.sidebarItemActive}`}>🧩</div>
+                <div className={styles.sidebarItem} onClick={() => navigateTo('settings')}>⚙️</div>
+            </div>
             <div className={styles.main}>
                 <div className={`${styles.leftPanel} ${leftPanelCollapsed ? styles.leftPanelCollapsed : styles.leftPanelExpanded}`}>
                     <button className={styles.leftToggle} onClick={() => setLeftPanelCollapsed(!leftPanelCollapsed)}>{leftPanelCollapsed ? '▶' : '◀'}</button>
@@ -244,28 +252,13 @@ export default function FiguresApp() {
                             <input className={styles.searchInput} placeholder={$t.search + '...'} value={search} onChange={e => setSearch(e.target.value)} />
                         </div>
                         <FolderTree
-                            figures={figures}
-                            diskFolders={diskFolders}
-                            selectedId={selectedId}
-                            selectedFolder={selectedFolder}
-                            onSelectFigure={(id) => {
-                                console.log('onSelectFigure called with id:', id);
-                                setSelectedId(id);
-                            }}
-                            onSelectFolder={(path) => {
-                                console.log('onSelectFolder called with path:', path);
-                                setSelectedFolder(path);
-                                setSelectedId(null);
-                            }}
-                            onDoubleClickFigure={(id) => {
-                                const figure = figures.find(f => f.id === id);
-                                if (figure) {
-                                    setEditingFigure(figure);
-                                    setModalOpen(true);
-                                }
-                            }}
-                            onContextMenu={handleContextMenu}
-                            searchQuery={search}
+                            figures={figures} diskFolders={diskFolders} selectedId={selectedId} selectedFolder={selectedFolder}
+                            onSelectFigure={(id) => setSelectedId(id)}
+                            onSelectFolder={(path) => { setSelectedFolder(path); setSelectedId(null); }}
+                            onDoubleClickFigure={(id) => { const figure = figures.find(f => f.id === id); if (figure) { setEditingFigure(figure); setModalOpen(true); } }}
+                            onContextMenu={handleContextMenu} onMoveFigure={handleMoveFigure} onMoveFolder={handleMoveFolder} searchQuery={search}
+                            showIndicators={showIndicators}
+                            showCounters={showCounters}
                         />
                     </>)}
                 </div>
@@ -273,36 +266,9 @@ export default function FiguresApp() {
                     {selected ? (
                         <>
                             <div className={styles.centerHeader}><div className={styles.centerTitle}>{selected.name}</div></div>
-                            <MarkdownEditor content={editorContent} onChange={setEditorContent} onSave={handleSave} figureName={selected?.name} folderPath={selected?.folder_path || ''} />
+                            <MarkdownEditor content={editorContent} onChange={setEditorContent} onSave={handleSave}
+                                            figureName={selected?.name} folderPath={selected?.folder_path || ''} editorViewRef={editorViewRef} />
                         </>
-                    ) : selectedFolder ? (
-                        <div className={styles.figureGrid}>
-                            {filtered.map(f => (
-                                <div
-                                    key={f.id}
-                                    className={`${styles.figureCard} ${selectedId === f.id ? styles.figureCardSelected : ''}`}
-                                    onClick={() => setSelectedId(f.id)}
-                                    onDoubleClick={() => { setEditingFigure(f); setModalOpen(true); }}
-                                >
-                                    <div className={styles.cardHeader}>
-                                        <div className={styles.cardTitle}>{f.name}</div>
-                                        <span className={`${styles.cardBadge} ${statusTag(f.status)}`}>{statusLabel(f.status)}</span>
-                                    </div>
-                                    <div className={styles.cardMeta}>
-                                        {f.manufacturer && <span>{f.manufacturer}</span>}
-                                        {f.scale && <span>{f.scale}</span>}
-                                        {f.material && <span>{f.material}</span>}
-                                    </div>
-                                    <div className={styles.cardActions}>
-                                        <button className={styles.cardBtn} onClick={(e) => { e.stopPropagation(); setEditingFigure(f); setModalOpen(true); }}>{$t.editFigure}</button>
-                                        <button className={`${styles.cardBtn} ${styles.cardBtnDanger}`} onClick={(e) => { e.stopPropagation(); handleDeleteFigure(f.id); }}>{$t.deleteFigure}</button>
-                                    </div>
-                                </div>
-                            ))}
-                            {filtered.length === 0 && (
-                                <div className={styles.emptyState}>{$t.noFigures}</div>
-                            )}
-                        </div>
                     ) : (
                         <div className={styles.centerEmpty}>{$t.selectFigure}</div>
                     )}
@@ -311,18 +277,87 @@ export default function FiguresApp() {
                 <div className={`${styles.rightPanel} ${rightPanelCollapsed ? styles.rightPanelCollapsed : styles.rightPanelExpanded}`}>
                     <button className={styles.rightToggle} onClick={() => setRightPanelCollapsed(!rightPanelCollapsed)}>{rightPanelCollapsed ? '◀' : '▶'}</button>
                     {!rightPanelCollapsed && (
-                        selected ? (<>
-                            <div className={styles.gallery}><div style={{ fontSize: 'var(--font-size-lg)', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '2px', textAlign: 'center' }}>{selected.manufacturer ? `${selected.manufacturer} – ${selected.name}` : selected.name}</div>{selected.scale && <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-secondary)', textAlign: 'center', marginBottom: '12px' }}>[{selected.scale}]</div>}
-                                {selectedImageId && images.length > 0 ? (<><div className={styles.galleryMain} onMouseEnter={() => setHoverMain(true)} onMouseLeave={() => setHoverMain(false)}><img src={`data:${images.find(i => i.id === selectedImageId)?.content_type || 'image/jpeg'};base64,${images.find(i => i.id === selectedImageId)?.image_data}`} alt="Selected" />{hoverMain && (<div style={{ position: 'absolute', bottom: '8px', left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: '10px' }}><button onClick={(e) => { e.stopPropagation(); const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*'; inp.onchange = (ev) => { const f = (ev.target as HTMLInputElement).files?.[0]; if (f) handleUploadImage(f); }; inp.click(); }} style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'rgba(0,0,0,0.6)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', color: '#fff' }}>➕</button><button onClick={(e) => { e.stopPropagation(); handleSetPrimary(selectedImageId); }} style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'rgba(0,0,0,0.6)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', color: 'var(--star-active)' }}>★</button><button onClick={(e) => { e.stopPropagation(); handleDeleteImage(selectedImageId); }} style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'rgba(0,0,0,0.6)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', color: '#fff' }}>🗑</button></div>)}</div><div className={styles.galleryThumbnails}>{images.map((img: any) => (<div key={img.id} className={`${styles.thumbnail} ${selectedImageId === img.id ? styles.thumbnailActive : ''}`} onClick={() => setSelectedImageId(img.id)}><img src={`data:${img.content_type || 'image/jpeg'};base64,${img.image_data}`} alt={img.filename} /></div>))}</div></>) : (<div className={styles.galleryMain} onMouseEnter={() => setHoverMain(true)} onMouseLeave={() => setHoverMain(false)}><img src={placeholderImg} alt="No photo" style={{ opacity: 0.3 }} />{hoverMain && (<div style={{ position: 'absolute', bottom: '8px', left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: '10px' }}><button onClick={(e) => { e.stopPropagation(); const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*'; inp.onchange = (ev) => { const f = (ev.target as HTMLInputElement).files?.[0]; if (f) handleUploadImage(f); }; inp.click(); }} style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'rgba(0,0,0,0.6)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', color: '#fff' }}>➕</button></div>)}</div>)}</div>
-                            <div style={{ borderTop: '1px solid var(--border)', margin: '0 12px' }} /><div className={styles.detailsSection}><div className={styles.detailsLabel}>{$t.status}</div><div><span className={`${styles.tag} ${statusTag(selected.status)}`}>{statusLabel(selected.status)}</span></div>{selected.manufacturer && <><div className={styles.detailsLabel}>{$t.manufacturer}</div><div className={styles.detailsValue}>{selected.manufacturer}</div></>}{selected.scale && <><div className={styles.detailsLabel}>{$t.scale}</div><div className={styles.detailsValue}>{selected.scale}</div></>}{selected.material && <><div className={styles.detailsLabel}>{$t.material}</div><div className={styles.detailsValue}>{selected.material}</div></>}</div>
-                        </>) : selectedFolder ? (
-                            <div className={styles.folderInfo}>
-                                <div className={styles.folderInfoTitle}>{selectedFolder.split('/').pop() || selectedFolder}</div>
-                                <div className={styles.folderInfoPath}>{selectedFolder}</div>
+                        selected ? (
+                            <div className={styles.rightSections}>
+                                <div className={styles.collapsibleSection}>
+                                    <div className={styles.collapsibleHeader} onClick={() => setInfoCollapsed(!infoCollapsed)}>
+                                        <span>{$t.info}</span><span className={styles.collapsibleArrow}>{infoCollapsed ? '▸' : '▾'}</span>
+                                    </div>
+                                    {!infoCollapsed && (
+                                        <div className={styles.collapsibleBody}>
+                                            <div className={styles.detailsGrid}>
+                                                <div className={styles.detailItem}><div className={styles.detailLabel}>{$t.status}</div><div><span className={`${styles.tag} ${statusTag(selected.status)}`}>{statusLabel(selected.status)}</span></div></div>
+                                                {selected.manufacturer && <div className={styles.detailItem}><div className={styles.detailLabel}>{$t.manufacturer}</div><div className={styles.detailValue}>{selected.manufacturer}</div></div>}
+                                                {selected.scale && <div className={styles.detailItem}><div className={styles.detailLabel}>{$t.scale}</div><div className={styles.detailValue}>{selected.scale}</div></div>}
+                                                {selected.material && <div className={styles.detailItem}><div className={styles.detailLabel}>{$t.material}</div><div className={styles.detailValue}>{selected.material}</div></div>}
+                                                {selected.folder_path && <div className={styles.detailItem}><div className={styles.detailLabel}>{$t.folder}</div><div className={styles.detailValue}>{selected.folder_path}</div></div>}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                                <div className={styles.collapsibleSection}>
+                                    <div className={styles.collapsibleHeader} onClick={() => setTocCollapsed(!tocCollapsed)}>
+                                        <span>{$t.toc}</span><span className={styles.collapsibleArrow}>{tocCollapsed ? '▸' : '▾'}</span>
+                                    </div>
+                                    {!tocCollapsed && <div className={styles.collapsibleBody}><TocPanel content={editorContent} onScrollToLine={handleScrollToLine} /></div>}
+                                </div>
+                                <div className={styles.collapsibleSection}>
+                                    <div className={styles.collapsibleHeader} onClick={() => setHelpCollapsed(!helpCollapsed)}>
+                                        <span>{$t.help}</span><span className={styles.collapsibleArrow}>{helpCollapsed ? '▸' : '▾'}</span>
+                                    </div>
+                                    {!helpCollapsed && (
+                                        <div className={styles.collapsibleBody}>
+                                            <div className={styles.helpSection}><div className={styles.helpSectionTitle}>{$t.helpNavigation}</div>
+                                                <div className={styles.helpKey}><span>{$t.helpMove}</span><span><kbd>↑</kbd> <kbd>↓</kbd></span></div>
+                                                <div className={styles.helpKey}><span>{$t.helpExpand}</span><span><kbd>→</kbd></span></div>
+                                                <div className={styles.helpKey}><span>{$t.helpCollapse}</span><span><kbd>←</kbd></span></div>
+                                            </div>
+                                            <div className={styles.helpSection}><div className={styles.helpSectionTitle}>{$t.helpEditor}</div>
+                                                <div className={styles.helpKey}><span>Bold</span><span><kbd>⌘</kbd> <kbd>B</kbd></span></div>
+                                                <div className={styles.helpKey}><span>Italic</span><span><kbd>⌘</kbd> <kbd>I</kbd></span></div>
+                                                <div className={styles.helpKey}><span>Link</span><span><kbd>⌘</kbd> <kbd>U</kbd></span></div>
+                                                <div className={styles.helpKey}><span>Preview</span><span><kbd>⌘</kbd> <kbd>E</kbd></span></div>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        ) : selectedFolder && folderStats ? (
+                            <div className={styles.folderStatsPanel}>
+                                <div className={styles.folderStatsHeader}><div className={styles.folderStatsName}>{selectedFolder.split('/').pop() || selectedFolder}</div><div className={styles.folderStatsPath}>{selectedFolder}</div></div>
+                                <div className={styles.statsRow}>
+                                    <div className={styles.statMini}><div className={styles.statMiniValue}>{folderStats.total}</div><div className={styles.statMiniLabel}>Всего</div></div>
+                                    <div className={styles.statMini}><div className={`${styles.statMiniValue} ${styles.statWarning}`}>{folderStats.inProgress}</div><div className={styles.statMiniLabel}>В процессе</div></div>
+                                    <div className={styles.statMini}><div className={`${styles.statMiniValue} ${styles.statSuccess}`}>{folderStats.completed}</div><div className={styles.statMiniLabel}>Завершено</div></div>
+                                    <div className={styles.statMini}><div className={`${styles.statMiniValue} ${styles.statMuted}`}>{folderStats.subFolders}</div><div className={styles.statMiniLabel}>Папок</div></div>
+                                </div>
+                                <div className={styles.figureList}>
+                                    {filtered.map(f => (
+                                        <div key={f.id} className={`${styles.figureCardSmall} ${selectedId === f.id ? styles.figureCardSmallSelected : ''}`} onClick={() => setSelectedId(f.id)}>
+                                            <div className={styles.figureCardSmallHeader}><div className={styles.figureCardSmallName}>{f.name}</div><span className={`${styles.figureCardSmallBadge} ${statusTag(f.status)}`}>{statusLabel(f.status)}</span></div>
+                                            <div className={styles.figureCardSmallMeta}>{f.manufacturer && <span>{f.manufacturer}</span>}{f.scale && <span>{f.scale}</span>}{f.material && <span>{f.material}</span>}</div>
+                                            <div className={styles.figureCardSmallActions}>
+                                                <button className={styles.cardActionBtn} onClick={(e) => { e.stopPropagation(); setEditingFigure(f); setModalOpen(true); }}>{$t.editFigure}</button>
+                                                <button className={`${styles.cardActionBtn} ${styles.cardActionBtnDanger}`} onClick={(e) => { e.stopPropagation(); handleDeleteFigure(f.id); }}>{$t.deleteFigure}</button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
                         ) : (
-                            <div className={styles.folderInfo}>
-                                <div className={styles.folderInfoTitle}>Potion Rack</div>
+                            <div className={styles.helpPanel}>
+                                <div className={styles.helpHeader}>{$t.help}</div>
+                                <div className={styles.helpSection}><div className={styles.helpSectionTitle}>{$t.helpNavigation}</div>
+                                    <div className={styles.helpKey}><span>{$t.helpMove}</span><span><kbd>↑</kbd> <kbd>↓</kbd></span></div>
+                                    <div className={styles.helpKey}><span>{$t.helpExpand}</span><span><kbd>→</kbd></span></div>
+                                    <div className={styles.helpKey}><span>{$t.helpCollapse}</span><span><kbd>←</kbd></span></div>
+                                </div>
+                                <div className={styles.helpSection}><div className={styles.helpSectionTitle}>{$t.helpEditor}</div>
+                                    <div className={styles.helpKey}><span>Bold</span><span><kbd>⌘</kbd> <kbd>B</kbd></span></div>
+                                    <div className={styles.helpKey}><span>Italic</span><span><kbd>⌘</kbd> <kbd>I</kbd></span></div>
+                                    <div className={styles.helpKey}><span>Link</span><span><kbd>⌘</kbd> <kbd>U</kbd></span></div>
+                                    <div className={styles.helpKey}><span>Preview</span><span><kbd>⌘</kbd> <kbd>E</kbd></span></div>
+                                </div>
                             </div>
                         )
                     )}
@@ -330,26 +365,8 @@ export default function FiguresApp() {
             </div>
             {modalOpen && <FigureModal figure={editingFigure} onSave={async (data) => { if (editingFigure) { await updateFigureAPI(editingFigure.id, data); } else { await createFigureAPI({ ...data, folder_path: newFigureFolder } as any); } await loadFigures(); }} onClose={() => setModalOpen(false)} />}
             {confirmOpen && <ConfirmModal title={confirmTitle} message={confirmMessage} onConfirm={confirmAction} onCancel={() => setConfirmOpen(false)} />}
-            {contextMenu && (
-                <ContextMenu
-                    x={contextMenu.x}
-                    y={contextMenu.y}
-                    target={contextMenu.target}
-                    onClose={() => setContextMenu(null)}
-                    onNewFigure={handleNewFigure}
-                    onNewFolder={handleNewFolder}
-                    onRename={handleRename}
-                    onDelete={handleDeleteTarget}
-                />
-            )}
-            {promptOpen && (
-                <PromptModal
-                    title={promptTitle}
-                    defaultValue={promptDefault}
-                    onConfirm={(value) => { setPromptOpen(false); promptCallback(value); }}
-                    onCancel={() => setPromptOpen(false)}
-                />
-            )}
+            {contextMenu && <ContextMenu x={contextMenu.x} y={contextMenu.y} target={contextMenu.target} onClose={() => setContextMenu(null)} onNewFigure={handleNewFigure} onNewFolder={handleNewFolder} onRename={handleRename} onExportPdf={handleExportPdf} onDelete={handleDeleteTarget} />}
+            {promptOpen && <PromptModal title={promptTitle} defaultValue={promptDefault} onConfirm={(value) => { setPromptOpen(false); promptCallback(value); }} onCancel={() => setPromptOpen(false)} />}
         </div>
     );
 }

@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { EditorView, keymap, ViewPlugin, ViewUpdate, Decoration, DecorationSet, WidgetType } from '@codemirror/view';
-import { RangeSetBuilder } from '@codemirror/state';
+import { RangeSetBuilder, StateField, StateEffect } from '@codemirror/state';
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
 import { languages } from '@codemirror/language-data';
@@ -12,7 +12,11 @@ import styles from './MarkdownEditor.module.css';
 import { t } from '../i18n';
 
 function slugify(name: string): string {
-    return name.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_\-а-яё]/gi, '');
+    return name.toLowerCase().replace(/\s+/g, '_').replace(/[<>:"/\\|?*]/g, '').substring(0, 100);
+}
+
+function safeEncode(str: string): string {
+    return str.replace(/&/g, '%26').replace(/ /g, '%20').replace(/#/g, '%23');
 }
 
 function compressImage(file: File, maxWidth: number, maxHeight: number, quality: number): Promise<string> {
@@ -89,160 +93,155 @@ class ImagePreviewWidget extends WidgetType {
 const HIDDEN_MARKER = 'position: absolute; left: -9999px; top: -9999px;';
 const HIDDEN_MARKER_VISIBLE = 'color: var(--text-muted); opacity: 0.5;';
 
-const wysiwymPlugin = (slug: string) => {
-    return ViewPlugin.fromClass(class {
-        decorations: DecorationSet;
-
-        constructor(readonly view: EditorView) {
-            this.decorations = this.buildDecorations(view, view.state.selection.main.head);
+// StateField для хранения slug
+const slugField = StateField.define<string>({
+    create: () => '',
+    update: (value, tr) => {
+        for (const e of tr.effects) {
+            if (e.is(setSlug)) return e.value;
         }
+        return value;
+    }
+});
 
-        update(update: ViewUpdate) {
-            if (update.docChanged || update.viewportChanged || update.selectionSet) {
-                const cursor = update.view.state.selection.main.head;
-                this.decorations = this.buildDecorations(update.view, cursor);
+const setSlug = StateEffect.define<string>();
+
+const wysiwymPlugin = ViewPlugin.fromClass(class {
+    decorations: DecorationSet;
+
+    constructor(readonly view: EditorView) {
+        this.decorations = this.buildDecorations(view, view.state.selection.main.head);
+    }
+
+    update(update: ViewUpdate) {
+        if (update.docChanged || update.viewportChanged || update.selectionSet) {
+            const cursor = update.view.state.selection.main.head;
+            this.decorations = this.buildDecorations(update.view, cursor);
+        }
+    }
+
+    buildDecorations(view: EditorView, cursor: number): DecorationSet {
+        const slug = view.state.field(slugField, false) || '';
+        const safeSlug = safeEncode(slug);
+        const items: { from: number; to: number; decoration: Decoration }[] = [];
+        const doc = view.state.doc;
+
+        for (let i = 1; i <= doc.lines; i++) {
+            const line = doc.line(i);
+            const text = line.text;
+
+            if (/^[-]{3,}\s*$/.test(text) || /^[_]{3,}\s*$/.test(text)) {
+                const hr = document.createElement('hr');
+                hr.style.border = 'none';
+                hr.style.borderTop = '1px solid var(--border)';
+                hr.style.margin = '0';
+                hr.style.lineHeight = '0';
+                items.push({ from: line.from, to: line.to, decoration: Decoration.replace({ widget: new class extends WidgetType { toDOM() { return hr; } } }) });
+                continue;
             }
-        }
 
-        buildDecorations(view: EditorView, cursor: number): DecorationSet {
-            const items: { from: number; to: number; decoration: Decoration }[] = [];
-            const doc = view.state.doc;
+            const headingMatch = text.match(/^(#{1,6})\s+(.+)$/);
+            if (headingMatch) {
+                const markers = headingMatch[1];
+                const markerEnd = line.from + markers.length + 1;
+                const cursorInside = cursor >= line.from && cursor <= line.to;
+                if (cursorInside) { items.push({ from: line.from, to: markerEnd, decoration: Decoration.mark({ attributes: { style: HIDDEN_MARKER_VISIBLE } }) }); }
+                else { items.push({ from: line.from, to: markerEnd, decoration: Decoration.mark({ attributes: { style: HIDDEN_MARKER } }) }); }
+                const level = markers.length;
+                const fontSize = Math.max(13, 22 - level * 2);
+                items.push({ from: markerEnd, to: line.to, decoration: Decoration.mark({ attributes: { style: `font-size: ${fontSize}px; font-weight: 600; color: var(--text-primary);` } }) });
+                continue;
+            }
 
-            for (let i = 1; i <= doc.lines; i++) {
-                const line = doc.line(i);
-                const text = line.text;
+            const quoteMatch = text.match(/^>\s?(.*)$/);
+            if (quoteMatch) {
+                const markerEnd = line.from + 1 + (text[1] === ' ' ? 1 : 0);
+                const cursorInside = cursor >= line.from && cursor <= line.to;
+                if (cursorInside) { items.push({ from: line.from, to: markerEnd, decoration: Decoration.mark({ attributes: { style: HIDDEN_MARKER_VISIBLE } }) }); }
+                else { items.push({ from: line.from, to: markerEnd, decoration: Decoration.mark({ attributes: { style: HIDDEN_MARKER } }) }); }
+                items.push({ from: markerEnd, to: line.to, decoration: Decoration.mark({ attributes: { style: `color: var(--text-secondary); font-style: italic; border-left: 3px solid var(--quote-border, var(--accent)); padding-left: 12px; display: inline-block;` } }) });
+                continue;
+            }
 
-                // ---
-                if (/^[-]{3,}\s*$/.test(text) || /^[_]{3,}\s*$/.test(text)) {
-                    const hr = document.createElement('hr');
-                    hr.style.border = 'none';
-                    hr.style.borderTop = '1px solid var(--border)';
-                    hr.style.margin = '0';
-                    hr.style.lineHeight = '0';
-                    items.push({ from: line.from, to: line.to, decoration: Decoration.replace({ widget: new class extends WidgetType { toDOM() { return hr; } } }) });
-                    continue;
-                }
+            const listMatch = text.match(/^(\s*)[-*+]\s+(.+)$/);
+            if (listMatch) {
+                const indent = listMatch[1];
+                const markerStart = line.from + indent.length;
+                const markerEnd = markerStart + 2;
+                const cursorInside = cursor >= markerStart && cursor <= line.to;
+                if (cursorInside) { items.push({ from: markerStart, to: markerEnd, decoration: Decoration.mark({ attributes: { style: HIDDEN_MARKER_VISIBLE } }) }); }
+                else { items.push({ from: markerStart, to: markerEnd, decoration: Decoration.mark({ attributes: { style: HIDDEN_MARKER } }) }); }
+                items.push({ from: markerStart, to: markerStart, decoration: Decoration.widget({ widget: new class extends WidgetType { toDOM() { const d = document.createElement('span'); d.textContent = '•'; d.style.color = 'var(--list-marker, var(--accent))'; d.style.marginRight = '8px'; return d; } }, side: 0 }) });
+                continue;
+            }
 
-                // Заголовки
-                const headingMatch = text.match(/^(#{1,6})\s+(.+)$/);
-                if (headingMatch) {
-                    const markers = headingMatch[1];
-                    const markerEnd = line.from + markers.length + 1;
-                    const cursorInside = cursor >= line.from && cursor <= line.to;
-
-                    if (cursorInside) {
-                        items.push({ from: line.from, to: markerEnd, decoration: Decoration.mark({ attributes: { style: HIDDEN_MARKER_VISIBLE } }) });
-                    } else {
-                        items.push({ from: line.from, to: markerEnd, decoration: Decoration.mark({ attributes: { style: HIDDEN_MARKER } }) });
-                    }
-
-                    const level = markers.length;
-                    const fontSize = Math.max(13, 22 - level * 2);
-                    items.push({ from: markerEnd, to: line.to, decoration: Decoration.mark({ attributes: { style: `font-size: ${fontSize}px; font-weight: 600; color: var(--text-primary);` } }) });
-                    continue;
-                }
-
-                // Цитата
-                const quoteMatch = text.match(/^>\s?(.*)$/);
-                if (quoteMatch) {
-                    const markerEnd = line.from + 1 + (text[1] === ' ' ? 1 : 0);
-                    const cursorInside = cursor >= line.from && cursor <= line.to;
-
-                    if (cursorInside) { items.push({ from: line.from, to: markerEnd, decoration: Decoration.mark({ attributes: { style: HIDDEN_MARKER_VISIBLE } }) }); }
-                    else { items.push({ from: line.from, to: markerEnd, decoration: Decoration.mark({ attributes: { style: HIDDEN_MARKER } }) }); }
-
-                    items.push({ from: markerEnd, to: line.to, decoration: Decoration.mark({ attributes: { style: `color: var(--text-secondary); font-style: italic; border-left: 3px solid var(--quote-border, var(--accent)); padding-left: 12px; display: inline-block;` } }) });
-                    continue;
-                }
-
-                // Маркированный список
-                const listMatch = text.match(/^(\s*)[-*+]\s+(.+)$/);
-                if (listMatch) {
-                    const indent = listMatch[1];
-                    const markerStart = line.from + indent.length;
-                    const markerEnd = markerStart + 2;
-                    const cursorInside = cursor >= markerStart && cursor <= line.to;
-
-                    if (cursorInside) { items.push({ from: markerStart, to: markerEnd, decoration: Decoration.mark({ attributes: { style: HIDDEN_MARKER_VISIBLE } }) }); }
-                    else { items.push({ from: markerStart, to: markerEnd, decoration: Decoration.mark({ attributes: { style: HIDDEN_MARKER } }) }); }
-
-                    items.push({ from: markerStart, to: markerStart, decoration: Decoration.widget({ widget: new class extends WidgetType { toDOM() { const d = document.createElement('span'); d.textContent = '•'; d.style.color = 'var(--list-marker, var(--accent))'; d.style.marginRight = '8px'; return d; } }, side: 0 }) });
-                    continue;
-                }
-
-                // Инлайн-форматирование
-                const inlineRegex = /(\*\*(.+?)\*\*)|(\*(.+?)\*)|(~~(.+?)~~)|(`(.+?)`)/g;
-                let match;
-                while ((match = inlineRegex.exec(text)) !== null) {
-                    const [full, , bold, , italic, , strike, , code] = match;
-                    const from = line.from + match.index;
-                    const to = from + full.length;
-                    const cursorInside = cursor >= from && cursor <= to;
-
-                    if (bold) {
-                        const markerStyle = cursorInside ? HIDDEN_MARKER_VISIBLE : HIDDEN_MARKER;
-                        items.push({ from, to: from + 2, decoration: Decoration.mark({ attributes: { style: markerStyle } }) });
-                        items.push({ from: from + 2, to: to - 2, decoration: Decoration.mark({ attributes: { style: 'font-weight: 700; color: var(--text-primary);' } }) });
-                        items.push({ from: to - 2, to, decoration: Decoration.mark({ attributes: { style: markerStyle } }) });
-                    } else if (italic) {
-                        const markerStyle = cursorInside ? HIDDEN_MARKER_VISIBLE : HIDDEN_MARKER;
-                        items.push({ from, to: from + 1, decoration: Decoration.mark({ attributes: { style: markerStyle } }) });
-                        items.push({ from: from + 1, to: to - 1, decoration: Decoration.mark({ attributes: { style: 'font-style: italic; color: var(--text-secondary);' } }) });
-                        items.push({ from: to - 1, to, decoration: Decoration.mark({ attributes: { style: markerStyle } }) });
-                    } else if (strike) {
-                        const markerStyle = cursorInside ? HIDDEN_MARKER_VISIBLE : HIDDEN_MARKER;
-                        items.push({ from, to: from + 2, decoration: Decoration.mark({ attributes: { style: markerStyle } }) });
-                        items.push({ from: from + 2, to: to - 2, decoration: Decoration.mark({ attributes: { style: 'text-decoration: line-through; color: var(--text-muted);' } }) });
-                        items.push({ from: to - 2, to, decoration: Decoration.mark({ attributes: { style: markerStyle } }) });
-                    } else if (code) {
-                        const markerStyle = cursorInside ? HIDDEN_MARKER_VISIBLE : HIDDEN_MARKER;
-                        items.push({ from, to: from + 1, decoration: Decoration.mark({ attributes: { style: markerStyle } }) });
-                        items.push({ from: from + 1, to: to - 1, decoration: Decoration.mark({ attributes: { style: 'background: var(--bg-secondary); padding: 1px 5px; border-radius: 3px; font-family: var(--font-mono); font-size: 12px;' } }) });
-                        items.push({ from: to - 1, to, decoration: Decoration.mark({ attributes: { style: markerStyle } }) });
-                    }
-                }
-
-                // Ссылки
-                const linkRegex = /\[(.+?)\]\((.+?)\)/g;
-                while ((match = linkRegex.exec(text)) !== null) {
-                    const full = match[0];
-                    const linkText = match[1];
-                    const from = line.from + match.index;
-                    const to = from + full.length;
-                    const cursorInside = cursor >= from && cursor <= to;
-                    const textStart = from + 1;
-                    const textEnd = textStart + linkText.length;
+            const inlineRegex = /(\*\*(.+?)\*\*)|(\*(.+?)\*)|(~~(.+?)~~)|(`(.+?)`)/g;
+            let match;
+            while ((match = inlineRegex.exec(text)) !== null) {
+                const [full, , bold, , italic, , strike, , code] = match;
+                const from = line.from + match.index;
+                const to = from + full.length;
+                const cursorInside = cursor >= from && cursor <= to;
+                if (bold) {
                     const markerStyle = cursorInside ? HIDDEN_MARKER_VISIBLE : HIDDEN_MARKER;
-
+                    items.push({ from, to: from + 2, decoration: Decoration.mark({ attributes: { style: markerStyle } }) });
+                    items.push({ from: from + 2, to: to - 2, decoration: Decoration.mark({ attributes: { style: 'font-weight: 700; color: var(--text-primary);' } }) });
+                    items.push({ from: to - 2, to, decoration: Decoration.mark({ attributes: { style: markerStyle } }) });
+                } else if (italic) {
+                    const markerStyle = cursorInside ? HIDDEN_MARKER_VISIBLE : HIDDEN_MARKER;
                     items.push({ from, to: from + 1, decoration: Decoration.mark({ attributes: { style: markerStyle } }) });
-                    items.push({ from: textStart, to: textEnd, decoration: Decoration.mark({ attributes: { style: `color: var(--link-color, var(--accent)); text-decoration: underline; cursor: pointer;` } }) });
-                    items.push({ from: textEnd, to: to - 1, decoration: Decoration.mark({ attributes: { style: markerStyle } }) });
+                    items.push({ from: from + 1, to: to - 1, decoration: Decoration.mark({ attributes: { style: 'font-style: italic; color: var(--text-secondary);' } }) });
+                    items.push({ from: to - 1, to, decoration: Decoration.mark({ attributes: { style: markerStyle } }) });
+                } else if (strike) {
+                    const markerStyle = cursorInside ? HIDDEN_MARKER_VISIBLE : HIDDEN_MARKER;
+                    items.push({ from, to: from + 2, decoration: Decoration.mark({ attributes: { style: markerStyle } }) });
+                    items.push({ from: from + 2, to: to - 2, decoration: Decoration.mark({ attributes: { style: 'text-decoration: line-through; color: var(--text-muted);' } }) });
+                    items.push({ from: to - 2, to, decoration: Decoration.mark({ attributes: { style: markerStyle } }) });
+                } else if (code) {
+                    const markerStyle = cursorInside ? HIDDEN_MARKER_VISIBLE : HIDDEN_MARKER;
+                    items.push({ from, to: from + 1, decoration: Decoration.mark({ attributes: { style: markerStyle } }) });
+                    items.push({ from: from + 1, to: to - 1, decoration: Decoration.mark({ attributes: { style: 'background: var(--bg-secondary); padding: 1px 5px; border-radius: 3px; font-family: var(--font-mono); font-size: 12px;' } }) });
                     items.push({ from: to - 1, to, decoration: Decoration.mark({ attributes: { style: markerStyle } }) });
                 }
             }
 
-            // Картинки
-            const imageRegex = /!\[([^\]]*)\]\((\.\.?\/images\/[^)]+)\)/g;
-            const docText = doc.toString();
-            let imgMatch;
-            while ((imgMatch = imageRegex.exec(docText)) !== null) {
-                const from = imgMatch.index;
-                const to = from + imgMatch[0].length;
-                const relativePath = imgMatch[2].replace(/^\.\.?\//, '');
-                const absoluteUrl = `http://127.0.0.1:8765/figures-data/${slug}/${relativePath}`;
-                items.push({ from, to, decoration: Decoration.replace({ widget: new ImagePreviewWidget(absoluteUrl, imgMatch[1], from, to, view) }) });
+            const linkRegex = /\[(.+?)\]\((.+?)\)/g;
+            while ((match = linkRegex.exec(text)) !== null) {
+                const full = match[0];
+                const linkText = match[1];
+                const from = line.from + match.index;
+                const to = from + full.length;
+                const cursorInside = cursor >= from && cursor <= to;
+                const textStart = from + 1;
+                const textEnd = textStart + linkText.length;
+                const markerStyle = cursorInside ? HIDDEN_MARKER_VISIBLE : HIDDEN_MARKER;
+                items.push({ from, to: from + 1, decoration: Decoration.mark({ attributes: { style: markerStyle } }) });
+                items.push({ from: textStart, to: textEnd, decoration: Decoration.mark({ attributes: { style: `color: var(--link-color, var(--accent)); text-decoration: underline; cursor: pointer;` } }) });
+                items.push({ from: textEnd, to: to - 1, decoration: Decoration.mark({ attributes: { style: markerStyle } }) });
+                items.push({ from: to - 1, to, decoration: Decoration.mark({ attributes: { style: markerStyle } }) });
             }
-
-            items.sort((a, b) => a.from - b.from || a.to - b.to);
-
-            const builder = new RangeSetBuilder<Decoration>();
-            for (const item of items) {
-                builder.add(item.from, item.to, item.decoration);
-            }
-            return builder.finish();
         }
-    }, { decorations: v => v.decorations });
-};
+
+        const imageRegex = /!\[([^\]]*)\]\((\.\.?\/images\/[^)]+)\)/g;
+        const docText = doc.toString();
+        let imgMatch;
+        while ((imgMatch = imageRegex.exec(docText)) !== null) {
+            const from = imgMatch.index;
+            const to = from + imgMatch[0].length;
+            const relativePath = imgMatch[2].replace(/^\.\.?\//, '');
+            const absoluteUrl = `http://127.0.0.1:8765/figures-data/${safeSlug}/${relativePath}`;
+            items.push({ from, to, decoration: Decoration.replace({ widget: new ImagePreviewWidget(absoluteUrl, imgMatch[1], from, to, view) }) });
+        }
+
+        items.sort((a, b) => a.from - b.from || a.to - b.to);
+
+        const builder = new RangeSetBuilder<Decoration>();
+        for (const item of items) {
+            builder.add(item.from, item.to, item.decoration);
+        }
+        return builder.finish();
+    }
+}, { decorations: v => v.decorations });
 
 interface MarkdownEditorProps {
     content: string;
@@ -250,18 +249,32 @@ interface MarkdownEditorProps {
     onSave: () => void;
     figureName?: string;
     folderPath?: string;
+    editorViewRef?: React.MutableRefObject<EditorView | null>;
 }
 
-export default function MarkdownEditor({ content, onChange, onSave, figureName, folderPath }: MarkdownEditorProps) {
+export default function MarkdownEditor({ content, onChange, onSave, figureName, folderPath, editorViewRef }: MarkdownEditorProps) {
     const $t = t();
     const [preview, setPreview] = useState(false);
     const editorRef = useRef<HTMLDivElement>(null);
-    const editorViewRef = useRef<EditorView | null>(null);
+    const editorViewRefInternal = useRef<EditorView | null>(null);
 
     const slug = folderPath ? `${folderPath}/${slugify(figureName || '')}` : slugify(figureName || '');
 
     useEffect(() => {
-        if (!editorRef.current || editorViewRef.current) return;
+        setPreview(false);
+    }, [slug]);
+
+    useEffect(() => {
+        if (!editorRef.current) return;
+
+        // Уничтожаем старый EditorView перед созданием нового
+        if (editorViewRefInternal.current) {
+            editorViewRefInternal.current.destroy();
+            editorViewRefInternal.current = null;
+            if (editorViewRef) editorViewRef.current = null;
+        }
+
+        console.log('Creating EditorView for slug:', slug);
 
         const editorTheme = EditorView.theme({
             '&': { background: 'var(--bg-primary)', color: 'var(--text-primary)', height: '100%' },
@@ -283,6 +296,7 @@ export default function MarkdownEditor({ content, onChange, onSave, figureName, 
         const view = new EditorView({
             doc: content,
             extensions: [
+                slugField,
                 keymap.of([...defaultKeymap, ...historyKeymap]),
                 history(),
                 markdown({ base: markdownLanguage, codeLanguages: languages }),
@@ -291,27 +305,31 @@ export default function MarkdownEditor({ content, onChange, onSave, figureName, 
                 closeBrackets(),
                 bracketMatching(),
                 EditorView.lineWrapping,
-                wysiwymPlugin(slug),
+                wysiwymPlugin,
                 updateListener,
                 editorTheme,
             ],
             parent: editorRef.current,
         });
 
-        editorViewRef.current = view;
-    }, []);
+        view.dispatch({ effects: setSlug.of(slug) });
+
+        editorViewRefInternal.current = view;
+        if (editorViewRef) editorViewRef.current = view;
+    }, [slug]);
 
     useEffect(() => {
-        const view = editorViewRef.current;
+        const view = editorViewRefInternal.current;
         if (view && view.state.doc.toString() !== content) {
             view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: content } });
         }
     }, [content]);
 
     useEffect(() => {
+        if (typeof onSave !== 'function') return;
         const timer = setTimeout(() => onSave(), 500);
         return () => clearTimeout(timer);
-    }, [content]);
+    }, [content, onSave]);
 
     useEffect(() => {
         const handleClick = (e: MouseEvent) => {
@@ -326,29 +344,17 @@ export default function MarkdownEditor({ content, onChange, onSave, figureName, 
         return () => document.removeEventListener('click', handleClick, true);
     }, []);
 
-    // Хоткеи редактора
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             const mod = e.metaKey || e.ctrlKey;
             if (!mod) return;
-
-            // Cmd+E работает всегда, даже без фокуса в редакторе
             if (e.key === 'e') {
-                e.preventDefault();
-                e.stopPropagation();
-                setPreview(p => {
-                    if (p) {
-                        setTimeout(() => editorViewRef.current?.focus(), 50);
-                    }
-                    return !p;
-                });
+                e.preventDefault(); e.stopPropagation();
+                setPreview(p => { if (p) { setTimeout(() => editorViewRefInternal.current?.focus(), 50); } return !p; });
                 return;
             }
-
-            // Остальные хоткеи требуют фокуса в редакторе
-            const view = editorViewRef.current;
+            const view = editorViewRefInternal.current;
             if (!view || !view.hasFocus) return;
-
             switch (e.key) {
                 case 's': e.preventDefault(); onSave(); break;
                 case 'b': e.preventDefault(); insertText('**', '**'); break;
@@ -361,18 +367,15 @@ export default function MarkdownEditor({ content, onChange, onSave, figureName, 
                 case '2': e.preventDefault(); insertLine('##'); break;
                 case '3': e.preventDefault(); insertLine('###'); break;
                 case 'q': e.preventDefault(); insertLine('>'); break;
-                case 'I':
-                    if (e.shiftKey) { e.preventDefault(); handleInsertImage(); }
-                    break;
+                case 'I': if (e.shiftKey) { e.preventDefault(); handleInsertImage(); } break;
             }
         };
-
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [onSave]);
 
     const insertText = useCallback((before: string, after: string = '') => {
-        const view = editorViewRef.current;
+        const view = editorViewRefInternal.current;
         if (!view) return;
         const { from, to } = view.state.selection.main;
         const selectedText = view.state.sliceDoc(from, to);
@@ -381,7 +384,7 @@ export default function MarkdownEditor({ content, onChange, onSave, figureName, 
     }, []);
 
     const insertLine = useCallback((prefix: string) => {
-        const view = editorViewRef.current;
+        const view = editorViewRefInternal.current;
         if (!view) return;
         const { from } = view.state.selection.main;
         const line = view.state.doc.lineAt(from);
@@ -390,7 +393,7 @@ export default function MarkdownEditor({ content, onChange, onSave, figureName, 
     }, []);
 
     const insertBlock = useCallback((marker: string, placeholder: string) => {
-        const view = editorViewRef.current;
+        const view = editorViewRefInternal.current;
         if (!view) return;
         const { from } = view.state.selection.main;
         view.dispatch({ changes: { from, insert: placeholder ? `${marker}\n${placeholder}\n${marker}\n` : `${marker}\n` } });
@@ -408,7 +411,7 @@ export default function MarkdownEditor({ content, onChange, onSave, figureName, 
                 const name = figureName || 'unknown';
                 const result = await (window as any).electronAPI?.saveImage(folderPath || '', name, file.name, base64Data);
                 if (result?.success) {
-                    const view = editorViewRef.current;
+                    const view = editorViewRefInternal.current;
                     if (!view) return;
                     const { from } = view.state.selection.main;
                     view.dispatch({ changes: { from, insert: `![${file.name}](.${result.path})\n` } });
@@ -420,7 +423,7 @@ export default function MarkdownEditor({ content, onChange, onSave, figureName, 
     }, [figureName, folderPath]);
 
     const handleInsertLink = useCallback(() => {
-        const view = editorViewRef.current;
+        const view = editorViewRefInternal.current;
         if (!view) return;
         const { from, to } = view.state.selection.main;
         const selectedText = view.state.sliceDoc(from, to);
@@ -433,7 +436,7 @@ export default function MarkdownEditor({ content, onChange, onSave, figureName, 
         const container = editorRef.current;
         if (!container) return;
         const handlePaste = async (e: ClipboardEvent) => {
-            const view = editorViewRef.current;
+            const view = editorViewRefInternal.current;
             if (!view || !view.hasFocus) return;
             const items = e.clipboardData?.items;
             if (!items) return;
@@ -461,9 +464,10 @@ export default function MarkdownEditor({ content, onChange, onSave, figureName, 
         return () => container.removeEventListener('paste', handlePaste);
     }, [figureName, folderPath]);
 
-    const resolvedContent = content
-        .replace(/\(\.\/images\//g, `(http://127.0.0.1:8765/figures-data/${slug}/images/`)
-        .replace(/\(\.\.\/images\//g, `(http://127.0.0.1:8765/figures-data/${slug}/images/`);
+    const safeSlug = safeEncode(slug);
+    const resolvedContent = (content || '')
+        .replace(/\(\.\/images\//g, `(http://127.0.0.1:8765/figures-data/${safeSlug}/images/`)
+        .replace(/\(\.\.\/images\//g, `(http://127.0.0.1:8765/figures-data/${safeSlug}/images/`);
 
     return (
         <div className={styles.root}>
@@ -495,9 +499,11 @@ export default function MarkdownEditor({ content, onChange, onSave, figureName, 
                     </button>
                 </div>
             </div>
-
-            <div className={styles.preview} style={{ display: preview ? 'block' : 'none' }} dangerouslySetInnerHTML={{ __html: marked(resolvedContent, { breaks: true }) as string }} />
-            <div className={styles.editorWrapper} ref={editorRef} style={{ display: preview ? 'none' : 'block', height: '100%' }} />
+            {preview ? (
+                <div className={styles.preview} dangerouslySetInnerHTML={{ __html: marked(resolvedContent, { breaks: true }) as string }} />
+            ) : (
+                <div className={styles.editorWrapper} ref={editorRef} style={{ height: '100%' }} />
+            )}
         </div>
     );
 }

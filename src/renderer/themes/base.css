@@ -28,3 +28,4 @@ input, textarea, select, [contenteditable] {
 .folderTree-statusDone {
     background: var(--success);
 }
+
