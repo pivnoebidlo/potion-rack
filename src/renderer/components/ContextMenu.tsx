@@ -11,10 +11,11 @@ interface ContextMenuProps {
     onNewFigure: (folderPath: string) => void;
     onNewFolder: (parentPath: string) => void;
     onRename: (target: FolderTarget) => void;
+    onExportPdf?: (target: FolderTarget) => void;
     onDelete: (target: FolderTarget) => void;
 }
 
-export default function ContextMenu({ x, y, target, onClose, onNewFigure, onNewFolder, onRename, onDelete }: ContextMenuProps) {
+export default function ContextMenu({ x, y, target, onClose, onNewFigure, onNewFolder, onRename, onExportPdf, onDelete }: ContextMenuProps) {
     const $t = t();
     const menuRef = useRef<HTMLDivElement>(null);
 
@@ -40,7 +41,7 @@ export default function ContextMenu({ x, y, target, onClose, onNewFigure, onNewF
     const isRoot = target.type === 'root';
 
     const menuWidth = 200;
-    const menuHeight = isRoot ? 80 : isFolder ? 130 : 80;
+    const menuHeight = isRoot ? 80 : isFigure ? 165 : 130;
     const adjustedX = Math.min(x, window.innerWidth - menuWidth - 8);
     const adjustedY = Math.min(y, window.innerHeight - menuHeight - 8);
 
@@ -62,6 +63,15 @@ export default function ContextMenu({ x, y, target, onClose, onNewFigure, onNewF
             )}
 
             <div className={styles.divider} />
+
+            {isFigure && (
+                <>
+                    <div className={styles.item} onClick={() => { console.log('Export PDF clicked', target); onExportPdf?.(target); onClose(); }}>
+                        📄 {$t.exportPdf || 'Export to PDF'}
+                    </div>
+                    <div className={styles.divider} />
+                </>
+            )}
 
             {!isRoot && (
                 <>

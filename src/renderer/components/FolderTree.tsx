@@ -19,6 +19,8 @@ interface FolderTreeProps {
     onSelectFolder: (folderPath: string) => void;
     onDoubleClickFigure: (id: number) => void;
     onContextMenu: (e: React.MouseEvent, target: FolderTarget) => void;
+    onMoveFigure: (figureId: number, figureName: string, oldFolderPath: string, newFolderPath: string) => void;
+    onMoveFolder: (oldPath: string, newPath: string) => void;
     searchQuery: string;
 }
 
@@ -28,9 +30,18 @@ export interface FolderTarget {
     figureId?: number;
 }
 
-export default function FolderTree({ figures, diskFolders, selectedId, selectedFolder, onSelectFigure, onSelectFolder, onDoubleClickFigure, onContextMenu, searchQuery }: FolderTreeProps) {
+interface DragItem {
+    type: 'figure' | 'folder';
+    id?: number;
+    name: string;
+    path: string;
+}
+
+export default function FolderTree({ figures, diskFolders, selectedId, selectedFolder, onSelectFigure, onSelectFolder, onDoubleClickFigure, onContextMenu, onMoveFigure, onMoveFolder, searchQuery }: FolderTreeProps) {
     const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
     const [tree, setTree] = useState<FolderNode[]>([]);
+    const [dragOverFolder, setDragOverFolder] = useState<string | null>(null);
+    const [draggedItem, setDraggedItem] = useState<DragItem | null>(null);
 
     const buildTree = useCallback((): FolderNode[] => {
         const root: FolderNode[] = [];
@@ -152,17 +163,85 @@ export default function FolderTree({ figures, diskFolders, selectedId, selectedF
         }
     };
 
-    // Рекурсивный подсчёт фигурок в папке и всех подпапках
+    // Drag-and-drop handlers
+    const handleDragStartFigure = (e: React.DragEvent, figure: Figure, folderPath: string) => {
+        const item: DragItem = { type: 'figure', id: figure.id, name: figure.name, path: folderPath };
+        setDraggedItem(item);
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('application/json', JSON.stringify(item));
+    };
+
+    const handleDragStartFolder = (e: React.DragEvent, folderPath: string, folderName: string) => {
+        const item: DragItem = { type: 'folder', name: folderName, path: folderPath };
+        setDraggedItem(item);
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('application/json', JSON.stringify(item));
+    };
+
+    const handleDragOver = (e: React.DragEvent, folderPath: string) => {
+        if (draggedItem?.type === 'folder') {
+            if (draggedItem.path === folderPath || folderPath.startsWith(draggedItem.path + '/')) {
+                return;
+            }
+        }
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        if (dragOverFolder !== folderPath) {
+            setDragOverFolder(folderPath);
+        }
+    };
+
+    const handleDragLeave = () => {
+        setDragOverFolder(null);
+    };
+
+    const handleDrop = (e: React.DragEvent, targetFolderPath: string) => {
+        e.preventDefault();
+        setDragOverFolder(null);
+        if (!draggedItem) return;
+
+        if (draggedItem.type === 'figure') {
+            const oldPath = draggedItem.path || '';
+            if (oldPath === targetFolderPath) return;
+            onMoveFigure(draggedItem.id!, draggedItem.name, oldPath, targetFolderPath);
+        } else if (draggedItem.type === 'folder') {
+            const parts = draggedItem.path.split('/');
+            const folderName = parts[parts.length - 1];
+            const newPath = targetFolderPath ? `${targetFolderPath}/${folderName}` : folderName;
+            if (draggedItem.path === newPath) return;
+            onMoveFolder(draggedItem.path, newPath);
+        }
+
+        setDraggedItem(null);
+    };
+
+    const handleDragEnd = () => {
+        setDragOverFolder(null);
+        setDraggedItem(null);
+    };
+
     const countFiguresInFolder = useCallback((folderPath: string): number => {
         let count = 0;
+        // Прямые фигурки в этой папке
         const directFigures = figures.filter(f => f.folder_path === folderPath);
         count += directFigures.length;
-        const subFolders = diskFolders.filter(f => f.startsWith(folderPath + '/'));
-        for (const sub of subFolders) {
+        // Рекурсивно считаем только те подпапки, которые есть в folder_path фигурок
+        const subFolderPaths = new Set<string>();
+        for (const fig of figures) {
+            if (fig.folder_path && fig.folder_path.startsWith(folderPath + '/')) {
+                // Извлекаем первую подпапку после folderPath
+                const relative = fig.folder_path.substring(folderPath.length + 1);
+                const firstSubFolder = relative.split('/')[0];
+                if (firstSubFolder) {
+                    subFolderPaths.add(folderPath ? `${folderPath}/${firstSubFolder}` : firstSubFolder);
+                }
+            }
+        }
+        for (const sub of subFolderPaths) {
             count += countFiguresInFolder(sub);
         }
         return count;
-    }, [figures, diskFolders]);
+    }, [figures]);
 
     const renderNode = (node: FolderNode, depth: number) => {
         const isCollapsed = collapsed.has(node.path);
@@ -172,16 +251,24 @@ export default function FolderTree({ figures, diskFolders, selectedId, selectedF
 
         if (node.isDirectory) {
             const count = countFiguresInFolder(node.path);
+            const isDragOver = dragOverFolder === node.path;
+
             return (
                 <div key={`folder-${node.path}`}>
                     <div
-                        className={`${styles.treeRow} ${styles.folder} ${isSelected ? styles.selected : ''}`}
+                        className={`${styles.treeRow} ${styles.folder} ${isSelected ? styles.selected : ''} ${isDragOver ? styles.dragOver : ''}`}
                         style={{ paddingLeft: `${depth * 16 + 10}px` }}
                         onClick={() => {
                             onSelectFolder(node.path);
                             toggleCollapse(node.path);
                         }}
                         onContextMenu={(e) => handleContextMenu(e, { type: 'folder', path: node.path })}
+                        draggable
+                        onDragStart={(e) => handleDragStartFolder(e, node.path, node.name)}
+                        onDragEnd={handleDragEnd}
+                        onDragOver={(e) => handleDragOver(e, node.path)}
+                        onDragLeave={handleDragLeave}
+                        onDrop={(e) => handleDrop(e, node.path)}
                     >
                         <span className={styles.arrow}>{isCollapsed ? '▸' : '▾'}</span>
                         <span className={styles.name}>{node.name}</span>
@@ -193,6 +280,7 @@ export default function FolderTree({ figures, diskFolders, selectedId, selectedF
         }
 
         const figure = node.figures[0];
+        const folderPath = node.path;
         return (
             <div
                 key={`figure-${figure.id}`}
@@ -200,7 +288,10 @@ export default function FolderTree({ figures, diskFolders, selectedId, selectedF
                 style={{ paddingLeft: `${depth * 16 + 10}px` }}
                 onClick={() => onSelectFigure(figure.id)}
                 onDoubleClick={(e) => { e.stopPropagation(); onDoubleClickFigure(figure.id); }}
-                onContextMenu={(e) => handleContextMenu(e, { type: 'figure', path: node.path, figureId: figure.id })}
+                onContextMenu={(e) => handleContextMenu(e, { type: 'figure', path: folderPath, figureId: figure.id })}
+                draggable
+                onDragStart={(e) => handleDragStartFigure(e, figure, folderPath)}
+                onDragEnd={handleDragEnd}
             >
                 <span className={styles.arrow}></span>
                 <span className={`folderTree-statusDot ${getStatusClass(figure.status)}`} />
@@ -245,22 +336,16 @@ export default function FolderTree({ figures, diskFolders, selectedId, selectedF
                 e.preventDefault();
                 if (currentIndex <= 0) return;
                 const target = visibleNodes[currentIndex - 1].node;
-                if (target.isDirectory) {
-                    onSelectFolder(target.path);
-                } else {
-                    onSelectFigure(target.figures[0].id);
-                }
+                if (target.isDirectory) onSelectFolder(target.path);
+                else onSelectFigure(target.figures[0].id);
             }
 
             if (e.key === 'ArrowDown') {
                 e.preventDefault();
                 if (currentIndex >= visibleNodes.length - 1) return;
                 const target = visibleNodes[currentIndex + 1].node;
-                if (target.isDirectory) {
-                    onSelectFolder(target.path);
-                } else {
-                    onSelectFigure(target.figures[0].id);
-                }
+                if (target.isDirectory) onSelectFolder(target.path);
+                else onSelectFigure(target.figures[0].id);
             }
 
             if (e.key === 'ArrowRight') {

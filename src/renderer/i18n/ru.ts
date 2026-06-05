@@ -104,5 +104,17 @@ export default {
     renameFigure: 'Новое имя фигурки:',
     deleteFolderTitle: 'Удалить папку',
     deleteFolderConfirm: 'Удалить папку «{path}» и все фигурки в ней?',
-
+    exportPdf: 'Экспорт в PDF',
+    helpNavigation: 'Навигация',
+    helpMove: 'Перемещение',
+    helpExpand: 'Развернуть',
+    helpCollapse: 'Свернуть',
+    helpEditor: 'Редактор',
+    helpActions: 'Действия',
+    helpContextMenu: 'Контекстное меню',
+    helpNewFigure: 'Новая фигурка',
+    help: 'Справка',
+    info: 'Информация',
+    toc: 'Оглавление',
+    folder: 'Папка',
 };

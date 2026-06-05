@@ -112,7 +112,6 @@ const wysiwymPlugin = (slug: string) => {
                 const line = doc.line(i);
                 const text = line.text;
 
-                // ---
                 if (/^[-]{3,}\s*$/.test(text) || /^[_]{3,}\s*$/.test(text)) {
                     const hr = document.createElement('hr');
                     hr.style.border = 'none';
@@ -123,7 +122,6 @@ const wysiwymPlugin = (slug: string) => {
                     continue;
                 }
 
-                // Заголовки
                 const headingMatch = text.match(/^(#{1,6})\s+(.+)$/);
                 if (headingMatch) {
                     const markers = headingMatch[1];
@@ -142,35 +140,28 @@ const wysiwymPlugin = (slug: string) => {
                     continue;
                 }
 
-                // Цитата
                 const quoteMatch = text.match(/^>\s?(.*)$/);
                 if (quoteMatch) {
                     const markerEnd = line.from + 1 + (text[1] === ' ' ? 1 : 0);
                     const cursorInside = cursor >= line.from && cursor <= line.to;
-
                     if (cursorInside) { items.push({ from: line.from, to: markerEnd, decoration: Decoration.mark({ attributes: { style: HIDDEN_MARKER_VISIBLE } }) }); }
                     else { items.push({ from: line.from, to: markerEnd, decoration: Decoration.mark({ attributes: { style: HIDDEN_MARKER } }) }); }
-
                     items.push({ from: markerEnd, to: line.to, decoration: Decoration.mark({ attributes: { style: `color: var(--text-secondary); font-style: italic; border-left: 3px solid var(--quote-border, var(--accent)); padding-left: 12px; display: inline-block;` } }) });
                     continue;
                 }
 
-                // Маркированный список
                 const listMatch = text.match(/^(\s*)[-*+]\s+(.+)$/);
                 if (listMatch) {
                     const indent = listMatch[1];
                     const markerStart = line.from + indent.length;
                     const markerEnd = markerStart + 2;
                     const cursorInside = cursor >= markerStart && cursor <= line.to;
-
                     if (cursorInside) { items.push({ from: markerStart, to: markerEnd, decoration: Decoration.mark({ attributes: { style: HIDDEN_MARKER_VISIBLE } }) }); }
                     else { items.push({ from: markerStart, to: markerEnd, decoration: Decoration.mark({ attributes: { style: HIDDEN_MARKER } }) }); }
-
                     items.push({ from: markerStart, to: markerStart, decoration: Decoration.widget({ widget: new class extends WidgetType { toDOM() { const d = document.createElement('span'); d.textContent = '•'; d.style.color = 'var(--list-marker, var(--accent))'; d.style.marginRight = '8px'; return d; } }, side: 0 }) });
                     continue;
                 }
 
-                // Инлайн-форматирование
                 const inlineRegex = /(\*\*(.+?)\*\*)|(\*(.+?)\*)|(~~(.+?)~~)|(`(.+?)`)/g;
                 let match;
                 while ((match = inlineRegex.exec(text)) !== null) {
@@ -202,7 +193,6 @@ const wysiwymPlugin = (slug: string) => {
                     }
                 }
 
-                // Ссылки
                 const linkRegex = /\[(.+?)\]\((.+?)\)/g;
                 while ((match = linkRegex.exec(text)) !== null) {
                     const full = match[0];
@@ -221,7 +211,6 @@ const wysiwymPlugin = (slug: string) => {
                 }
             }
 
-            // Картинки
             const imageRegex = /!\[([^\]]*)\]\((\.\.?\/images\/[^)]+)\)/g;
             const docText = doc.toString();
             let imgMatch;
@@ -250,18 +239,19 @@ interface MarkdownEditorProps {
     onSave: () => void;
     figureName?: string;
     folderPath?: string;
+    editorViewRef?: React.MutableRefObject<EditorView | null>;
 }
 
-export default function MarkdownEditor({ content, onChange, onSave, figureName, folderPath }: MarkdownEditorProps) {
+export default function MarkdownEditor({ content, onChange, onSave, figureName, folderPath, editorViewRef }: MarkdownEditorProps) {
     const $t = t();
     const [preview, setPreview] = useState(false);
     const editorRef = useRef<HTMLDivElement>(null);
-    const editorViewRef = useRef<EditorView | null>(null);
+    const editorViewRefInternal = useRef<EditorView | null>(null);
 
     const slug = folderPath ? `${folderPath}/${slugify(figureName || '')}` : slugify(figureName || '');
 
     useEffect(() => {
-        if (!editorRef.current || editorViewRef.current) return;
+        if (!editorRef.current || editorViewRefInternal.current) return;
 
         const editorTheme = EditorView.theme({
             '&': { background: 'var(--bg-primary)', color: 'var(--text-primary)', height: '100%' },
@@ -298,11 +288,12 @@ export default function MarkdownEditor({ content, onChange, onSave, figureName, 
             parent: editorRef.current,
         });
 
-        editorViewRef.current = view;
+        editorViewRefInternal.current = view;
+        if (editorViewRef) editorViewRef.current = view;
     }, []);
 
     useEffect(() => {
-        const view = editorViewRef.current;
+        const view = editorViewRefInternal.current;
         if (view && view.state.doc.toString() !== content) {
             view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: content } });
         }
@@ -326,27 +317,22 @@ export default function MarkdownEditor({ content, onChange, onSave, figureName, 
         return () => document.removeEventListener('click', handleClick, true);
     }, []);
 
-    // Хоткеи редактора
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             const mod = e.metaKey || e.ctrlKey;
             if (!mod) return;
 
-            // Cmd+E работает всегда, даже без фокуса в редакторе
             if (e.key === 'e') {
                 e.preventDefault();
                 e.stopPropagation();
                 setPreview(p => {
-                    if (p) {
-                        setTimeout(() => editorViewRef.current?.focus(), 50);
-                    }
+                    if (p) { setTimeout(() => editorViewRefInternal.current?.focus(), 50); }
                     return !p;
                 });
                 return;
             }
 
-            // Остальные хоткеи требуют фокуса в редакторе
-            const view = editorViewRef.current;
+            const view = editorViewRefInternal.current;
             if (!view || !view.hasFocus) return;
 
             switch (e.key) {
@@ -361,9 +347,7 @@ export default function MarkdownEditor({ content, onChange, onSave, figureName, 
                 case '2': e.preventDefault(); insertLine('##'); break;
                 case '3': e.preventDefault(); insertLine('###'); break;
                 case 'q': e.preventDefault(); insertLine('>'); break;
-                case 'I':
-                    if (e.shiftKey) { e.preventDefault(); handleInsertImage(); }
-                    break;
+                case 'I': if (e.shiftKey) { e.preventDefault(); handleInsertImage(); } break;
             }
         };
 
@@ -372,7 +356,7 @@ export default function MarkdownEditor({ content, onChange, onSave, figureName, 
     }, [onSave]);
 
     const insertText = useCallback((before: string, after: string = '') => {
-        const view = editorViewRef.current;
+        const view = editorViewRefInternal.current;
         if (!view) return;
         const { from, to } = view.state.selection.main;
         const selectedText = view.state.sliceDoc(from, to);
@@ -381,7 +365,7 @@ export default function MarkdownEditor({ content, onChange, onSave, figureName, 
     }, []);
 
     const insertLine = useCallback((prefix: string) => {
-        const view = editorViewRef.current;
+        const view = editorViewRefInternal.current;
         if (!view) return;
         const { from } = view.state.selection.main;
         const line = view.state.doc.lineAt(from);
@@ -390,7 +374,7 @@ export default function MarkdownEditor({ content, onChange, onSave, figureName, 
     }, []);
 
     const insertBlock = useCallback((marker: string, placeholder: string) => {
-        const view = editorViewRef.current;
+        const view = editorViewRefInternal.current;
         if (!view) return;
         const { from } = view.state.selection.main;
         view.dispatch({ changes: { from, insert: placeholder ? `${marker}\n${placeholder}\n${marker}\n` : `${marker}\n` } });
@@ -408,7 +392,7 @@ export default function MarkdownEditor({ content, onChange, onSave, figureName, 
                 const name = figureName || 'unknown';
                 const result = await (window as any).electronAPI?.saveImage(folderPath || '', name, file.name, base64Data);
                 if (result?.success) {
-                    const view = editorViewRef.current;
+                    const view = editorViewRefInternal.current;
                     if (!view) return;
                     const { from } = view.state.selection.main;
                     view.dispatch({ changes: { from, insert: `![${file.name}](.${result.path})\n` } });
@@ -420,7 +404,7 @@ export default function MarkdownEditor({ content, onChange, onSave, figureName, 
     }, [figureName, folderPath]);
 
     const handleInsertLink = useCallback(() => {
-        const view = editorViewRef.current;
+        const view = editorViewRefInternal.current;
         if (!view) return;
         const { from, to } = view.state.selection.main;
         const selectedText = view.state.sliceDoc(from, to);
@@ -433,7 +417,7 @@ export default function MarkdownEditor({ content, onChange, onSave, figureName, 
         const container = editorRef.current;
         if (!container) return;
         const handlePaste = async (e: ClipboardEvent) => {
-            const view = editorViewRef.current;
+            const view = editorViewRefInternal.current;
             if (!view || !view.hasFocus) return;
             const items = e.clipboardData?.items;
             if (!items) return;
@@ -462,8 +446,8 @@ export default function MarkdownEditor({ content, onChange, onSave, figureName, 
     }, [figureName, folderPath]);
 
     const resolvedContent = content
-        .replace(/\(\.\/images\//g, `(http://127.0.0.1:8765/figures-data/${slug}/images/`)
-        .replace(/\(\.\.\/images\//g, `(http://127.0.0.1:8765/figures-data/${slug}/images/`);
+        .replace(/\(\.\/images\//g, `(http://127.0.0.1:8765/figures-data/${encodeURIComponent(slug)}/images/`)
+        .replace(/\(\.\.\/images\//g, `(http://127.0.0.1:8765/figures-data/${encodeURIComponent(slug)}/images/`)
 
     return (
         <div className={styles.root}>

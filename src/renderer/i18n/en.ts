@@ -110,4 +110,18 @@ export default {
     renameFigure: 'New figure name:',
     deleteFolderTitle: 'Delete Folder',
     deleteFolderConfirm: 'Delete folder "{path}" and all figures in it?',
+    exportPdf: 'Export to PDF',
+    // Help
+    helpNavigation: 'Navigation',
+    helpMove: 'Move',
+    helpExpand: 'Expand',
+    helpCollapse: 'Collapse',
+    helpEditor: 'Editor',
+    helpActions: 'Actions',
+    helpContextMenu: 'Context menu',
+    helpNewFigure: 'New figure',
+    help: 'Help',
+    info: 'Information',
+    toc: 'Table of Contents',
+    folder: 'Folder',
 };

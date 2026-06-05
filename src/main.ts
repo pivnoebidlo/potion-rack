@@ -298,6 +298,106 @@ ipcMain.handle('figure:renameFolder', (_event, folderPath: string, oldName: stri
     }
 });
 
+ipcMain.handle('figure:move', (_event, oldFolderPath: string, figureName: string, newFolderPath: string) => {
+    const oldDir = getFigureDir(oldFolderPath, figureName);
+    const newDir = getFigureDir(newFolderPath, figureName);
+    try {
+        if (fs.existsSync(oldDir)) {
+            fs.mkdirSync(path.dirname(newDir), { recursive: true });
+            fs.renameSync(oldDir, newDir);
+            return { success: true };
+        }
+        return { success: false, error: 'Figure folder not found' };
+    } catch (e) {
+        console.error('Move figure error:', e);
+        return { success: false, error: (e as Error).message };
+    }
+});
+
+ipcMain.handle('folder:move', (_event, oldPath: string, newPath: string) => {
+    const fullOldPath = path.join(figuresPath, oldPath);
+    const fullNewPath = path.join(figuresPath, newPath);
+    try {
+        if (fs.existsSync(fullOldPath)) {
+            fs.mkdirSync(path.dirname(fullNewPath), { recursive: true });
+            fs.renameSync(fullOldPath, fullNewPath);
+            return { success: true };
+        }
+        return { success: false, error: 'Folder not found' };
+    } catch (e) {
+        console.error('Move folder error:', e);
+        return { success: false, error: (e as Error).message };
+    }
+});
+
+ipcMain.handle('article:exportPdf', (_event, folderPath: string, figureName: string, htmlContent: string) => {
+    const printWindow = new BrowserWindow({
+        width: 800,
+        height: 600,
+        show: false,
+        webPreferences: {
+            nodeIntegration: false,
+            contextIsolation: true,
+        }
+    });
+
+    const styledHtml = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>${figureName}</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px;
+            color: #1a1a1a;
+            line-height: 1.7;
+            font-size: 14px;
+        }
+        h1 { font-size: 24px; margin-top: 24px; }
+        h2 { font-size: 20px; margin-top: 20px; }
+        h3 { font-size: 16px; margin-top: 16px; }
+        img { max-width: 100%; max-height: 500px; display: block; margin: 12px auto; border-radius: 6px; }
+        blockquote { border-left: 3px solid #7c5cfc; padding-left: 12px; color: #555; font-style: italic; margin: 12px 0; }
+        code { background: #f0f0f0; padding: 2px 6px; border-radius: 3px; font-family: 'JetBrains Mono', monospace; font-size: 13px; }
+        pre { background: #f5f5f5; padding: 12px; border-radius: 6px; overflow-x: auto; }
+        table { border-collapse: collapse; width: 100%; margin: 12px 0; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background: #f0f0f0; }
+        hr { border: none; border-top: 1px solid #ddd; margin: 16px 0; }
+        a { color: #7c5cfc; }
+    </style>
+</head>
+<body>
+    ${htmlContent}
+</body>
+</html>`;
+
+    printWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(styledHtml)}`);
+
+    printWindow.webContents.on('did-finish-load', () => {
+        setTimeout(async () => {
+            const { dialog } = require('electron');
+            const result = await dialog.showSaveDialog(printWindow, {
+                title: 'Сохранить как PDF',
+                defaultPath: `${figureName}.pdf`,
+                filters: [{ name: 'PDF', extensions: ['pdf'] }]
+            });
+
+            if (!result.canceled && result.filePath) {
+                const pdfData = await printWindow.webContents.printToPDF({ printBackground: true });
+                require('fs').writeFileSync(result.filePath, pdfData);
+            }
+
+            printWindow.close();
+        }, 500);
+    });
+
+    return { success: true };
+});
+
 ipcMain.on('window-minimize', () => { if (mainWindow) mainWindow.minimize(); });
 ipcMain.on('window-maximize', () => { if (mainWindow) { if (mainWindow.isMaximized()) mainWindow.unmaximize(); else mainWindow.maximize(); } });
 ipcMain.on('window-close', () => { if (mainWindow) mainWindow.close(); });
