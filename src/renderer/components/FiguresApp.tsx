@@ -37,6 +37,9 @@ export default function FiguresApp() {
     const [infoCollapsed, setInfoCollapsed] = useState(false);
     const [tocCollapsed, setTocCollapsed] = useState(false);
     const [helpCollapsed, setHelpCollapsed] = useState(true);
+    const [showIndicators, setShowIndicators] = useState(true);
+    const [showCounters, setShowCounters] = useState(true);
+
 
     const editorViewRef = useRef<EditorView | null>(null);
 
@@ -50,6 +53,14 @@ export default function FiguresApp() {
         } catch (err) { console.error('Failed to load folders:', err); }
     };
     useEffect(() => { loadDiskFolders(); }, []);
+    useEffect(() => {
+        const saved = localStorage.getItem('potion-rack-show-indicators');
+        if (saved !== null) setShowIndicators(saved === 'true');
+    }, []);
+    useEffect(() => {
+        const saved = localStorage.getItem('potion-rack-show-counters');
+        if (saved !== null) setShowCounters(saved === 'true');
+    }, []);
 
     const selected = figures.find(f => f.id === selectedId);
 
@@ -72,17 +83,6 @@ export default function FiguresApp() {
             } else { setEditorContent(selected.content || ''); }
         }
     }, [selected]);
-
-    useEffect(() => {
-        const hkd = (e: KeyboardEvent) => {
-            const tag = (e.target as HTMLElement).tagName;
-            if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
-            if ((e.target as HTMLElement).closest('.cm-editor')) return;
-            if ((e.target as HTMLElement).closest('.cm-content')) return;
-            if (document.getElementById('figure-modal-overlay')) return;
-        };
-        window.addEventListener('keydown', hkd); return () => window.removeEventListener('keydown', hkd);
-    }, []);
 
     const handleSave = async () => {
         if (!selected) return;
@@ -188,8 +188,15 @@ export default function FiguresApp() {
         if (!figure) return;
         try {
             const content = await (window as any).electronAPI?.readArticle(figure.folder_path || '', figure.name);
-            const slug = (figure.folder_path ? `${figure.folder_path}/` : '') + figure.name.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_\-]/gi, '');
-            const resolvedContent = (content || '').replace(/\(\.\/images\//g, `(http://127.0.0.1:8765/figures-data/${slug}/images/`).replace(/\(\.\.\/images\//g, `(http://127.0.0.1:8765/figures-data/${slug}/images/`);
+            const slug = (figure.folder_path ? `${figure.folder_path}/` : '') + figure.name
+                .toLowerCase()
+                .replace(/\s+/g, '_')
+                .replace(/[<>:"/\\|?*]/g, '');
+            const safeSlug = encodeURIComponent(slug);
+            const resolvedContent = (content || '').replace(/\(\.\/images\//g, `(http://127.0.0.1:8765/figures-data/${safeSlug}/images/`).replace(/\(\.\.\/images\//g, `(http://127.0.0.1:8765/figures-data/${safeSlug}/images/`);
+            console.log('Export PDF — figure.name:', figure.name);
+            console.log('Export PDF — folder_path:', figure.folder_path);
+            console.log('Export PDF — slug:', slug);
             const htmlContent = marked(resolvedContent);
             await (window as any).electronAPI?.exportPdf(figure.folder_path || '', figure.name, htmlContent);
         } catch (err) { console.error('Export PDF failed:', err); }
@@ -230,7 +237,6 @@ export default function FiguresApp() {
         subFolders: diskFolders.filter(f => f.startsWith(selectedFolder + '/')).length,
     } : null;
 
-    console.log('RENDER — selectedId:', selectedId, 'selectedFolder:', selectedFolder);
     return (
         <div className={styles.root}>
             <div className={styles.sidebar}>
@@ -251,6 +257,8 @@ export default function FiguresApp() {
                             onSelectFolder={(path) => { setSelectedFolder(path); setSelectedId(null); }}
                             onDoubleClickFigure={(id) => { const figure = figures.find(f => f.id === id); if (figure) { setEditingFigure(figure); setModalOpen(true); } }}
                             onContextMenu={handleContextMenu} onMoveFigure={handleMoveFigure} onMoveFolder={handleMoveFolder} searchQuery={search}
+                            showIndicators={showIndicators}
+                            showCounters={showCounters}
                         />
                     </>)}
                 </div>
@@ -299,12 +307,12 @@ export default function FiguresApp() {
                                     </div>
                                     {!helpCollapsed && (
                                         <div className={styles.collapsibleBody}>
-                                            <div className={styles.helpSection}><div className={styles.helpSectionTitle}>Навигация</div>
+                                            <div className={styles.helpSection}><div className={styles.helpSectionTitle}>{$t.helpNavigation}</div>
                                                 <div className={styles.helpKey}><span>{$t.helpMove}</span><span><kbd>↑</kbd> <kbd>↓</kbd></span></div>
                                                 <div className={styles.helpKey}><span>{$t.helpExpand}</span><span><kbd>→</kbd></span></div>
                                                 <div className={styles.helpKey}><span>{$t.helpCollapse}</span><span><kbd>←</kbd></span></div>
                                             </div>
-                                            <div className={styles.helpSection}><div className={styles.helpSectionTitle}>Редактор</div>
+                                            <div className={styles.helpSection}><div className={styles.helpSectionTitle}>{$t.helpEditor}</div>
                                                 <div className={styles.helpKey}><span>Bold</span><span><kbd>⌘</kbd> <kbd>B</kbd></span></div>
                                                 <div className={styles.helpKey}><span>Italic</span><span><kbd>⌘</kbd> <kbd>I</kbd></span></div>
                                                 <div className={styles.helpKey}><span>Link</span><span><kbd>⌘</kbd> <kbd>U</kbd></span></div>
@@ -339,14 +347,12 @@ export default function FiguresApp() {
                         ) : (
                             <div className={styles.helpPanel}>
                                 <div className={styles.helpHeader}>{$t.help}</div>
-                                <div className={styles.helpSection}>
-                                    <div className={styles.helpSectionTitle}>{$t.helpNavigation}</div>
+                                <div className={styles.helpSection}><div className={styles.helpSectionTitle}>{$t.helpNavigation}</div>
                                     <div className={styles.helpKey}><span>{$t.helpMove}</span><span><kbd>↑</kbd> <kbd>↓</kbd></span></div>
                                     <div className={styles.helpKey}><span>{$t.helpExpand}</span><span><kbd>→</kbd></span></div>
                                     <div className={styles.helpKey}><span>{$t.helpCollapse}</span><span><kbd>←</kbd></span></div>
                                 </div>
-                                <div className={styles.helpSection}>
-                                    <div className={styles.helpSectionTitle}>{$t.helpEditor}</div>
+                                <div className={styles.helpSection}><div className={styles.helpSectionTitle}>{$t.helpEditor}</div>
                                     <div className={styles.helpKey}><span>Bold</span><span><kbd>⌘</kbd> <kbd>B</kbd></span></div>
                                     <div className={styles.helpKey}><span>Italic</span><span><kbd>⌘</kbd> <kbd>I</kbd></span></div>
                                     <div className={styles.helpKey}><span>Link</span><span><kbd>⌘</kbd> <kbd>U</kbd></span></div>

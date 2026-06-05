@@ -20,9 +20,7 @@ app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 
 // Динамическая раздача статики из папки figures
-// Путь может меняться через настройки, поэтому не кэшируем
 app.use('/figures-data', (req, res, next) => {
-    // Читаем актуальный путь из БД (или используем дефолтный)
     let figuresDataPath = path.join(electronApp.getPath('userData'), 'figures');
     try {
         const db = getDatabase();
@@ -30,11 +28,12 @@ app.use('/figures-data', (req, res, next) => {
         if (savedPath?.value && fs.existsSync(savedPath.value)) {
             figuresDataPath = savedPath.value;
         }
-    } catch (e) {
-        // БД не готова — используем дефолтный путь
-    }
+    } catch (e) {}
 
-    const filePath = path.join(figuresDataPath, req.path);
+    const requestPath = decodeURIComponent(req.path);
+    const filePath = path.join(figuresDataPath, requestPath);
+    console.log('📷 Figures data:', req.path, '→', filePath, 'exists:', fs.existsSync(filePath));
+
     if (fs.existsSync(filePath)) {
         res.sendFile(filePath);
     } else {

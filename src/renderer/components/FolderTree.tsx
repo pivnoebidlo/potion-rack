@@ -22,6 +22,8 @@ interface FolderTreeProps {
     onMoveFigure: (figureId: number, figureName: string, oldFolderPath: string, newFolderPath: string) => void;
     onMoveFolder: (oldPath: string, newPath: string) => void;
     searchQuery: string;
+    showIndicators?: boolean;
+    showCounters?: boolean;
 }
 
 export interface FolderTarget {
@@ -37,7 +39,7 @@ interface DragItem {
     path: string;
 }
 
-export default function FolderTree({ figures, diskFolders, selectedId, selectedFolder, onSelectFigure, onSelectFolder, onDoubleClickFigure, onContextMenu, onMoveFigure, onMoveFolder, searchQuery }: FolderTreeProps) {
+export default function FolderTree({ figures, diskFolders, selectedId, selectedFolder, onSelectFigure, onSelectFolder, onDoubleClickFigure, onContextMenu, onMoveFigure, onMoveFolder, searchQuery, showIndicators = true, showCounters = true }: FolderTreeProps) {
     const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
     const [tree, setTree] = useState<FolderNode[]>([]);
     const [dragOverFolder, setDragOverFolder] = useState<string | null>(null);
@@ -68,25 +70,14 @@ export default function FolderTree({ figures, diskFolders, selectedId, selectedF
             const parts = folderPath.split('/').filter(p => p);
             const folderFigures = byFolder.get(folderPath) || [];
             const displayName = parts[parts.length - 1] || folderPath;
-
             folderFigures.sort((a, b) => a.name.localeCompare(b.name));
 
             const folderNode: FolderNode = {
-                name: displayName,
-                path: folderPath,
-                isDirectory: true,
-                children: [],
-                figures: folderFigures
+                name: displayName, path: folderPath, isDirectory: true, children: [], figures: folderFigures
             };
 
             for (const fig of folderFigures) {
-                folderNode.children.push({
-                    name: fig.name,
-                    path: folderPath,
-                    isDirectory: false,
-                    children: [],
-                    figures: [fig]
-                });
+                folderNode.children.push({ name: fig.name, path: folderPath, isDirectory: false, children: [], figures: [fig] });
             }
 
             const parentPath = parts.length > 1 ? parts.slice(0, -1).join('/') : '';
@@ -102,18 +93,11 @@ export default function FolderTree({ figures, diskFolders, selectedId, selectedF
                     continue;
                 }
             }
-
             root.push(folderNode);
         }
 
         for (const fig of rootFigures) {
-            root.push({
-                name: fig.name,
-                path: '',
-                isDirectory: false,
-                children: [],
-                figures: [fig]
-            });
+            root.push({ name: fig.name, path: '', isDirectory: false, children: [], figures: [fig] });
         }
 
         root.sort((a, b) => {
@@ -134,36 +118,26 @@ export default function FolderTree({ figures, diskFolders, selectedId, selectedF
         return null;
     };
 
-    useEffect(() => {
-        setTree(buildTree());
-    }, [buildTree]);
+    useEffect(() => { setTree(buildTree()); }, [buildTree]);
 
     const toggleCollapse = (path: string) => {
         const next = new Set(collapsed);
-        if (next.has(path)) {
-            next.delete(path);
-        } else {
-            next.add(path);
-        }
+        next.has(path) ? next.delete(path) : next.add(path);
         setCollapsed(next);
     };
 
     const handleContextMenu = (e: React.MouseEvent, target: FolderTarget) => {
-        e.preventDefault();
-        e.stopPropagation();
-        onContextMenu(e, target);
+        e.preventDefault(); e.stopPropagation(); onContextMenu(e, target);
     };
 
     const getStatusClass = (status: string): string => {
         switch (status) {
             case 'completed': return 'folderTree-statusDone';
             case 'in-progress': return 'folderTree-statusProgress';
-            case 'draft':
             default: return 'folderTree-statusDraft';
         }
     };
 
-    // Drag-and-drop handlers
     const handleDragStartFigure = (e: React.DragEvent, figure: Figure, folderPath: string) => {
         const item: DragItem = { type: 'figure', id: figure.id, name: figure.name, path: folderPath };
         setDraggedItem(item);
@@ -179,89 +153,58 @@ export default function FolderTree({ figures, diskFolders, selectedId, selectedF
     };
 
     const handleDragOver = (e: React.DragEvent, folderPath: string) => {
-        if (draggedItem?.type === 'folder') {
-            if (draggedItem.path === folderPath || folderPath.startsWith(draggedItem.path + '/')) {
-                return;
-            }
-        }
+        if (draggedItem?.type === 'folder' && (draggedItem.path === folderPath || folderPath.startsWith(draggedItem.path + '/'))) return;
         e.preventDefault();
         e.dataTransfer.dropEffect = 'move';
-        if (dragOverFolder !== folderPath) {
-            setDragOverFolder(folderPath);
-        }
+        if (dragOverFolder !== folderPath) setDragOverFolder(folderPath);
     };
 
-    const handleDragLeave = () => {
-        setDragOverFolder(null);
-    };
+    const handleDragLeave = () => setDragOverFolder(null);
 
     const handleDrop = (e: React.DragEvent, targetFolderPath: string) => {
-        e.preventDefault();
-        setDragOverFolder(null);
+        e.preventDefault(); setDragOverFolder(null);
         if (!draggedItem) return;
-
         if (draggedItem.type === 'figure') {
             const oldPath = draggedItem.path || '';
-            if (oldPath === targetFolderPath) return;
-            onMoveFigure(draggedItem.id!, draggedItem.name, oldPath, targetFolderPath);
+            if (oldPath !== targetFolderPath) onMoveFigure(draggedItem.id!, draggedItem.name, oldPath, targetFolderPath);
         } else if (draggedItem.type === 'folder') {
             const parts = draggedItem.path.split('/');
             const folderName = parts[parts.length - 1];
             const newPath = targetFolderPath ? `${targetFolderPath}/${folderName}` : folderName;
-            if (draggedItem.path === newPath) return;
-            onMoveFolder(draggedItem.path, newPath);
+            if (draggedItem.path !== newPath) onMoveFolder(draggedItem.path, newPath);
         }
-
         setDraggedItem(null);
     };
 
-    const handleDragEnd = () => {
-        setDragOverFolder(null);
-        setDraggedItem(null);
-    };
+    const handleDragEnd = () => { setDragOverFolder(null); setDraggedItem(null); };
 
     const countFiguresInFolder = useCallback((folderPath: string): number => {
         let count = 0;
-        // Прямые фигурки в этой папке
-        const directFigures = figures.filter(f => f.folder_path === folderPath);
-        count += directFigures.length;
-        // Рекурсивно считаем только те подпапки, которые есть в folder_path фигурок
+        count += figures.filter(f => f.folder_path === folderPath).length;
         const subFolderPaths = new Set<string>();
         for (const fig of figures) {
             if (fig.folder_path && fig.folder_path.startsWith(folderPath + '/')) {
-                // Извлекаем первую подпапку после folderPath
                 const relative = fig.folder_path.substring(folderPath.length + 1);
                 const firstSubFolder = relative.split('/')[0];
-                if (firstSubFolder) {
-                    subFolderPaths.add(folderPath ? `${folderPath}/${firstSubFolder}` : firstSubFolder);
-                }
+                if (firstSubFolder) subFolderPaths.add(folderPath ? `${folderPath}/${firstSubFolder}` : firstSubFolder);
             }
         }
-        for (const sub of subFolderPaths) {
-            count += countFiguresInFolder(sub);
-        }
+        for (const sub of subFolderPaths) count += countFiguresInFolder(sub);
         return count;
     }, [figures]);
 
     const renderNode = (node: FolderNode, depth: number) => {
         const isCollapsed = collapsed.has(node.path);
-        const isSelected = node.isDirectory
-            ? selectedFolder === node.path
-            : selectedId === node.figures[0]?.id;
+        const isSelected = node.isDirectory ? selectedFolder === node.path : selectedId === node.figures[0]?.id;
 
         if (node.isDirectory) {
             const count = countFiguresInFolder(node.path);
-            const isDragOver = dragOverFolder === node.path;
-
             return (
                 <div key={`folder-${node.path}`}>
                     <div
-                        className={`${styles.treeRow} ${styles.folder} ${isSelected ? styles.selected : ''} ${isDragOver ? styles.dragOver : ''}`}
+                        className={`${styles.treeRow} ${styles.folder} ${isSelected ? styles.selected : ''} ${dragOverFolder === node.path ? styles.dragOver : ''}`}
                         style={{ paddingLeft: `${depth * 16 + 10}px` }}
-                        onClick={() => {
-                            onSelectFolder(node.path);
-                            toggleCollapse(node.path);
-                        }}
+                        onClick={() => { onSelectFolder(node.path); toggleCollapse(node.path); }}
                         onContextMenu={(e) => handleContextMenu(e, { type: 'folder', path: node.path })}
                         draggable
                         onDragStart={(e) => handleDragStartFolder(e, node.path, node.name)}
@@ -270,9 +213,10 @@ export default function FolderTree({ figures, diskFolders, selectedId, selectedF
                         onDragLeave={handleDragLeave}
                         onDrop={(e) => handleDrop(e, node.path)}
                     >
-                        <span className={styles.arrow}>{isCollapsed ? '▸' : '▾'}</span>
+                        <span className={`${styles.arrow} ${isCollapsed ? styles.arrowCollapsed : styles.arrowExpanded}`} />
+                        <span className={`${styles.folderIcon} ${isCollapsed ? styles.folderIconCollapsed : styles.folderIconOpen}`} />
                         <span className={styles.name}>{node.name}</span>
-                        {count > 0 && <span className={styles.count}>{count}</span>}
+                        {showCounters && count > 0 && <span className={styles.count}>{count}</span>}
                     </div>
                     {!isCollapsed && node.children.map(child => renderNode(child, depth + 1))}
                 </div>
@@ -280,7 +224,6 @@ export default function FolderTree({ figures, diskFolders, selectedId, selectedF
         }
 
         const figure = node.figures[0];
-        const folderPath = node.path;
         return (
             <div
                 key={`figure-${figure.id}`}
@@ -288,28 +231,25 @@ export default function FolderTree({ figures, diskFolders, selectedId, selectedF
                 style={{ paddingLeft: `${depth * 16 + 10}px` }}
                 onClick={() => onSelectFigure(figure.id)}
                 onDoubleClick={(e) => { e.stopPropagation(); onDoubleClickFigure(figure.id); }}
-                onContextMenu={(e) => handleContextMenu(e, { type: 'figure', path: folderPath, figureId: figure.id })}
+                onContextMenu={(e) => handleContextMenu(e, { type: 'figure', path: node.path, figureId: figure.id })}
                 draggable
-                onDragStart={(e) => handleDragStartFigure(e, figure, folderPath)}
+                onDragStart={(e) => handleDragStartFigure(e, figure, node.path)}
                 onDragEnd={handleDragEnd}
             >
-                <span className={styles.arrow}></span>
-                <span className={`folderTree-statusDot ${getStatusClass(figure.status)}`} />
+                <span className={styles.arrow} />
+                {showIndicators && <span className={`folderTree-statusDot ${getStatusClass(figure.status)}`} />}
                 <span className={styles.name}>{figure.name}</span>
             </div>
         );
     };
 
-    // Навигация стрелками
     useEffect(() => {
         const getAllVisibleNodes = (nodes: FolderNode[]): { node: FolderNode; depth: number }[] => {
             const result: { node: FolderNode; depth: number }[] = [];
             const traverse = (n: FolderNode, d: number) => {
                 result.push({ node: n, depth: d });
                 if (n.isDirectory && !collapsed.has(n.path)) {
-                    for (const child of n.children) {
-                        traverse(child, d + 1);
-                    }
+                    for (const child of n.children) traverse(child, d + 1);
                 }
             };
             for (const n of nodes) traverse(n, 0);
@@ -326,48 +266,31 @@ export default function FolderTree({ figures, diskFolders, selectedId, selectedF
             if (visibleNodes.length === 0) return;
 
             const currentIndex = visibleNodes.findIndex(v => {
-                if (selectedId !== null) {
-                    return !v.node.isDirectory && v.node.figures[0]?.id === selectedId;
-                }
+                if (selectedId !== null) return !v.node.isDirectory && v.node.figures[0]?.id === selectedId;
                 return v.node.isDirectory && v.node.path === selectedFolder;
             });
 
-            if (e.key === 'ArrowUp') {
+            if (e.key === 'ArrowUp' && currentIndex > 0) {
                 e.preventDefault();
-                if (currentIndex <= 0) return;
-                const target = visibleNodes[currentIndex - 1].node;
-                if (target.isDirectory) onSelectFolder(target.path);
-                else onSelectFigure(target.figures[0].id);
+                const t = visibleNodes[currentIndex - 1].node;
+                t.isDirectory ? onSelectFolder(t.path) : onSelectFigure(t.figures[0].id);
             }
-
-            if (e.key === 'ArrowDown') {
+            if (e.key === 'ArrowDown' && currentIndex < visibleNodes.length - 1) {
                 e.preventDefault();
-                if (currentIndex >= visibleNodes.length - 1) return;
-                const target = visibleNodes[currentIndex + 1].node;
-                if (target.isDirectory) onSelectFolder(target.path);
-                else onSelectFigure(target.figures[0].id);
+                const t = visibleNodes[currentIndex + 1].node;
+                t.isDirectory ? onSelectFolder(t.path) : onSelectFigure(t.figures[0].id);
             }
-
-            if (e.key === 'ArrowRight') {
-                const target = currentIndex >= 0 ? visibleNodes[currentIndex].node : null;
-                if (target?.isDirectory && collapsed.has(target.path)) {
-                    e.preventDefault();
-                    toggleCollapse(target.path);
-                }
+            if (e.key === 'ArrowRight' && currentIndex >= 0) {
+                const t = visibleNodes[currentIndex].node;
+                if (t?.isDirectory && collapsed.has(t.path)) { e.preventDefault(); toggleCollapse(t.path); }
             }
-
-            if (e.key === 'ArrowLeft') {
-                const target = currentIndex >= 0 ? visibleNodes[currentIndex].node : null;
-                if (target?.isDirectory && !collapsed.has(target.path)) {
-                    e.preventDefault();
-                    toggleCollapse(target.path);
-                } else if (target && !target.isDirectory && currentIndex > 0) {
+            if (e.key === 'ArrowLeft' && currentIndex >= 0) {
+                const t = visibleNodes[currentIndex].node;
+                if (t?.isDirectory && !collapsed.has(t.path)) { e.preventDefault(); toggleCollapse(t.path); }
+                else if (t && !t.isDirectory && currentIndex > 0) {
                     e.preventDefault();
                     for (let i = currentIndex - 1; i >= 0; i--) {
-                        if (visibleNodes[i].node.isDirectory) {
-                            onSelectFolder(visibleNodes[i].node.path);
-                            break;
-                        }
+                        if (visibleNodes[i].node.isDirectory) { onSelectFolder(visibleNodes[i].node.path); break; }
                     }
                 }
             }
@@ -380,9 +303,7 @@ export default function FolderTree({ figures, diskFolders, selectedId, selectedF
     return (
         <div className={styles.tree} onContextMenu={(e) => handleContextMenu(e, { type: 'root', path: '' })}>
             {tree.map(node => renderNode(node, 0))}
-            {tree.length === 0 && (
-                <div className={styles.empty}>Нет фигурок</div>
-            )}
+            {tree.length === 0 && <div className={styles.empty}>Нет фигурок</div>}
         </div>
     );
 }

@@ -117,4 +117,10 @@ export default {
     info: 'Информация',
     toc: 'Оглавление',
     folder: 'Папка',
+    dbPath: 'База данных (В разработке!)',
+    dbPathDesc: 'Расположение файла базы данных SQLite',
+    showStatusIndicators: 'Статус-индикаторы',
+    showStatusIndicatorsDesc: 'Показывать кружки статуса у фигурок в дереве',
+    showCounters: 'Счётчики в папках',
+    showCountersDesc: 'Показывать количество фигурок рядом с именем папки',
 };

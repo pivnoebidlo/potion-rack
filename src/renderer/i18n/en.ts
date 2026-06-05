@@ -124,4 +124,10 @@ export default {
     info: 'Information',
     toc: 'Table of Contents',
     folder: 'Folder',
+    dbPath: 'Database (Coming soon!)',
+    dbPathDesc: 'SQLite database file location',
+    showStatusIndicators: 'Status indicators',
+    showStatusIndicatorsDesc: 'Show status dots next to figures in the tree',
+    showCounters: 'Folder counters',
+    showCountersDesc: 'Show figure count next to folder name',
 };

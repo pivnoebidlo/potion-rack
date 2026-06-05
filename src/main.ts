@@ -72,6 +72,23 @@ ipcMain.handle('dialog:selectFiguresDirectory', async () => {
     return result.filePaths[0];
 });
 
+ipcMain.handle('dialog:selectDbPath', async () => {
+    if (!mainWindow) return null;
+    const result = await dialog.showOpenDialog(mainWindow, {
+        title: 'Выберите файл базы данных',
+        filters: [{ name: 'SQLite Database', extensions: ['db', 'sqlite'] }],
+        properties: ['openFile']
+    });
+    if (result.canceled || result.filePaths.length === 0) return null;
+    return result.filePaths[0];
+});
+
+ipcMain.handle('set-db-path', (_event, newPath: string) => {
+    // Здесь можно добавить логику переключения БД
+    // Пока просто сохраняем для будущего использования
+    return { success: true };
+});
+
 ipcMain.handle('set-figures-path', (_event, newPath: string) => {
     figuresPath = newPath;
     try {
@@ -91,7 +108,7 @@ ipcMain.handle('set-figures-path', (_event, newPath: string) => {
 });
 
 function slugify(name: string): string {
-    return name.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_\-а-яё]/gi, '').substring(0, 100);
+    return name.toLowerCase().replace(/\s+/g, '_').replace(/[<>:"/\\|?*]/g, '').substring(0, 100);
 }
 
 // ─── Article handlers ───
@@ -101,6 +118,10 @@ function getFigureDir(folderPath: string, figureName: string): string {
     }
     return path.join(figuresPath, slugify(figureName));
 }
+
+ipcMain.handle('get-db-path', () => {
+    return path.join(app.getPath('userData'), 'potion_rack.db');
+});
 
 ipcMain.handle('article:read', (_event, folderPath: string, figureName: string) => {
     const dir = getFigureDir(folderPath, figureName);
