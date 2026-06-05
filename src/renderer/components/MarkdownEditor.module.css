@@ -1,0 +1,121 @@
+.root {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.toolbar {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 12px;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+}
+
+.toolbarGroup {
+    display: flex;
+    gap: 2px;
+    padding-right: 8px;
+    margin-right: 4px;
+    border-right: 1px solid var(--border);
+}
+.toolbarGroup:last-child {
+    border-right: none;
+}
+.toolbarRight {
+    margin-left: auto;
+}
+
+.tbBtn {
+    width: 30px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    font-size: 13px;
+    font-family: var(--font-sans);
+    transition: all 0.1s;
+}
+.tbBtn:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+.tbBtn.active {
+    background: var(--accent-light);
+    color: var(--accent);
+}
+
+.editorWrapper {
+    flex: 1;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    position: relative;
+}
+
+.editorWrapper :global(.cm-selectionLayer) {
+    z-index: 1 !important;
+}
+
+.editorWrapper :global(.cm-line) {
+    text-decoration: none !important;
+    border-bottom: none !important;
+    background: none !important;
+    box-shadow: none !important;
+}
+
+.editorWrapper :global(.cm-line) span {
+    text-decoration: none !important;
+    border-bottom: none !important;
+}
+
+.preview {
+    flex: 1;
+    padding: 16px;
+    overflow-y: auto;
+    background: var(--bg-secondary);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    font-size: var(--font-size-sm);
+    line-height: 1.7;
+}
+
+.preview img {
+    max-width: 100%;
+    max-height: 600px;
+    display: block;
+    margin: 8px auto;
+    border-radius: 6px;
+    object-fit: contain;
+}
+
+.preview a {
+    color: var(--link-color, var(--accent));
+}
+
+.preview blockquote {
+    border-left: 3px solid var(--quote-border, var(--accent));
+    padding-left: 12px;
+    color: var(--text-secondary);
+    font-style: italic;
+    margin: 8px 0;
+}
+
+.preview ul {
+    list-style: none;
+    padding-left: 0;
+}
+
+.preview ul li::before {
+    content: '•';
+    color: var(--list-marker, var(--accent));
+    margin-right: 8px;
+}

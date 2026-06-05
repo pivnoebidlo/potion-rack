@@ -1,141 +1,14 @@
-import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
-import { keymap } from '@codemirror/view';
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { fetchFigures, updateFigureAPI, deleteFigureAPI, createFigureAPI, Figure } from '../services/apiFigures';
-import CodeMirror from '@uiw/react-codemirror';
-import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
-import { languages } from '@codemirror/language-data';
-import { EditorView, ViewPlugin, ViewUpdate, Decoration, DecorationSet, WidgetType } from '@codemirror/view';
-import { marked } from 'marked';
 import styles from './FiguresApp.module.css';
 import FigureModal from './FigureModal';
 import ConfirmModal from './ConfirmModal';
 import PromptModal from './PromptModal';
 import FolderTree, { FolderTarget } from './FolderTree';
 import ContextMenu from './ContextMenu';
+import MarkdownEditor from './MarkdownEditor';
 import placeholderImg from '../images/placeholder.png';
 import { t } from '../i18n';
-
-const imagePositions: { from: number; to: number }[] = [];
-
-class ImagePreviewWidget extends WidgetType {
-    constructor(readonly src: string, readonly alt: string, readonly from: number, readonly to: number, readonly view: EditorView) { super(); }
-    toDOM() {
-        const container = document.createElement('span'); container.style.display = 'inline-block'; container.style.margin = '4px 0'; container.style.verticalAlign = 'middle'; container.style.position = 'relative';
-        const img = document.createElement('img'); img.src = this.src; img.alt = this.alt; img.style.maxWidth = '200px'; img.style.maxHeight = '200px'; img.style.borderRadius = '6px'; img.style.display = 'block'; img.style.objectFit = 'cover';
-        const deleteBtn = document.createElement('button'); deleteBtn.textContent = '✕'; deleteBtn.style.position = 'absolute'; deleteBtn.style.top = '4px'; deleteBtn.style.right = '4px'; deleteBtn.style.background = 'rgba(0,0,0,0.6)'; deleteBtn.style.color = '#fff'; deleteBtn.style.border = 'none'; deleteBtn.style.borderRadius = '50%'; deleteBtn.style.width = '20px'; deleteBtn.style.height = '20px'; deleteBtn.style.fontSize = '12px'; deleteBtn.style.cursor = 'pointer'; deleteBtn.style.display = 'none';
-        container.addEventListener('mouseenter', () => { deleteBtn.style.display = 'block'; }); container.addEventListener('mouseleave', () => { deleteBtn.style.display = 'none'; });
-        deleteBtn.addEventListener('click', (e) => { e.stopPropagation(); this.view.dispatch({ changes: { from: this.from, to: this.to } }); });
-        container.appendChild(img); container.appendChild(deleteBtn); return container;
-    }
-}
-
-function createImagePreviewPlugin(slug: string) {
-    return ViewPlugin.fromClass(class {
-        decorations: DecorationSet;
-        constructor(readonly view: EditorView) { this.decorations = this.buildDecorations(view); }
-        update(update: ViewUpdate) { if (update.docChanged || update.viewportChanged) this.decorations = this.buildDecorations(update.view); }
-        buildDecorations(view: EditorView) {
-            imagePositions.length = 0;
-            const widgets: { from: number; to: number; value: Decoration }[] = [];
-            const doc = view.state.doc.toString();
-
-            const base64Regex = /!\[([^\]]*)\]\((data:image\/[^;]+;base64,[^)]+)\)/g;
-            let match;
-            while ((match = base64Regex.exec(doc)) !== null) {
-                const from = match.index, to = from + match[0].length, base64 = match[2];
-                imagePositions.push({ from, to });
-                widgets.push({ from, to, value: Decoration.replace({ widget: new ImagePreviewWidget(base64, match[1], from, to, view) }) });
-            }
-
-            const fileRegex = /!\[([^\]]*)\]\((\.\.?\/images\/[^)]+)\)/g;
-            while ((match = fileRegex.exec(doc)) !== null) {
-                const from = match.index, to = from + match[0].length;
-                const filePath = match[2];
-                imagePositions.push({ from, to });
-                const relativePath = filePath.replace(/^\.\.?\//, '');
-                const absoluteUrl = `http://127.0.0.1:8765/figures-data/${slug}/${relativePath}`;
-                widgets.push({ from, to, value: Decoration.replace({ widget: new ImagePreviewWidget(absoluteUrl, match[1], from, to, view) }) });
-            }
-
-            return Decoration.set(widgets);
-        }
-    }, { decorations: v => v.decorations });
-}
-
-const editorTheme = EditorView.theme({
-    '&': { background: 'var(--bg-primary)', color: 'var(--text-primary)' },
-    '.cm-scroller': { background: 'var(--bg-primary)' },
-    '.cm-content': { background: 'var(--bg-primary)', color: 'var(--text-primary)', caretColor: 'var(--text-primary)' },
-    '.cm-gutters': { display: 'none' },
-    '.cm-activeLineGutter': { display: 'none' },
-    '.cm-activeLine': { background: 'var(--bg-hover)' },
-    '.cm-cursor': { borderLeftColor: 'var(--text-primary)' },
-    '.cm-selectionMatch': { background: 'var(--accent-light)' },
-    '.cm-matchingBracket': { background: 'var(--accent-light)' },
-});
-
-function slugify(name: string): string {
-    return name.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_\-а-яё]/gi, '');
-}
-
-function MarkdownEditor({ content, onChange, onSave, figureName, folderPath }: { content: string; onChange: (v: string) => void; onSave: () => void; figureName?: string; folderPath?: string }) {
-    const $t = t();
-    const [preview, setPreview] = useState(false);
-    const editorContainerRef = useRef<HTMLDivElement>(null);
-    const editorViewRef = useRef<EditorView | null>(null);
-    const slug = folderPath
-        ? `${folderPath}/${slugify(figureName || '')}`
-        : slugify(figureName || '');
-
-    useEffect(() => { imagePositions.length = 0; return () => { imagePositions.length = 0; }; }, [content]);
-
-    useEffect(() => {
-        const container = editorContainerRef.current; if (!container) return;
-        const handlePaste = async (e: ClipboardEvent) => {
-            const view = editorViewRef.current; if (!view || !view.hasFocus) return;
-            const items = e.clipboardData?.items; if (!items) return;
-            for (const item of Array.from(items)) {
-                if (item.type.startsWith('image/')) {
-                    e.preventDefault();
-                    const file = item.getAsFile();
-                    if (file) {
-                        try {
-                            const compressed = await compressImage(file, 240, 240, 0.7);
-                            const base64Data = compressed.split(',')[1];
-                            const name = figureName || 'unknown';
-                            const result = await (window as any).electronAPI?.saveImage(folderPath || '', name, file.name, base64Data);
-                            if (result?.success) {
-                                const imageMarkdown = `![${file.name}](.${result.path})`;
-                                const { from } = view.state.selection.main;
-                                view.dispatch({ changes: { from, insert: imageMarkdown + '\n' } });
-                                onChange(view.state.doc.toString());
-                            }
-                        } catch (err) { console.error('Failed to insert image:', err); }
-                    }
-                    return;
-                }
-            }
-        };
-        container.addEventListener('paste', handlePaste);
-        return () => container.removeEventListener('paste', handlePaste);
-    }, [onChange, figureName, folderPath]);
-
-    const compressImage = (file: File, maxWidth: number, maxHeight: number, quality: number): Promise<string> => new Promise((resolve, reject) => {
-        const reader = new FileReader(); reader.onload = () => { const img = new Image(); img.onload = () => { const canvas = document.createElement('canvas'); const scale = Math.min(maxWidth / img.width, maxHeight / img.height, 1); canvas.width = Math.round(img.width * scale); canvas.height = Math.round(img.height * scale); const ctx = canvas.getContext('2d'); if (!ctx) { reject(new Error('Canvas not available')); return; } ctx.drawImage(img, 0, 0, canvas.width, canvas.height); resolve(canvas.toDataURL('image/jpeg', quality)); }; img.onerror = reject; img.src = reader.result as string; }; reader.onerror = reject; reader.readAsDataURL(file);
-    });
-
-    const resolvedContent = content
-        .replace(/\(\.\/images\//g, `(http://127.0.0.1:8765/figures-data/${slug}/images/`)
-        .replace(/\(\.\.\/images\//g, `(http://127.0.0.1:8765/figures-data/${slug}/images/`);
-
-    return (
-        <div className={styles.editorRoot} ref={editorContainerRef}>
-            <div className={styles.editorToolbar}><button onClick={() => setPreview(!preview)} className={styles.editorBtn}>{preview ? '✏️ ' + $t.edit : '👁 ' + $t.preview}</button><button onClick={onSave} className={`${styles.editorBtn} ${styles.editorBtnPrimary}`}>💾 {$t.saveContent}</button></div>
-            {preview ? <div className={styles.previewPane} dangerouslySetInnerHTML={{ __html: marked(resolvedContent, { breaks: true }) as string }} /> : <div className={styles.editorPane}><CodeMirror value={content} onChange={onChange} onCreateEditor={(view) => { editorViewRef.current = view; }} extensions={[keymap.of([...defaultKeymap, ...historyKeymap]), history(), markdown({ base: markdownLanguage, codeLanguages: languages }), EditorView.lineWrapping, createImagePreviewPlugin(slug), editorTheme]} height="100%" style={{ height: '100%' }} /></div>}
-        </div>
-    );
-}
 
 export default function FiguresApp() {
     const $t = t();
@@ -205,14 +78,10 @@ export default function FiguresApp() {
     }, [selected]);
 
     useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => {
-            const tag = (e.target as HTMLElement).tagName;
-            if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
-            if ((e.target as HTMLElement).closest('.cm-editor')) return;
-            if ((e.target as HTMLElement).closest('.cm-content')) return;
-            if (document.getElementById('figure-modal-overlay')) return;
-        };
-        window.addEventListener('keydown', handleKeyDown); return () => window.removeEventListener('keydown', handleKeyDown);
+        // Временно отключено для отладки
+        const handleKeyDown = (e: KeyboardEvent) => {};
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
     }, []);
 
     const handleSave = async () => {
@@ -279,38 +148,32 @@ export default function FiguresApp() {
                     const parts = target.path.split('/');
                     parts[parts.length - 1] = newName;
                     const newPath = parts.join('/');
+
+                    // Переименовываем папку на диске
                     await (window as any).electronAPI?.renameFolder(target.path, newPath);
-                    const figsInFolder = figures.filter(f => f.folder_path === target.path);
-                    for (const fig of figsInFolder) {
-                        await updateFigureAPI(fig.id, { folder_path: newPath });
+
+                    // Обновляем folder_path у ВСЕХ фигурок, чей путь начинается с target.path
+                    const figsToUpdate = figures.filter(f =>
+                        f.folder_path === target.path || f.folder_path?.startsWith(target.path + '/')
+                    );
+                    for (const fig of figsToUpdate) {
+                        const updatedPath = fig.folder_path === target.path
+                            ? newPath
+                            : newPath + fig.folder_path!.substring(target.path.length);
+                        await updateFigureAPI(fig.id, { folder_path: updatedPath });
                     }
-                    if (selectedFolder === target.path) {
-                        setSelectedFolder(newPath);
+
+                    if (selectedFolder === target.path || selectedFolder?.startsWith(target.path + '/')) {
+                        const updatedSelected = selectedFolder === target.path
+                            ? newPath
+                            : newPath + selectedFolder.substring(target.path.length);
+                        setSelectedFolder(updatedSelected);
                     }
+
                     await loadDiskFolders();
                     await loadFigures();
                 } catch (err) {
                     console.error('Failed to rename folder:', err);
-                }
-            });
-            setPromptOpen(true);
-        } else if (target.type === 'figure' && target.figureId) {
-            const figure = figures.find(f => f.id === target.figureId);
-            if (!figure) return;
-            setPromptTitle($t.renameFigure);
-            setPromptDefault(figure.name);
-            setPromptCallback(() => async (newName: string) => {
-                if (!newName || newName === figure.name) return;
-                try {
-                    await (window as any).electronAPI?.renameFigureFolder(
-                        figure.folder_path || '',
-                        figure.name,
-                        newName
-                    );
-                    await updateFigureAPI(figure.id, { name: newName });
-                    await loadFigures();
-                } catch (err) {
-                    console.error('Failed to rename figure:', err);
                 }
             });
             setPromptOpen(true);
@@ -322,17 +185,31 @@ export default function FiguresApp() {
             setConfirmTitle($t.deleteFolderTitle);
             setConfirmMessage($t.deleteFolderConfirm.replace('{path}', target.path));
             setConfirmAction(() => async () => {
-                const figsInFolder = figures.filter(f => f.folder_path === target.path);
-                for (const fig of figsInFolder) {
+                // Найти ВСЕ фигурки в этой папке и всех вложенных
+                const figsToDelete = figures.filter(f =>
+                    f.folder_path === target.path || f.folder_path?.startsWith(target.path + '/')
+                );
+
+                // Удалить статьи с диска
+                for (const fig of figsToDelete) {
                     if ((window as any).electronAPI?.deleteArticle) {
-                        await (window as any).electronAPI.deleteArticle(target.path, fig.name);
+                        await (window as any).electronAPI.deleteArticle(fig.folder_path || '', fig.name);
                     }
                     await deleteFigureAPI(fig.id);
                 }
+
+                // Удалить папку с диска (рекурсивно)
                 await (window as any).electronAPI?.deleteFolder?.(target.path);
+
+                // Сбросить выбор, если был выбран элемент внутри удаляемой папки
+                if (selectedFolder === target.path || selectedFolder?.startsWith(target.path + '/')) {
+                    setSelectedFolder('');
+                }
+                if (selected && (selected.folder_path === target.path || selected.folder_path?.startsWith(target.path + '/'))) {
+                    setSelectedId(null);
+                }
+
                 setConfirmOpen(false);
-                setSelectedId(null);
-                setSelectedFolder('');
                 await loadDiskFolders();
                 await loadFigures();
             });
@@ -355,7 +232,7 @@ export default function FiguresApp() {
     const handleSetPrimary = async (imgId: number) => { if (!selectedId) return; await fetch(`http://127.0.0.1:8765/api/figures/${selectedId}/images/${imgId}/primary`, { method: 'PUT' }); await loadImages(selectedId); };
 
     useEffect(() => { const hp = (e: ClipboardEvent) => { if (!selectedId) return; const items = e.clipboardData?.items; if (!items) return; for (const item of Array.from(items)) { if (item.type.startsWith('image/')) { e.preventDefault(); const f = item.getAsFile(); if (f) handleUploadImage(f); return; } } }; document.addEventListener('paste', hp); return () => document.removeEventListener('paste', hp); }, [selectedId]);
-
+    console.log('RENDER — selectedId:', selectedId, 'selectedFolder:', selectedFolder);
     return (
         <div className={styles.root}>
             <div className={styles.sidebar}><div className={styles.sidebarItem} onClick={() => navigateTo('paints')}>🎨</div><div className={`${styles.sidebarItem} ${styles.sidebarItemActive}`}>🧩</div><div className={styles.sidebarItem} onClick={() => navigateTo('settings')}>⚙️</div></div>
@@ -371,8 +248,12 @@ export default function FiguresApp() {
                             diskFolders={diskFolders}
                             selectedId={selectedId}
                             selectedFolder={selectedFolder}
-                            onSelectFigure={(id) => setSelectedId(id)}
+                            onSelectFigure={(id) => {
+                                console.log('onSelectFigure called with id:', id);
+                                setSelectedId(id);
+                            }}
                             onSelectFolder={(path) => {
+                                console.log('onSelectFolder called with path:', path);
                                 setSelectedFolder(path);
                                 setSelectedId(null);
                             }}

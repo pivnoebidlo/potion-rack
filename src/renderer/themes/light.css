@@ -27,4 +27,12 @@
     --radius-xl: 12px;
     --star-active: #f59e0b;
     --star-inactive: #ccc;
+    --warning: #f59e0b;
+    --warning-hover: #d97706;
+    --success: #4ade80;
+    --success-hover: #22c55e;
+    --link-color: #a78bfa;
+    --link-hover-color: #c4b5fd;
+    --quote-border: #7c5cfc;
+    --list-marker: #7c5cfc;
 }
