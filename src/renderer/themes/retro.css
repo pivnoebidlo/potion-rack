@@ -27,4 +27,8 @@
     --radius-xl: 0px;
     --star-active: #ffff00;
     --star-inactive: #666;
+    --warning: #f59e0b;
+    --warning-hover: #d97706;
+    --success: #4ade80;
+    --success-hover: #22c55e;
 }

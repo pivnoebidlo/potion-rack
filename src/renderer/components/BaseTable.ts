@@ -1,10 +1,10 @@
 import { Paint } from '../types/paint.js';
-import { appState } from '../core/appState.js';
+// import { appState } from '../core/appState.js';
 import { escapeHtml, getStars } from '../utils/dom.js';
 import { sortPaints, SortColumn, SortDirection } from '../utils/sort.js';
 import { StatusBadge } from './StatusBadge.js';
 import { DateFormatter } from '../utils/dateFormatter.js';
-import { getBaseColorName } from '../ui/tableUI.js';
+// import { getBaseColorName } from '../ui/tableUI.js';
 
 export interface TableColumn {
     id: string;

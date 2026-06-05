@@ -7,3 +7,24 @@ input, textarea, select, [contenteditable] {
     -webkit-user-select: text;
     user-select: text;
 }
+
+/* Статус-индикаторы в дереве */
+.folderTree-statusDot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    display: inline-block;
+}
+
+.folderTree-statusDraft {
+    background: var(--text-muted);
+}
+
+.folderTree-statusProgress {
+    background: var(--warning);
+}
+
+.folderTree-statusDone {
+    background: var(--success);
+}

@@ -113,19 +113,6 @@ ipcMain.handle('article:read', (_event, folderPath: string, figureName: string) 
     return '';
 });
 
-ipcMain.handle('article:write', (_event, folderPath: string, figureName: string, content: string) => {
-    const dir = getFigureDir(folderPath, figureName);
-    const filePath = path.join(dir, `${slugify(figureName)}.md`);
-    try {
-        fs.mkdirSync(dir, { recursive: true });
-        fs.writeFileSync(filePath, content, 'utf8');
-        return { success: true };
-    } catch (e) {
-        console.error('Write article error:', e);
-        return { success: false };
-    }
-});
-
 ipcMain.handle('article:saveImage', (_event, folderPath: string, figureName: string, fileName: string, base64Data: string) => {
     const dir = getFigureDir(folderPath, figureName);
     const imagesDir = path.join(dir, 'images');
@@ -174,17 +161,23 @@ function listFoldersRecursive(dirPath: string, basePath: string): { name: string
     const result: { name: string; path: string; isDirectory: boolean }[] = [];
     try {
         if (!fs.existsSync(dirPath)) return result;
+
+        // Проверяем, не является ли текущая папка папкой фигурки
+        const isFigureFolder = fs.readdirSync(dirPath).some(f => f.endsWith('.md'));
+
         const entries = fs.readdirSync(dirPath, { withFileTypes: true });
         for (const entry of entries) {
             if (entry.isDirectory()) {
-                // Пропускаем images и папки, внутри которых есть .md файл (это папка фигурки)
-                if (entry.name === 'images') continue;
-
                 const fullPath = path.join(dirPath, entry.name);
-                const hasMdFile = fs.readdirSync(fullPath).some(f => f.endsWith('.md'));
-                if (hasMdFile) continue; // это папка фигурки, не показываем в дереве
-
                 const relativePath = basePath ? `${basePath}/${entry.name}` : entry.name;
+
+                // Пропускаем images только если родитель — папка фигурки
+                if (entry.name === 'images' && isFigureFolder) continue;
+
+                // Пропускаем папку, если внутри есть .md (это папка фигурки)
+                const childHasMd = fs.readdirSync(fullPath).some(f => f.endsWith('.md'));
+                if (childHasMd) continue;
+
                 result.push({
                     name: entry.name,
                     path: relativePath,
@@ -201,6 +194,44 @@ function listFoldersRecursive(dirPath: string, basePath: string): { name: string
 
 ipcMain.handle('figures:listFolders', () => {
     return listFoldersRecursive(figuresPath, '');
+});
+
+ipcMain.handle('article:write', (_event, folderPath: string, figureName: string, content: string) => {
+    const dir = getFigureDir(folderPath, figureName);
+    const filePath = path.join(dir, `${slugify(figureName)}.md`);
+    const imagesDir = path.join(dir, 'images');
+
+    try {
+        // Сохраняем .md файл
+        fs.mkdirSync(dir, { recursive: true });
+        fs.writeFileSync(filePath, content, 'utf8');
+
+        // Очистка неиспользуемых картинок
+        if (fs.existsSync(imagesDir)) {
+            // Найти все ссылки на картинки в контенте
+            const imageRegex = /!\[.*?\]\(\.\.\/images\/([^)]+)\)/g;
+            const usedImages = new Set<string>();
+            let match;
+            while ((match = imageRegex.exec(content)) !== null) {
+                usedImages.add(match[1]);
+            }
+
+            // Удалить файлы, которых нет в контенте
+            const files = fs.readdirSync(imagesDir);
+            for (const file of files) {
+                if (!usedImages.has(file)) {
+                    const filePath = path.join(imagesDir, file);
+                    fs.unlinkSync(filePath);
+                    console.log(`🗑 Cleaned up unused image: ${file}`);
+                }
+            }
+        }
+
+        return { success: true };
+    } catch (e) {
+        console.error('Write article error:', e);
+        return { success: false };
+    }
 });
 
 // ─── Операции с папками ───
