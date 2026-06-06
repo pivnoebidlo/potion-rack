@@ -123,4 +123,10 @@ export default {
     showStatusIndicatorsDesc: 'Показывать кружки статуса у фигурок в дереве',
     showCounters: 'Счётчики в папках',
     showCountersDesc: 'Показывать количество фигурок рядом с именем папки',
+    shopUrl: 'Ссылка на магазин',
+    openInShop: 'Открыть в магазине',
+    dateFormat: 'Формат даты',
+    dateFormatDesc: 'Формат отображения дат',
+    dateAuto: 'Авто',
+    completedDate: 'Дата завершения',
 };

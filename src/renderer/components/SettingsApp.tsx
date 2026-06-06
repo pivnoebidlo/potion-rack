@@ -15,6 +15,7 @@ export default function SettingsApp() {
     const [dbPath, setDbPath] = useState('');
     const [showStatusIndicators, setShowStatusIndicators] = useState(true);
     const [showCounters, setShowCounters] = useState(true);
+    const [dateFormat, setDateFormat] = useState('auto');
 
     const $t = t();
 
@@ -65,6 +66,11 @@ export default function SettingsApp() {
     }, []);
 
     useEffect(() => {
+        const saved = localStorage.getItem('potion-rack-date-format');
+        if (saved) setDateFormat(saved);
+    }, []);
+
+    useEffect(() => {
         const tabs: SettingsTab[] = ['general', 'appearance', 'data'];
         const handleKeyDown = (e: KeyboardEvent) => {
             const tag = (e.target as HTMLElement).tagName;
@@ -93,9 +99,7 @@ export default function SettingsApp() {
         if (selectedPath) {
             setFiguresPath(selectedPath);
             localStorage.setItem('potion-rack-figures-path', selectedPath);
-            if (api.setFiguresPath) {
-                await api.setFiguresPath(selectedPath);
-            }
+            if (api.setFiguresPath) await api.setFiguresPath(selectedPath);
         }
     };
 
@@ -106,9 +110,7 @@ export default function SettingsApp() {
         if (selectedPath) {
             setDbPath(selectedPath);
             localStorage.setItem('potion-rack-db-path', selectedPath);
-            if (api.setDbPath) {
-                await api.setDbPath(selectedPath);
-            }
+            if (api.setDbPath) await api.setDbPath(selectedPath);
         }
     };
 
@@ -123,9 +125,7 @@ export default function SettingsApp() {
             a.download = `potion-rack-backup-${new Date().toISOString().split('T')[0]}.prbackup`;
             a.click();
             URL.revokeObjectURL(url);
-        } catch (err) {
-            console.error('Export failed:', err);
-        }
+        } catch (err) { console.error('Export failed:', err); }
     };
 
     const handleImport = () => {
@@ -134,10 +134,7 @@ export default function SettingsApp() {
         input.accept = '.prbackup,.json';
         input.onchange = (e) => {
             const file = (e.target as HTMLInputElement).files?.[0];
-            if (file) {
-                setImportFile(file);
-                setImportConfirmOpen(true);
-            }
+            if (file) { setImportFile(file); setImportConfirmOpen(true); }
         };
         input.click();
     };
@@ -154,9 +151,7 @@ export default function SettingsApp() {
             });
             setImportConfirmOpen(false);
             setImportFile(null);
-        } catch (err) {
-            console.error('Import failed:', err);
-        }
+        } catch (err) { console.error('Import failed:', err); }
     };
 
     const handleReset = async () => {
@@ -195,6 +190,20 @@ export default function SettingsApp() {
                                     </select>
                                 </div>
                             </div>
+                            <div className={styles.setting}>
+                                <div className={styles.settingInfo}>
+                                    <div className={styles.settingLabel}>{$t.dateFormat || 'Формат даты'}</div>
+                                    <div className={styles.settingDesc}>{$t.dateFormatDesc || 'Формат отображения дат'}</div>
+                                </div>
+                                <div className={styles.settingControl}>
+                                    <select className={styles.select} value={dateFormat} onChange={e => { setDateFormat(e.target.value); localStorage.setItem('potion-rack-date-format', e.target.value); }}>
+                                        <option value="auto">{$t.dateAuto || 'Авто'}</option>
+                                        <option value="dd.mm.yyyy">dd.mm.yyyy</option>
+                                        <option value="yyyy-mm-dd">yyyy-mm-dd</option>
+                                        <option value="mm/dd/yyyy">mm/dd/yyyy</option>
+                                    </select>
+                                </div>
+                            </div>
                             <div className={styles.about} style={{ marginTop: 24 }}>
                                 <strong>{$t.version}</strong> v{version}
                                 <div className={styles.aboutSub}>{$t.appSubtitle}</div>
@@ -227,10 +236,7 @@ export default function SettingsApp() {
                                 </div>
                                 <div className={styles.settingControl}>
                                     <label className={styles.toggle}>
-                                        <input type="checkbox" checked={showStatusIndicators} onChange={e => {
-                                            setShowStatusIndicators(e.target.checked);
-                                            localStorage.setItem('potion-rack-show-indicators', e.target.checked.toString());
-                                        }} />
+                                        <input type="checkbox" checked={showStatusIndicators} onChange={e => { setShowStatusIndicators(e.target.checked); localStorage.setItem('potion-rack-show-indicators', e.target.checked.toString()); }} />
                                         <span className={styles.slider}></span>
                                     </label>
                                 </div>
@@ -242,10 +248,7 @@ export default function SettingsApp() {
                                 </div>
                                 <div className={styles.settingControl}>
                                     <label className={styles.toggle}>
-                                        <input type="checkbox" checked={showCounters} onChange={e => {
-                                            setShowCounters(e.target.checked);
-                                            localStorage.setItem('potion-rack-show-counters', e.target.checked.toString());
-                                        }} />
+                                        <input type="checkbox" checked={showCounters} onChange={e => { setShowCounters(e.target.checked); localStorage.setItem('potion-rack-show-counters', e.target.checked.toString()); }} />
                                         <span className={styles.slider}></span>
                                     </label>
                                 </div>
@@ -256,33 +259,26 @@ export default function SettingsApp() {
                     {tab === 'data' && (
                         <div className={styles.section}>
                             <div className={styles.sectionTitle}>{$t.data}</div>
-
                             <div className={styles.setting}>
                                 <div className={styles.settingInfo}>
                                     <div className={styles.settingLabel}>{$t.figuresPath}</div>
                                     <div className={styles.settingDesc}>{$t.figuresPathDesc}</div>
                                 </div>
                                 <div className={styles.settingControl}>
-                                    <button className={`${styles.btn} ${styles.btnSecondary} ${styles.btnFixed}`} onClick={handleSelectFolder}>
-                                        📂 {$t.selectFolder}
-                                    </button>
+                                    <button className={`${styles.btn} ${styles.btnSecondary} ${styles.btnFixed}`} onClick={handleSelectFolder}>📂 {$t.selectFolder}</button>
                                     {figuresPath && <div className={styles.pathText}>{figuresPath}</div>}
                                 </div>
                             </div>
-
                             <div className={styles.setting}>
                                 <div className={styles.settingInfo}>
                                     <div className={styles.settingLabel}>{$t.dbPath || 'База данных'}</div>
                                     <div className={styles.settingDesc}>{$t.dbPathDesc || 'Расположение файла базы данных SQLite'}</div>
                                 </div>
                                 <div className={styles.settingControl}>
-                                    <button className={`${styles.btn} ${styles.btnSecondary} ${styles.btnFixed}`} onClick={handleSelectDbPath}>
-                                        📂 {$t.selectFolder}
-                                    </button>
+                                    <button className={`${styles.btn} ${styles.btnSecondary} ${styles.btnFixed}`} onClick={handleSelectDbPath}>📂 {$t.selectFolder}</button>
                                     {dbPath && <div className={styles.pathText}>{dbPath}</div>}
                                 </div>
                             </div>
-
                             <div className={styles.setting}>
                                 <div className={styles.settingInfo}>
                                     <div className={styles.settingLabel}>{$t.exportBackup}</div>
@@ -301,7 +297,6 @@ export default function SettingsApp() {
                                     <button className={`${styles.btn} ${styles.btnSecondary} ${styles.btnFixed}`} onClick={handleImport}>📥 {$t.import}</button>
                                 </div>
                             </div>
-
                             <div className={styles.setting} style={{ marginTop: 24, borderTop: '1px solid var(--danger)', paddingTop: 16 }}>
                                 <div className={styles.settingInfo}>
                                     <div className={styles.settingLabel} style={{ color: 'var(--danger)' }}>{$t.resetData}</div>
@@ -317,19 +312,10 @@ export default function SettingsApp() {
             </div>
 
             {importConfirmOpen && (
-                <div style={{
-                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-                    background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200,
-                }}>
-                    <div style={{
-                        background: 'var(--bg-secondary)', border: '1px solid var(--border)',
-                        borderRadius: 'var(--radius-xl)', padding: '24px', minWidth: '400px',
-                        boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
-                    }}>
+                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }}>
+                    <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: 'var(--radius-xl)', padding: '24px', minWidth: '400px', boxShadow: '0 8px 24px rgba(0,0,0,0.5)' }}>
                         <div style={{ fontSize: 'var(--font-size-lg)', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '12px' }}>{$t.importBackup}</div>
-                        <div style={{ color: 'var(--text-secondary)', marginBottom: '20px', fontSize: 'var(--font-size-sm)' }}>
-                            {$t.importBackupDesc}
-                        </div>
+                        <div style={{ color: 'var(--text-secondary)', marginBottom: '20px', fontSize: 'var(--font-size-sm)' }}>{$t.importBackupDesc}</div>
                         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
                             <button onClick={() => { setImportConfirmOpen(false); setImportFile(null); }} style={{ padding: '8px 16px', background: 'var(--bg-hover)', color: 'var(--text-primary)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: 'var(--font-size-sm)' }}>{$t.cancel}</button>
                             <button onClick={performImport} style={{ padding: '8px 16px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: 'var(--font-size-sm)' }}>{$t.import}</button>

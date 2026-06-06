@@ -114,3 +114,8 @@
     color: #fff;
 }
 .btnSave:hover { background: var(--accent-hover); }
+
+.formRow {
+    display: flex;
+    gap: 10px;
+}

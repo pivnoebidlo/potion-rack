@@ -119,3 +119,13 @@
     color: var(--list-marker, var(--accent));
     margin-right: 8px;
 }
+
+.preview table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 8px 0;
+}
+.preview td, .preview th {
+    border: 1px solid var(--border);
+    padding: 4px 8px;
+}

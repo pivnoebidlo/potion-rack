@@ -37,7 +37,7 @@ export class FiguresController {
     async create(req: Request, res: Response): Promise<void> {
         try {
             const db = getDatabase();
-            const { name, manufacturer, scale, material, status, purchase_date, purchase_price, completed_date, description, content, folder_path } = req.body;
+            const { name, manufacturer, scale, material, status, purchase_date, purchase_price, completed_date, shop_url, content, folder_path } = req.body;
 
             if (!name) {
                 res.status(400).json({ error: 'Name is required' });
@@ -46,7 +46,7 @@ export class FiguresController {
 
             const now = new Date().toISOString();
             const result = db.prepare(`
-                INSERT INTO figures (name, manufacturer, scale, material, status, purchase_date, purchase_price, completed_date, description, content, folder_path, created_at, updated_at)
+                INSERT INTO figures (name, manufacturer, scale, material, status, purchase_date, purchase_price, completed_date, shop_url, content, folder_path, created_at, updated_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `).run(
                 name,
@@ -57,7 +57,7 @@ export class FiguresController {
                 purchase_date || null,
                 purchase_price || null,
                 completed_date || null,
-                description || null,
+                shop_url || null,
                 content || null,
                 folder_path || null,
                 now,
@@ -76,7 +76,9 @@ export class FiguresController {
         try {
             const db = getDatabase();
             const { id } = req.params;
-            const { name, manufacturer, scale, material, status, purchase_date, purchase_price, completed_date, description, content, folder_path } = req.body;
+            const { name, manufacturer, scale, material, status, purchase_date, purchase_price, completed_date, shop_url, content, folder_path } = req.body;
+            console.log('Update body:', JSON.stringify(req.body));
+
 
             const figure = db.prepare('SELECT * FROM figures WHERE id = ?').get(id) as any;
             if (!figure) {
@@ -89,7 +91,7 @@ export class FiguresController {
                 UPDATE figures SET
                                    name = ?, manufacturer = ?, scale = ?, material = ?,
                                    status = ?, purchase_date = ?, purchase_price = ?,
-                                   completed_date = ?, description = ?,
+                                   completed_date = ?, shop_url = ?,
                                    content = ?, folder_path = ?, updated_at = ?
                 WHERE id = ?
             `).run(
@@ -98,10 +100,10 @@ export class FiguresController {
                 scale ?? figure.scale,
                 material ?? figure.material,
                 status ?? figure.status,
-                purchase_date ?? figure.purchase_date,
+                purchase_date !== undefined ? purchase_date : figure.purchase_date,
                 purchase_price ?? figure.purchase_price,
-                completed_date ?? figure.completed_date,
-                description ?? figure.description,
+                completed_date !== undefined ? completed_date : figure.completed_date,
+                shop_url ?? figure.shop_url,
                 content ?? figure.content,
                 folder_path !== undefined ? folder_path : figure.folder_path,
                 now,

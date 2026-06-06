@@ -99,7 +99,7 @@ const slugField = StateField.define<string>({
     }
 });
 
-const tablePlugin = ViewPlugin.fromClass(class {
+const tableNavPlugin = ViewPlugin.fromClass(class {
     constructor(readonly view: EditorView) {
         this.view.dom.addEventListener('keydown', (e: KeyboardEvent) => {
             if (e.key === 'Tab') {
@@ -110,17 +110,11 @@ const tablePlugin = ViewPlugin.fromClass(class {
                     if (e.shiftKey) {
                         const textBefore = line.text.substring(0, pos - line.from);
                         const prevPipe = textBefore.lastIndexOf('|');
-                        if (prevPipe !== -1) {
-                            const newPos = line.from + Math.max(0, prevPipe - 1);
-                            view.dispatch({ selection: { anchor: newPos } });
-                        }
+                        if (prevPipe !== -1) view.dispatch({ selection: { anchor: line.from + Math.max(0, prevPipe - 1) } });
                     } else {
                         const textAfter = line.text.substring(pos - line.from);
                         const nextPipe = textAfter.indexOf('|');
-                        if (nextPipe !== -1) {
-                            const newPos = pos + nextPipe + 2;
-                            view.dispatch({ selection: { anchor: Math.min(newPos, line.to) } });
-                        }
+                        if (nextPipe !== -1) view.dispatch({ selection: { anchor: Math.min(pos + nextPipe + 2, line.to) } });
                     }
                 }
             }
@@ -130,8 +124,7 @@ const tablePlugin = ViewPlugin.fromClass(class {
                 if (/^\|(.+)\|$/.test(line.text) && !/^\|[-:\s|]+\|$/.test(line.text)) {
                     e.preventDefault();
                     const cells = line.text.split('|').filter(c => c.trim() !== '');
-                    const newRow = '|' + '  |'.repeat(cells.length) + '\n';
-                    view.dispatch({ changes: { from: line.to + 1, insert: newRow } });
+                    view.dispatch({ changes: { from: line.to + 1, insert: '|' + '  |'.repeat(cells.length) + '\n' } });
                 }
             }
         });
@@ -157,6 +150,27 @@ const wysiwymPlugin = ViewPlugin.fromClass(class {
         for (let i = 1; i <= doc.lines; i++) {
             const line = doc.line(i);
             const text = line.text;
+
+            // Строка данных таблицы — рендерим как <tr>
+            if (/^\|(.+)\|$/.test(text) && !/^\|[-:\s|]+\|$/.test(text)) {
+                const cells = text.split('|').filter(c => c.trim() !== '');
+                const tr = document.createElement('tr');
+                for (const cell of cells) {
+                    const td = document.createElement('td');
+                    td.textContent = cell.trim();
+                    td.style.border = '1px solid var(--border)';
+                    td.style.padding = '4px 8px';
+                    td.style.fontSize = 'var(--font-size-sm)';
+                    tr.appendChild(td);
+                }
+                items.push({ from: line.from, to: line.to, decoration: Decoration.replace({ widget: new class extends WidgetType { toDOM() { return tr; } } }) });
+                continue;
+            }
+            // Разделитель таблицы — скрываем
+            if (/^\|[-:\s|]+\|$/.test(text)) {
+                items.push({ from: line.from, to: line.to, decoration: Decoration.mark({ attributes: { style: 'font-size: 0; line-height: 0;' } }) });
+                continue;
+            }
 
             if (/^[-]{3,}\s*$/.test(text) || /^[_]{3,}\s*$/.test(text)) {
                 const hr = document.createElement('hr');
@@ -319,7 +333,7 @@ export default function MarkdownEditor({ content, onChange, onSave, figureName, 
                     closeBrackets(),
                     bracketMatching(),
                     EditorView.lineWrapping,
-                    tablePlugin,
+                    tableNavPlugin,
                     wysiwymPlugin,
                     updateListener,
                     editorTheme,

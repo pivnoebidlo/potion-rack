@@ -130,4 +130,10 @@ export default {
     showStatusIndicatorsDesc: 'Show status dots next to figures in the tree',
     showCounters: 'Folder counters',
     showCountersDesc: 'Show figure count next to folder name',
+    shopUrl: 'Link to shop',
+    openInShop: 'Open in Shop',
+    dateFormat: 'Date format',
+    dateFormatDesc: 'Date display format',
+    dateAuto: 'Auto',
+    completedDate: 'Completion date',
 };

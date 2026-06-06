@@ -229,6 +229,26 @@ export default function FiguresApp() {
 
     const statusTag = (s: string) => { if (s === 'draft') return styles.tagNew; if (s === 'in-progress') return styles.tagProgress; if (s === 'completed') return styles.tagDone; return ''; };
     const statusLabel = (s: string) => { if (s === 'draft') return $t.draft; if (s === 'in-progress') return $t.inProgress; if (s === 'completed') return $t.completed; return s; };
+    const materialLabel = (m: string) => { switch (m) { case 'plastic': return $t.plastic; case 'resin': return $t.resin; case 'metal': return $t.metal; default: return m; } };
+
+    const formatDate = (dateStr?: string) => {
+        if (!dateStr) return '';
+        const fmt = localStorage.getItem('potion-rack-date-format') || 'auto';
+        const date = new Date(dateStr);
+        if (isNaN(date.getTime())) return dateStr;
+        switch (fmt) {
+            case 'dd.mm.yyyy':
+                return `${String(date.getDate()).padStart(2, '0')}.${String(date.getMonth() + 1).padStart(2, '0')}.${date.getFullYear()}`;
+            case 'yyyy-mm-dd':
+                return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+            case 'mm/dd/yyyy':
+                return `${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')}/${date.getFullYear()}`;
+            default:
+                return new Intl.DateTimeFormat(navigator.language).format(date);
+        }
+    };
+
+    console.log('RENDER — selectedId:', selectedId, 'selectedFolder:', selectedFolder);
 
     const folderStats = selectedFolder ? {
         total: allFiguresInFolder.length,
@@ -236,6 +256,9 @@ export default function FiguresApp() {
         completed: allFiguresInFolder.filter(f => f.status === 'completed').length,
         subFolders: diskFolders.filter(f => f.startsWith(selectedFolder + '/')).length,
     } : null;
+
+    console.log('Test formatDate:', formatDate('2026-06-01'));
+    console.log('selected?.purchase_date:', selected?.purchase_date);
 
     return (
         <div className={styles.root}>
@@ -289,7 +312,10 @@ export default function FiguresApp() {
                                                 <div className={styles.detailItem}><div className={styles.detailLabel}>{$t.status}</div><div><span className={`${styles.tag} ${statusTag(selected.status)}`}>{statusLabel(selected.status)}</span></div></div>
                                                 {selected.manufacturer && <div className={styles.detailItem}><div className={styles.detailLabel}>{$t.manufacturer}</div><div className={styles.detailValue}>{selected.manufacturer}</div></div>}
                                                 {selected.scale && <div className={styles.detailItem}><div className={styles.detailLabel}>{$t.scale}</div><div className={styles.detailValue}>{selected.scale}</div></div>}
-                                                {selected.material && <div className={styles.detailItem}><div className={styles.detailLabel}>{$t.material}</div><div className={styles.detailValue}>{selected.material}</div></div>}
+                                                {selected.material && <div className={styles.detailItem}><div className={styles.detailLabel}>{$t.material}</div><div className={styles.detailValue}>{materialLabel(selected.material)}</div></div>}
+                                                {selected.purchase_date && <div className={styles.detailItem}><div className={styles.detailLabel}>{$t.purchaseDate}</div><div className={styles.detailValue}>{formatDate(selected.purchase_date)}</div></div>}
+                                                {selected.completed_date && <div className={styles.detailItem}><div className={styles.detailLabel}>{$t.completedDate || 'Дата завершения'}</div><div className={styles.detailValue}>{formatDate(selected.completed_date)}</div></div>}
+                                                {selected.shop_url && <div className={styles.detailItem}><div className={styles.detailLabel}>{$t.shopUrl || 'Shop Link'}</div><div className={styles.detailValue}><a href={selected.shop_url} target="_blank" style={{ color: 'var(--link-color, var(--accent))' }}>{$t.openInShop || 'Open in shop'}</a></div></div>}
                                                 {selected.folder_path && <div className={styles.detailItem}><div className={styles.detailLabel}>{$t.folder}</div><div className={styles.detailValue}>{selected.folder_path}</div></div>}
                                             </div>
                                         </div>
