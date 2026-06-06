@@ -77,7 +77,7 @@ export default {
     material: 'Материал',
     description: 'Описание',
     draft: 'Новая',
-    inProgress: 'В процессе',
+    inProgress: 'В работе',
     completed: 'Завершено',
     plastic: 'Пластик',
     resin: 'Смола',

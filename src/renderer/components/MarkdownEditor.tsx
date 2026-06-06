@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { EditorView, keymap, ViewPlugin, ViewUpdate, Decoration, DecorationSet, WidgetType } from '@codemirror/view';
-import { RangeSetBuilder, StateField, StateEffect } from '@codemirror/state';
+import { RangeSetBuilder, StateField, StateEffect, EditorState } from '@codemirror/state';
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
 import { languages } from '@codemirror/language-data';
@@ -9,6 +9,7 @@ import { autocompletion, closeBrackets } from '@codemirror/autocomplete';
 import { bracketMatching } from '@codemirror/language';
 import { marked } from 'marked';
 import styles from './MarkdownEditor.module.css';
+import TableDialog from './TableDialog';
 import { t } from '../i18n';
 
 function slugify(name: string): string {
@@ -49,7 +50,6 @@ class ImagePreviewWidget extends WidgetType {
         container.style.display = 'block';
         container.style.margin = '8px 0';
         container.style.position = 'relative';
-
         const img = document.createElement('img');
         img.src = this.src;
         img.alt = this.alt;
@@ -59,7 +59,6 @@ class ImagePreviewWidget extends WidgetType {
         img.style.display = 'block';
         img.style.objectFit = 'contain';
         img.style.margin = '0 auto';
-
         const deleteBtn = document.createElement('button');
         deleteBtn.textContent = '✕';
         deleteBtn.style.position = 'absolute';
@@ -76,14 +75,12 @@ class ImagePreviewWidget extends WidgetType {
         deleteBtn.style.display = 'none';
         deleteBtn.style.alignItems = 'center';
         deleteBtn.style.justifyContent = 'center';
-
         container.addEventListener('mouseenter', () => { deleteBtn.style.display = 'flex'; });
         container.addEventListener('mouseleave', () => { deleteBtn.style.display = 'none'; });
         deleteBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             this.view.dispatch({ changes: { from: this.from, to: this.to } });
         });
-
         container.appendChild(img);
         container.appendChild(deleteBtn);
         return container;
@@ -93,33 +90,64 @@ class ImagePreviewWidget extends WidgetType {
 const HIDDEN_MARKER = 'position: absolute; left: -9999px; top: -9999px;';
 const HIDDEN_MARKER_VISIBLE = 'color: var(--text-muted); opacity: 0.5;';
 
-// StateField для хранения slug
+const setSlug = StateEffect.define<string>();
 const slugField = StateField.define<string>({
     create: () => '',
     update: (value, tr) => {
-        for (const e of tr.effects) {
-            if (e.is(setSlug)) return e.value;
-        }
+        for (const e of tr.effects) if (e.is(setSlug)) return e.value;
         return value;
     }
 });
 
-const setSlug = StateEffect.define<string>();
+const tablePlugin = ViewPlugin.fromClass(class {
+    constructor(readonly view: EditorView) {
+        this.view.dom.addEventListener('keydown', (e: KeyboardEvent) => {
+            if (e.key === 'Tab') {
+                const pos = view.state.selection.main.head;
+                const line = view.state.doc.lineAt(pos);
+                if (/^\|(.+)\|$/.test(line.text)) {
+                    e.preventDefault();
+                    if (e.shiftKey) {
+                        const textBefore = line.text.substring(0, pos - line.from);
+                        const prevPipe = textBefore.lastIndexOf('|');
+                        if (prevPipe !== -1) {
+                            const newPos = line.from + Math.max(0, prevPipe - 1);
+                            view.dispatch({ selection: { anchor: newPos } });
+                        }
+                    } else {
+                        const textAfter = line.text.substring(pos - line.from);
+                        const nextPipe = textAfter.indexOf('|');
+                        if (nextPipe !== -1) {
+                            const newPos = pos + nextPipe + 2;
+                            view.dispatch({ selection: { anchor: Math.min(newPos, line.to) } });
+                        }
+                    }
+                }
+            }
+            if (e.key === 'Enter' && !e.shiftKey) {
+                const pos = view.state.selection.main.head;
+                const line = view.state.doc.lineAt(pos);
+                if (/^\|(.+)\|$/.test(line.text) && !/^\|[-:\s|]+\|$/.test(line.text)) {
+                    e.preventDefault();
+                    const cells = line.text.split('|').filter(c => c.trim() !== '');
+                    const newRow = '|' + '  |'.repeat(cells.length) + '\n';
+                    view.dispatch({ changes: { from: line.to + 1, insert: newRow } });
+                }
+            }
+        });
+    }
+});
 
 const wysiwymPlugin = ViewPlugin.fromClass(class {
     decorations: DecorationSet;
-
     constructor(readonly view: EditorView) {
         this.decorations = this.buildDecorations(view, view.state.selection.main.head);
     }
-
     update(update: ViewUpdate) {
         if (update.docChanged || update.viewportChanged || update.selectionSet) {
-            const cursor = update.view.state.selection.main.head;
-            this.decorations = this.buildDecorations(update.view, cursor);
+            this.decorations = this.buildDecorations(update.view, update.view.state.selection.main.head);
         }
     }
-
     buildDecorations(view: EditorView, cursor: number): DecorationSet {
         const slug = view.state.field(slugField, false) || '';
         const safeSlug = safeEncode(slug);
@@ -139,42 +167,35 @@ const wysiwymPlugin = ViewPlugin.fromClass(class {
                 items.push({ from: line.from, to: line.to, decoration: Decoration.replace({ widget: new class extends WidgetType { toDOM() { return hr; } } }) });
                 continue;
             }
-
             const headingMatch = text.match(/^(#{1,6})\s+(.+)$/);
             if (headingMatch) {
                 const markers = headingMatch[1];
                 const markerEnd = line.from + markers.length + 1;
                 const cursorInside = cursor >= line.from && cursor <= line.to;
-                if (cursorInside) { items.push({ from: line.from, to: markerEnd, decoration: Decoration.mark({ attributes: { style: HIDDEN_MARKER_VISIBLE } }) }); }
-                else { items.push({ from: line.from, to: markerEnd, decoration: Decoration.mark({ attributes: { style: HIDDEN_MARKER } }) }); }
+                items.push({ from: line.from, to: markerEnd, decoration: Decoration.mark({ attributes: { style: cursorInside ? HIDDEN_MARKER_VISIBLE : HIDDEN_MARKER } }) });
                 const level = markers.length;
                 const fontSize = Math.max(13, 22 - level * 2);
                 items.push({ from: markerEnd, to: line.to, decoration: Decoration.mark({ attributes: { style: `font-size: ${fontSize}px; font-weight: 600; color: var(--text-primary);` } }) });
                 continue;
             }
-
             const quoteMatch = text.match(/^>\s?(.*)$/);
             if (quoteMatch) {
                 const markerEnd = line.from + 1 + (text[1] === ' ' ? 1 : 0);
                 const cursorInside = cursor >= line.from && cursor <= line.to;
-                if (cursorInside) { items.push({ from: line.from, to: markerEnd, decoration: Decoration.mark({ attributes: { style: HIDDEN_MARKER_VISIBLE } }) }); }
-                else { items.push({ from: line.from, to: markerEnd, decoration: Decoration.mark({ attributes: { style: HIDDEN_MARKER } }) }); }
+                items.push({ from: line.from, to: markerEnd, decoration: Decoration.mark({ attributes: { style: cursorInside ? HIDDEN_MARKER_VISIBLE : HIDDEN_MARKER } }) });
                 items.push({ from: markerEnd, to: line.to, decoration: Decoration.mark({ attributes: { style: `color: var(--text-secondary); font-style: italic; border-left: 3px solid var(--quote-border, var(--accent)); padding-left: 12px; display: inline-block;` } }) });
                 continue;
             }
-
             const listMatch = text.match(/^(\s*)[-*+]\s+(.+)$/);
             if (listMatch) {
                 const indent = listMatch[1];
                 const markerStart = line.from + indent.length;
                 const markerEnd = markerStart + 2;
                 const cursorInside = cursor >= markerStart && cursor <= line.to;
-                if (cursorInside) { items.push({ from: markerStart, to: markerEnd, decoration: Decoration.mark({ attributes: { style: HIDDEN_MARKER_VISIBLE } }) }); }
-                else { items.push({ from: markerStart, to: markerEnd, decoration: Decoration.mark({ attributes: { style: HIDDEN_MARKER } }) }); }
+                items.push({ from: markerStart, to: markerEnd, decoration: Decoration.mark({ attributes: { style: cursorInside ? HIDDEN_MARKER_VISIBLE : HIDDEN_MARKER } }) });
                 items.push({ from: markerStart, to: markerStart, decoration: Decoration.widget({ widget: new class extends WidgetType { toDOM() { const d = document.createElement('span'); d.textContent = '•'; d.style.color = 'var(--list-marker, var(--accent))'; d.style.marginRight = '8px'; return d; } }, side: 0 }) });
                 continue;
             }
-
             const inlineRegex = /(\*\*(.+?)\*\*)|(\*(.+?)\*)|(~~(.+?)~~)|(`(.+?)`)/g;
             let match;
             while ((match = inlineRegex.exec(text)) !== null) {
@@ -182,29 +203,25 @@ const wysiwymPlugin = ViewPlugin.fromClass(class {
                 const from = line.from + match.index;
                 const to = from + full.length;
                 const cursorInside = cursor >= from && cursor <= to;
+                const markerStyle = cursorInside ? HIDDEN_MARKER_VISIBLE : HIDDEN_MARKER;
                 if (bold) {
-                    const markerStyle = cursorInside ? HIDDEN_MARKER_VISIBLE : HIDDEN_MARKER;
                     items.push({ from, to: from + 2, decoration: Decoration.mark({ attributes: { style: markerStyle } }) });
                     items.push({ from: from + 2, to: to - 2, decoration: Decoration.mark({ attributes: { style: 'font-weight: 700; color: var(--text-primary);' } }) });
                     items.push({ from: to - 2, to, decoration: Decoration.mark({ attributes: { style: markerStyle } }) });
                 } else if (italic) {
-                    const markerStyle = cursorInside ? HIDDEN_MARKER_VISIBLE : HIDDEN_MARKER;
                     items.push({ from, to: from + 1, decoration: Decoration.mark({ attributes: { style: markerStyle } }) });
                     items.push({ from: from + 1, to: to - 1, decoration: Decoration.mark({ attributes: { style: 'font-style: italic; color: var(--text-secondary);' } }) });
                     items.push({ from: to - 1, to, decoration: Decoration.mark({ attributes: { style: markerStyle } }) });
                 } else if (strike) {
-                    const markerStyle = cursorInside ? HIDDEN_MARKER_VISIBLE : HIDDEN_MARKER;
                     items.push({ from, to: from + 2, decoration: Decoration.mark({ attributes: { style: markerStyle } }) });
                     items.push({ from: from + 2, to: to - 2, decoration: Decoration.mark({ attributes: { style: 'text-decoration: line-through; color: var(--text-muted);' } }) });
                     items.push({ from: to - 2, to, decoration: Decoration.mark({ attributes: { style: markerStyle } }) });
                 } else if (code) {
-                    const markerStyle = cursorInside ? HIDDEN_MARKER_VISIBLE : HIDDEN_MARKER;
                     items.push({ from, to: from + 1, decoration: Decoration.mark({ attributes: { style: markerStyle } }) });
                     items.push({ from: from + 1, to: to - 1, decoration: Decoration.mark({ attributes: { style: 'background: var(--bg-secondary); padding: 1px 5px; border-radius: 3px; font-family: var(--font-mono); font-size: 12px;' } }) });
                     items.push({ from: to - 1, to, decoration: Decoration.mark({ attributes: { style: markerStyle } }) });
                 }
             }
-
             const linkRegex = /\[(.+?)\]\((.+?)\)/g;
             while ((match = linkRegex.exec(text)) !== null) {
                 const full = match[0];
@@ -222,23 +239,22 @@ const wysiwymPlugin = ViewPlugin.fromClass(class {
             }
         }
 
-        const imageRegex = /!\[([^\]]*)\]\((\.\.?\/images\/[^)]+)\)/g;
-        const docText = doc.toString();
-        let imgMatch;
-        while ((imgMatch = imageRegex.exec(docText)) !== null) {
-            const from = imgMatch.index;
-            const to = from + imgMatch[0].length;
-            const relativePath = imgMatch[2].replace(/^\.\.?\//, '');
-            const absoluteUrl = `http://127.0.0.1:8765/figures-data/${safeSlug}/${relativePath}`;
-            items.push({ from, to, decoration: Decoration.replace({ widget: new ImagePreviewWidget(absoluteUrl, imgMatch[1], from, to, view) }) });
+        if (slug) {
+            const imageRegex = /!\[([^\]]*)\]\((\.\.?\/images\/[^)]+)\)/g;
+            const docText = doc.toString();
+            let imgMatch;
+            while ((imgMatch = imageRegex.exec(docText)) !== null) {
+                const from = imgMatch.index;
+                const to = from + imgMatch[0].length;
+                const relativePath = imgMatch[2].replace(/^\.\.?\//, '');
+                const absoluteUrl = `http://127.0.0.1:8765/figures-data/${safeSlug}/${relativePath}`;
+                items.push({ from, to, decoration: Decoration.replace({ widget: new ImagePreviewWidget(absoluteUrl, imgMatch[1], from, to, view) }) });
+            }
         }
 
         items.sort((a, b) => a.from - b.from || a.to - b.to);
-
         const builder = new RangeSetBuilder<Decoration>();
-        for (const item of items) {
-            builder.add(item.from, item.to, item.decoration);
-        }
+        for (const item of items) builder.add(item.from, item.to, item.decoration);
         return builder.finish();
     }
 }, { decorations: v => v.decorations });
@@ -255,27 +271,26 @@ interface MarkdownEditorProps {
 export default function MarkdownEditor({ content, onChange, onSave, figureName, folderPath, editorViewRef }: MarkdownEditorProps) {
     const $t = t();
     const [preview, setPreview] = useState(false);
+    const [tableDialogOpen, setTableDialogOpen] = useState(false);
     const editorRef = useRef<HTMLDivElement>(null);
     const editorViewRefInternal = useRef<EditorView | null>(null);
-
+    const lastSavedContent = useRef(content);
     const slug = folderPath ? `${folderPath}/${slugify(figureName || '')}` : slugify(figureName || '');
-
-    useEffect(() => {
-        setPreview(false);
-    }, [slug]);
+    const safeSlug = safeEncode(slug);
 
     useEffect(() => {
         if (!editorRef.current) return;
-
-        // Уничтожаем старый EditorView перед созданием нового
-        if (editorViewRefInternal.current) {
-            editorViewRefInternal.current.destroy();
-            editorViewRefInternal.current = null;
-            if (editorViewRef) editorViewRef.current = null;
+        if (!content && !slug) return;
+        const existingView = editorViewRefInternal.current;
+        if (existingView) {
+            const hadFocus = existingView.hasFocus;
+            existingView.dispatch({ effects: setSlug.of(slug) });
+            if (existingView.state.doc.toString() !== content) {
+                existingView.dispatch({ changes: { from: 0, to: existingView.state.doc.length, insert: content } });
+            }
+            if (hadFocus) existingView.focus();
+            return;
         }
-
-        console.log('Creating EditorView for slug:', slug);
-
         const editorTheme = EditorView.theme({
             '&': { background: 'var(--bg-primary)', color: 'var(--text-primary)', height: '100%' },
             '.cm-scroller': { background: 'var(--bg-primary)', overflow: 'auto', height: '100%' },
@@ -288,73 +303,52 @@ export default function MarkdownEditor({ content, onChange, onSave, figureName, 
             '.cm-heading': { textDecoration: 'none !important', borderBottom: 'none !important' },
             '.cm-headingMark': { textDecoration: 'none !important' },
         });
-
         const updateListener = EditorView.updateListener.of((update) => {
-            if (update.docChanged) { onChange(update.state.doc.toString()); }
+            if (update.docChanged) onChange(update.state.doc.toString());
         });
-
         const view = new EditorView({
-            doc: content,
-            extensions: [
-                slugField,
-                keymap.of([...defaultKeymap, ...historyKeymap]),
-                history(),
-                markdown({ base: markdownLanguage, codeLanguages: languages }),
-                syntaxHighlighting(defaultHighlightStyle),
-                autocompletion(),
-                closeBrackets(),
-                bracketMatching(),
-                EditorView.lineWrapping,
-                wysiwymPlugin,
-                updateListener,
-                editorTheme,
-            ],
+            state: EditorState.create({
+                doc: content,
+                extensions: [
+                    slugField.init(() => slug),
+                    keymap.of([...defaultKeymap, ...historyKeymap]),
+                    history(),
+                    markdown({ base: markdownLanguage, codeLanguages: languages }),
+                    syntaxHighlighting(defaultHighlightStyle),
+                    autocompletion(),
+                    closeBrackets(),
+                    bracketMatching(),
+                    EditorView.lineWrapping,
+                    tablePlugin,
+                    wysiwymPlugin,
+                    updateListener,
+                    editorTheme,
+                ],
+            }),
             parent: editorRef.current,
         });
-
-        view.dispatch({ effects: setSlug.of(slug) });
-
         editorViewRefInternal.current = view;
         if (editorViewRef) editorViewRef.current = view;
-    }, [slug]);
+        setPreview(false);
+    }, [slug, content]);
 
     useEffect(() => {
-        const view = editorViewRefInternal.current;
-        if (view && view.state.doc.toString() !== content) {
-            view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: content } });
-        }
-    }, [content]);
-
-    useEffect(() => {
-        if (typeof onSave !== 'function') return;
-        const timer = setTimeout(() => onSave(), 500);
+        if (content === lastSavedContent.current) return;
+        const timer = setTimeout(() => { lastSavedContent.current = content; onSave(); }, 500);
         return () => clearTimeout(timer);
     }, [content, onSave]);
 
     useEffect(() => {
-        const handleClick = (e: MouseEvent) => {
-            const target = e.target as HTMLElement;
-            const link = target.closest('a');
-            if (link && link.getAttribute('href')) {
-                e.preventDefault();
-                window.open(link.getAttribute('href')!, '_blank');
-            }
-        };
-        document.addEventListener('click', handleClick, true);
-        return () => document.removeEventListener('click', handleClick, true);
+        const h = (e: MouseEvent) => { const a = (e.target as HTMLElement).closest('a'); if (a?.getAttribute('href')) { e.preventDefault(); window.open(a.getAttribute('href')!, '_blank'); } };
+        document.addEventListener('click', h, true);
+        return () => document.removeEventListener('click', h, true);
     }, []);
 
     useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => {
-            const mod = e.metaKey || e.ctrlKey;
-            if (!mod) return;
-            if (e.key === 'e') {
-                e.preventDefault(); e.stopPropagation();
-                setPreview(p => { if (p) { setTimeout(() => editorViewRefInternal.current?.focus(), 50); } return !p; });
-                return;
-            }
-            const view = editorViewRefInternal.current;
-            if (!view || !view.hasFocus) return;
+        const h = (e: KeyboardEvent) => {
+            const mod = e.metaKey || e.ctrlKey; if (!mod) return;
+            if (e.key === 'e') { e.preventDefault(); e.stopPropagation(); setPreview(p => { if (p) setTimeout(() => editorViewRefInternal.current?.focus(), 50); return !p; }); return; }
+            const v = editorViewRefInternal.current; if (!v?.hasFocus) return;
             switch (e.key) {
                 case 's': e.preventDefault(); onSave(); break;
                 case 'b': e.preventDefault(); insertText('**', '**'); break;
@@ -370,101 +364,77 @@ export default function MarkdownEditor({ content, onChange, onSave, figureName, 
                 case 'I': if (e.shiftKey) { e.preventDefault(); handleInsertImage(); } break;
             }
         };
-        window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
+        window.addEventListener('keydown', h);
+        return () => window.removeEventListener('keydown', h);
     }, [onSave]);
 
-    const insertText = useCallback((before: string, after: string = '') => {
-        const view = editorViewRefInternal.current;
-        if (!view) return;
-        const { from, to } = view.state.selection.main;
-        const selectedText = view.state.sliceDoc(from, to);
-        view.dispatch({ changes: { from, to, insert: `${before}${selectedText}${after}` }, selection: { anchor: from + before.length, head: from + before.length + selectedText.length } });
-        view.focus();
+    const insertText = useCallback((before: string, after = '') => {
+        const v = editorViewRefInternal.current; if (!v) return;
+        const { from, to } = v.state.selection.main; const s = v.state.sliceDoc(from, to);
+        v.dispatch({ changes: { from, to, insert: before + s + after }, selection: { anchor: from + before.length, head: from + before.length + s.length } });
+        v.focus();
     }, []);
-
     const insertLine = useCallback((prefix: string) => {
-        const view = editorViewRefInternal.current;
-        if (!view) return;
-        const { from } = view.state.selection.main;
-        const line = view.state.doc.lineAt(from);
-        view.dispatch({ changes: { from: line.from, insert: `${prefix} ` }, selection: { anchor: line.from + prefix.length + 1, head: line.from + prefix.length + 1 } });
-        view.focus();
+        const v = editorViewRefInternal.current; if (!v) return;
+        const line = v.state.doc.lineAt(v.state.selection.main.from);
+        v.dispatch({ changes: { from: line.from, insert: prefix + ' ' }, selection: { anchor: line.from + prefix.length + 1 } });
+        v.focus();
     }, []);
-
     const insertBlock = useCallback((marker: string, placeholder: string) => {
-        const view = editorViewRefInternal.current;
-        if (!view) return;
-        const { from } = view.state.selection.main;
-        view.dispatch({ changes: { from, insert: placeholder ? `${marker}\n${placeholder}\n${marker}\n` : `${marker}\n` } });
-        view.focus();
+        const v = editorViewRefInternal.current; if (!v) return;
+        v.dispatch({ changes: { from: v.state.selection.main.from, insert: placeholder ? marker + '\n' + placeholder + '\n' + marker + '\n' : marker + '\n' } });
+        v.focus();
     }, []);
-
+    const handleInsertTable = useCallback((rows: number, cols: number) => {
+        const v = editorViewRefInternal.current; if (!v) return;
+        const header = '|' + ' Заголовок |'.repeat(cols) + '\n';
+        const separator = '|' + ' --- |'.repeat(cols) + '\n';
+        const row = '|' + ' Ячейка |'.repeat(cols) + '\n';
+        let table = header + separator;
+        for (let i = 0; i < rows; i++) table += row;
+        v.dispatch({ changes: { from: v.state.selection.main.from, insert: table } });
+        v.focus();
+        setTableDialogOpen(false);
+    }, []);
     const handleInsertImage = useCallback(async () => {
-        const input = document.createElement('input'); input.type = 'file'; input.accept = 'image/*';
-        input.onchange = async (e) => {
-            const file = (e.target as HTMLInputElement).files?.[0];
-            if (!file) return;
+        const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*';
+        inp.onchange = async (e) => {
+            const f = (e.target as HTMLInputElement).files?.[0]; if (!f) return;
             try {
-                const compressed = await compressImage(file, 1920, 1920, 0.85);
-                const base64Data = compressed.split(',')[1];
-                const name = figureName || 'unknown';
-                const result = await (window as any).electronAPI?.saveImage(folderPath || '', name, file.name, base64Data);
-                if (result?.success) {
-                    const view = editorViewRefInternal.current;
-                    if (!view) return;
-                    const { from } = view.state.selection.main;
-                    view.dispatch({ changes: { from, insert: `![${file.name}](.${result.path})\n` } });
-                    view.focus();
-                }
-            } catch (err) { console.error('Failed to insert image:', err); }
+                const c = await compressImage(f, 1920, 1920, 0.85);
+                const r = await (window as any).electronAPI?.saveImage(folderPath || '', figureName || 'unknown', f.name, c.split(',')[1]);
+                if (r?.success) { const v = editorViewRefInternal.current; if (!v) return; v.dispatch({ changes: { from: v.state.selection.main.from, insert: `![${f.name}](.${r.path})\n` } }); v.focus(); }
+            } catch (err) { console.error(err); }
         };
-        input.click();
+        inp.click();
     }, [figureName, folderPath]);
-
     const handleInsertLink = useCallback(() => {
-        const view = editorViewRefInternal.current;
-        if (!view) return;
-        const { from, to } = view.state.selection.main;
-        const selectedText = view.state.sliceDoc(from, to);
-        const placeholder = selectedText || 'link text';
-        view.dispatch({ changes: { from, to, insert: `[${placeholder}](url)` }, selection: { anchor: from + placeholder.length + 3, head: from + placeholder.length + 6 } });
-        view.focus();
+        const v = editorViewRefInternal.current; if (!v) return;
+        const { from, to } = v.state.selection.main; const s = v.state.sliceDoc(from, to) || 'link text';
+        v.dispatch({ changes: { from, to, insert: `[${s}](url)` }, selection: { anchor: from + s.length + 3, head: from + s.length + 6 } });
+        v.focus();
     }, []);
 
     useEffect(() => {
-        const container = editorRef.current;
-        if (!container) return;
-        const handlePaste = async (e: ClipboardEvent) => {
-            const view = editorViewRefInternal.current;
-            if (!view || !view.hasFocus) return;
-            const items = e.clipboardData?.items;
-            if (!items) return;
-            for (const item of Array.from(items)) {
+        const el = editorRef.current; if (!el) return;
+        const h = async (e: ClipboardEvent) => {
+            const v = editorViewRefInternal.current; if (!v?.hasFocus) return;
+            for (const item of Array.from(e.clipboardData?.items || [])) {
                 if (item.type.startsWith('image/')) {
-                    e.preventDefault();
-                    const file = item.getAsFile();
-                    if (file) {
-                        try {
-                            const compressed = await compressImage(file, 1920, 1920, 0.85);
-                            const base64Data = compressed.split(',')[1];
-                            const name = figureName || 'unknown';
-                            const result = await (window as any).electronAPI?.saveImage(folderPath || '', name, file.name, base64Data);
-                            if (result?.success) {
-                                const { from } = view.state.selection.main;
-                                view.dispatch({ changes: { from, insert: `![${file.name}](.${result.path})\n` } });
-                            }
-                        } catch (err) { console.error('Failed to insert image:', err); }
-                    }
+                    e.preventDefault(); const f = item.getAsFile(); if (!f) continue;
+                    try {
+                        const c = await compressImage(f, 1920, 1920, 0.85);
+                        const r = await (window as any).electronAPI?.saveImage(folderPath || '', figureName || 'unknown', f.name, c.split(',')[1]);
+                        if (r?.success) v.dispatch({ changes: { from: v.state.selection.main.from, insert: `![${f.name}](.${r.path})\n` } });
+                    } catch (err) { console.error(err); }
                     return;
                 }
             }
         };
-        container.addEventListener('paste', handlePaste);
-        return () => container.removeEventListener('paste', handlePaste);
+        el.addEventListener('paste', h);
+        return () => el.removeEventListener('paste', h);
     }, [figureName, folderPath]);
 
-    const safeSlug = safeEncode(slug);
     const resolvedContent = (content || '')
         .replace(/\(\.\/images\//g, `(http://127.0.0.1:8765/figures-data/${safeSlug}/images/`)
         .replace(/\(\.\.\/images\//g, `(http://127.0.0.1:8765/figures-data/${safeSlug}/images/`);
@@ -492,17 +462,16 @@ export default function MarkdownEditor({ content, onChange, onSave, figureName, 
                 <div className={styles.toolbarGroup}>
                     <button className={styles.tbBtn} title="Link (Cmd+U)" onClick={handleInsertLink}>🔗</button>
                     <button className={styles.tbBtn} title="Image (Cmd+Shift+I)" onClick={handleInsertImage}>🖼</button>
+                    <button className={styles.tbBtn} title="Table" onClick={() => setTableDialogOpen(true)}>⊞</button>
                 </div>
                 <div className={`${styles.toolbarGroup} ${styles.toolbarRight}`}>
-                    <button className={styles.tbBtn} onClick={() => setPreview(!preview)} title={preview ? $t.edit : $t.preview}>
-                        {preview ? '✏️' : '👁'}
-                    </button>
+                    <button className={styles.tbBtn} onClick={() => setPreview(!preview)} title={preview ? $t.edit : $t.preview}>{preview ? '✏️' : '👁'}</button>
                 </div>
             </div>
-            {preview ? (
-                <div className={styles.preview} dangerouslySetInnerHTML={{ __html: marked(resolvedContent, { breaks: true }) as string }} />
-            ) : (
-                <div className={styles.editorWrapper} ref={editorRef} style={{ height: '100%' }} />
+            <div className={styles.preview} style={{ display: preview ? 'block' : 'none' }} dangerouslySetInnerHTML={{ __html: marked(resolvedContent, { breaks: true }) as string }} />
+            <div className={styles.editorWrapper} ref={editorRef} style={{ display: preview ? 'none' : 'block', height: '100%' }} />
+            {tableDialogOpen && (
+                <TableDialog onInsert={handleInsertTable} onClose={() => setTableDialogOpen(false)} />
             )}
         </div>
     );
