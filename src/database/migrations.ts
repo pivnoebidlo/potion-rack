@@ -137,6 +137,15 @@ export function initDatabase(db: Database.Database): void {
                     ADD COLUMN folder_path TEXT;
             `);
             }
+        },
+        {
+            version: 7,
+            name: 'Rename description to shop_url in figures',
+            up: (db: Database.Database) => {
+                db.exec(`
+            ALTER TABLE figures RENAME COLUMN description TO shop_url;
+        `);
+            }
         }
     ];
 

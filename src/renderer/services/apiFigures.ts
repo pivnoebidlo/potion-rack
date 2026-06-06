@@ -9,7 +9,7 @@ export interface Figure {
     purchase_date?: string;
     purchase_price?: number;
     completed_date?: string;
-    description?: string;
+    shop_url?: string;
     content?: string;
     folder_path?: string;
     created_at?: string;
