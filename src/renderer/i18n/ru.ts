@@ -129,4 +129,7 @@ export default {
     dateFormatDesc: 'Формат отображения дат',
     dateAuto: 'Авто',
     completedDate: 'Дата завершения',
+    paintColor: 'Цвет краски',
+    showPaintColorDots: 'Цветные индикаторы красок',
+    showPaintColorDotsDesc: 'Показывать цветные кружки рядом с названиями красок в таблице',
 };

@@ -9,7 +9,7 @@ import PromptModal from './PromptModal';
 import FolderTree, { FolderTarget } from './FolderTree';
 import ContextMenu from './ContextMenu';
 import MarkdownEditor from './MarkdownEditor';
-import TocPanel from './TocPanel';
+import RightPanel from './RightPanel';
 import { t } from '../i18n';
 
 export default function FiguresApp() {
@@ -40,7 +40,6 @@ export default function FiguresApp() {
     const [showIndicators, setShowIndicators] = useState(true);
     const [showCounters, setShowCounters] = useState(true);
 
-
     const editorViewRef = useRef<EditorView | null>(null);
 
     const loadFigures = useCallback(async () => { try { setFigures(await fetchFigures()); } catch (err) { console.error(err); } }, []);
@@ -53,6 +52,7 @@ export default function FiguresApp() {
         } catch (err) { console.error('Failed to load folders:', err); }
     };
     useEffect(() => { loadDiskFolders(); }, []);
+
     useEffect(() => {
         const saved = localStorage.getItem('potion-rack-show-indicators');
         if (saved !== null) setShowIndicators(saved === 'true');
@@ -83,6 +83,17 @@ export default function FiguresApp() {
             } else { setEditorContent(selected.content || ''); }
         }
     }, [selected]);
+
+    useEffect(() => {
+        const hkd = (e: KeyboardEvent) => {
+            const tag = (e.target as HTMLElement).tagName;
+            if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+            if ((e.target as HTMLElement).closest('.cm-editor')) return;
+            if ((e.target as HTMLElement).closest('.cm-content')) return;
+            if (document.getElementById('figure-modal-overlay')) return;
+        };
+        window.addEventListener('keydown', hkd); return () => window.removeEventListener('keydown', hkd);
+    }, []);
 
     const handleSave = async () => {
         if (!selected) return;
@@ -188,15 +199,9 @@ export default function FiguresApp() {
         if (!figure) return;
         try {
             const content = await (window as any).electronAPI?.readArticle(figure.folder_path || '', figure.name);
-            const slug = (figure.folder_path ? `${figure.folder_path}/` : '') + figure.name
-                .toLowerCase()
-                .replace(/\s+/g, '_')
-                .replace(/[<>:"/\\|?*]/g, '');
+            const slug = (figure.folder_path ? `${figure.folder_path}/` : '') + figure.name.toLowerCase().replace(/\s+/g, '_').replace(/[<>:"/\\|?*]/g, '');
             const safeSlug = encodeURIComponent(slug);
             const resolvedContent = (content || '').replace(/\(\.\/images\//g, `(http://127.0.0.1:8765/figures-data/${safeSlug}/images/`).replace(/\(\.\.\/images\//g, `(http://127.0.0.1:8765/figures-data/${safeSlug}/images/`);
-            console.log('Export PDF — figure.name:', figure.name);
-            console.log('Export PDF — folder_path:', figure.folder_path);
-            console.log('Export PDF — slug:', slug);
             const htmlContent = marked(resolvedContent);
             await (window as any).electronAPI?.exportPdf(figure.folder_path || '', figure.name, htmlContent);
         } catch (err) { console.error('Export PDF failed:', err); }
@@ -230,25 +235,18 @@ export default function FiguresApp() {
     const statusTag = (s: string) => { if (s === 'draft') return styles.tagNew; if (s === 'in-progress') return styles.tagProgress; if (s === 'completed') return styles.tagDone; return ''; };
     const statusLabel = (s: string) => { if (s === 'draft') return $t.draft; if (s === 'in-progress') return $t.inProgress; if (s === 'completed') return $t.completed; return s; };
     const materialLabel = (m: string) => { switch (m) { case 'plastic': return $t.plastic; case 'resin': return $t.resin; case 'metal': return $t.metal; default: return m; } };
-
     const formatDate = (dateStr?: string) => {
         if (!dateStr) return '';
         const fmt = localStorage.getItem('potion-rack-date-format') || 'auto';
         const date = new Date(dateStr);
         if (isNaN(date.getTime())) return dateStr;
         switch (fmt) {
-            case 'dd.mm.yyyy':
-                return `${String(date.getDate()).padStart(2, '0')}.${String(date.getMonth() + 1).padStart(2, '0')}.${date.getFullYear()}`;
-            case 'yyyy-mm-dd':
-                return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-            case 'mm/dd/yyyy':
-                return `${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')}/${date.getFullYear()}`;
-            default:
-                return new Intl.DateTimeFormat(navigator.language).format(date);
+            case 'dd.mm.yyyy': return `${String(date.getDate()).padStart(2, '0')}.${String(date.getMonth() + 1).padStart(2, '0')}.${date.getFullYear()}`;
+            case 'yyyy-mm-dd': return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+            case 'mm/dd/yyyy': return `${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')}/${date.getFullYear()}`;
+            default: return new Intl.DateTimeFormat(navigator.language).format(date);
         }
     };
-
-    console.log('RENDER — selectedId:', selectedId, 'selectedFolder:', selectedFolder);
 
     const folderStats = selectedFolder ? {
         total: allFiguresInFolder.length,
@@ -256,9 +254,6 @@ export default function FiguresApp() {
         completed: allFiguresInFolder.filter(f => f.status === 'completed').length,
         subFolders: diskFolders.filter(f => f.startsWith(selectedFolder + '/')).length,
     } : null;
-
-    console.log('Test formatDate:', formatDate('2026-06-01'));
-    console.log('selected?.purchase_date:', selected?.purchase_date);
 
     return (
         <div className={styles.root}>
@@ -280,8 +275,7 @@ export default function FiguresApp() {
                             onSelectFolder={(path) => { setSelectedFolder(path); setSelectedId(null); }}
                             onDoubleClickFigure={(id) => { const figure = figures.find(f => f.id === id); if (figure) { setEditingFigure(figure); setModalOpen(true); } }}
                             onContextMenu={handleContextMenu} onMoveFigure={handleMoveFigure} onMoveFolder={handleMoveFolder} searchQuery={search}
-                            showIndicators={showIndicators}
-                            showCounters={showCounters}
+                            showIndicators={showIndicators} showCounters={showCounters}
                         />
                     </>)}
                 </div>
@@ -297,97 +291,30 @@ export default function FiguresApp() {
                     )}
                 </div>
                 <div className={styles.resizeHandle} />
-                <div className={`${styles.rightPanel} ${rightPanelCollapsed ? styles.rightPanelCollapsed : styles.rightPanelExpanded}`}>
-                    <button className={styles.rightToggle} onClick={() => setRightPanelCollapsed(!rightPanelCollapsed)}>{rightPanelCollapsed ? '◀' : '▶'}</button>
-                    {!rightPanelCollapsed && (
-                        selected ? (
-                            <div className={styles.rightSections}>
-                                <div className={styles.collapsibleSection}>
-                                    <div className={styles.collapsibleHeader} onClick={() => setInfoCollapsed(!infoCollapsed)}>
-                                        <span>{$t.info}</span><span className={styles.collapsibleArrow}>{infoCollapsed ? '▸' : '▾'}</span>
-                                    </div>
-                                    {!infoCollapsed && (
-                                        <div className={styles.collapsibleBody}>
-                                            <div className={styles.detailsGrid}>
-                                                <div className={styles.detailItem}><div className={styles.detailLabel}>{$t.status}</div><div><span className={`${styles.tag} ${statusTag(selected.status)}`}>{statusLabel(selected.status)}</span></div></div>
-                                                {selected.manufacturer && <div className={styles.detailItem}><div className={styles.detailLabel}>{$t.manufacturer}</div><div className={styles.detailValue}>{selected.manufacturer}</div></div>}
-                                                {selected.scale && <div className={styles.detailItem}><div className={styles.detailLabel}>{$t.scale}</div><div className={styles.detailValue}>{selected.scale}</div></div>}
-                                                {selected.material && <div className={styles.detailItem}><div className={styles.detailLabel}>{$t.material}</div><div className={styles.detailValue}>{materialLabel(selected.material)}</div></div>}
-                                                {selected.purchase_date && <div className={styles.detailItem}><div className={styles.detailLabel}>{$t.purchaseDate}</div><div className={styles.detailValue}>{formatDate(selected.purchase_date)}</div></div>}
-                                                {selected.completed_date && <div className={styles.detailItem}><div className={styles.detailLabel}>{$t.completedDate || 'Дата завершения'}</div><div className={styles.detailValue}>{formatDate(selected.completed_date)}</div></div>}
-                                                {selected.shop_url && <div className={styles.detailItem}><div className={styles.detailLabel}>{$t.shopUrl || 'Shop Link'}</div><div className={styles.detailValue}><a href={selected.shop_url} target="_blank" style={{ color: 'var(--link-color, var(--accent))' }}>{$t.openInShop || 'Open in shop'}</a></div></div>}
-                                                {selected.folder_path && <div className={styles.detailItem}><div className={styles.detailLabel}>{$t.folder}</div><div className={styles.detailValue}>{selected.folder_path}</div></div>}
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                                <div className={styles.collapsibleSection}>
-                                    <div className={styles.collapsibleHeader} onClick={() => setTocCollapsed(!tocCollapsed)}>
-                                        <span>{$t.toc}</span><span className={styles.collapsibleArrow}>{tocCollapsed ? '▸' : '▾'}</span>
-                                    </div>
-                                    {!tocCollapsed && <div className={styles.collapsibleBody}><TocPanel content={editorContent} onScrollToLine={handleScrollToLine} /></div>}
-                                </div>
-                                <div className={styles.collapsibleSection}>
-                                    <div className={styles.collapsibleHeader} onClick={() => setHelpCollapsed(!helpCollapsed)}>
-                                        <span>{$t.help}</span><span className={styles.collapsibleArrow}>{helpCollapsed ? '▸' : '▾'}</span>
-                                    </div>
-                                    {!helpCollapsed && (
-                                        <div className={styles.collapsibleBody}>
-                                            <div className={styles.helpSection}><div className={styles.helpSectionTitle}>{$t.helpNavigation}</div>
-                                                <div className={styles.helpKey}><span>{$t.helpMove}</span><span><kbd>↑</kbd> <kbd>↓</kbd></span></div>
-                                                <div className={styles.helpKey}><span>{$t.helpExpand}</span><span><kbd>→</kbd></span></div>
-                                                <div className={styles.helpKey}><span>{$t.helpCollapse}</span><span><kbd>←</kbd></span></div>
-                                            </div>
-                                            <div className={styles.helpSection}><div className={styles.helpSectionTitle}>{$t.helpEditor}</div>
-                                                <div className={styles.helpKey}><span>Bold</span><span><kbd>⌘</kbd> <kbd>B</kbd></span></div>
-                                                <div className={styles.helpKey}><span>Italic</span><span><kbd>⌘</kbd> <kbd>I</kbd></span></div>
-                                                <div className={styles.helpKey}><span>Link</span><span><kbd>⌘</kbd> <kbd>U</kbd></span></div>
-                                                <div className={styles.helpKey}><span>Preview</span><span><kbd>⌘</kbd> <kbd>E</kbd></span></div>
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        ) : selectedFolder && folderStats ? (
-                            <div className={styles.folderStatsPanel}>
-                                <div className={styles.folderStatsHeader}><div className={styles.folderStatsName}>{selectedFolder.split('/').pop() || selectedFolder}</div><div className={styles.folderStatsPath}>{selectedFolder}</div></div>
-                                <div className={styles.statsRow}>
-                                    <div className={styles.statMini}><div className={styles.statMiniValue}>{folderStats.total}</div><div className={styles.statMiniLabel}>Всего</div></div>
-                                    <div className={styles.statMini}><div className={`${styles.statMiniValue} ${styles.statWarning}`}>{folderStats.inProgress}</div><div className={styles.statMiniLabel}>В процессе</div></div>
-                                    <div className={styles.statMini}><div className={`${styles.statMiniValue} ${styles.statSuccess}`}>{folderStats.completed}</div><div className={styles.statMiniLabel}>Завершено</div></div>
-                                    <div className={styles.statMini}><div className={`${styles.statMiniValue} ${styles.statMuted}`}>{folderStats.subFolders}</div><div className={styles.statMiniLabel}>Папок</div></div>
-                                </div>
-                                <div className={styles.figureList}>
-                                    {filtered.map(f => (
-                                        <div key={f.id} className={`${styles.figureCardSmall} ${selectedId === f.id ? styles.figureCardSmallSelected : ''}`} onClick={() => setSelectedId(f.id)}>
-                                            <div className={styles.figureCardSmallHeader}><div className={styles.figureCardSmallName}>{f.name}</div><span className={`${styles.figureCardSmallBadge} ${statusTag(f.status)}`}>{statusLabel(f.status)}</span></div>
-                                            <div className={styles.figureCardSmallMeta}>{f.manufacturer && <span>{f.manufacturer}</span>}{f.scale && <span>{f.scale}</span>}{f.material && <span>{f.material}</span>}</div>
-                                            <div className={styles.figureCardSmallActions}>
-                                                <button className={styles.cardActionBtn} onClick={(e) => { e.stopPropagation(); setEditingFigure(f); setModalOpen(true); }}>{$t.editFigure}</button>
-                                                <button className={`${styles.cardActionBtn} ${styles.cardActionBtnDanger}`} onClick={(e) => { e.stopPropagation(); handleDeleteFigure(f.id); }}>{$t.deleteFigure}</button>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        ) : (
-                            <div className={styles.helpPanel}>
-                                <div className={styles.helpHeader}>{$t.help}</div>
-                                <div className={styles.helpSection}><div className={styles.helpSectionTitle}>{$t.helpNavigation}</div>
-                                    <div className={styles.helpKey}><span>{$t.helpMove}</span><span><kbd>↑</kbd> <kbd>↓</kbd></span></div>
-                                    <div className={styles.helpKey}><span>{$t.helpExpand}</span><span><kbd>→</kbd></span></div>
-                                    <div className={styles.helpKey}><span>{$t.helpCollapse}</span><span><kbd>←</kbd></span></div>
-                                </div>
-                                <div className={styles.helpSection}><div className={styles.helpSectionTitle}>{$t.helpEditor}</div>
-                                    <div className={styles.helpKey}><span>Bold</span><span><kbd>⌘</kbd> <kbd>B</kbd></span></div>
-                                    <div className={styles.helpKey}><span>Italic</span><span><kbd>⌘</kbd> <kbd>I</kbd></span></div>
-                                    <div className={styles.helpKey}><span>Link</span><span><kbd>⌘</kbd> <kbd>U</kbd></span></div>
-                                    <div className={styles.helpKey}><span>Preview</span><span><kbd>⌘</kbd> <kbd>E</kbd></span></div>
-                                </div>
-                            </div>
-                        )
-                    )}
-                </div>
+                <RightPanel
+                    collapsed={rightPanelCollapsed}
+                    selected={selected}
+                    selectedFolder={selectedFolder}
+                    editorContent={editorContent}
+                    folderStats={folderStats}
+                    filtered={filtered}
+                    selectedId={selectedId}
+                    infoCollapsed={infoCollapsed}
+                    tocCollapsed={tocCollapsed}
+                    helpCollapsed={helpCollapsed}
+                    onToggleCollapse={() => setRightPanelCollapsed(!rightPanelCollapsed)}
+                    onToggleInfo={() => setInfoCollapsed(!infoCollapsed)}
+                    onToggleToc={() => setTocCollapsed(!tocCollapsed)}
+                    onToggleHelp={() => setHelpCollapsed(!helpCollapsed)}
+                    onSelectFigure={(id) => setSelectedId(id)}
+                    onEditFigure={(f) => { setEditingFigure(f); setModalOpen(true); }}
+                    onDeleteFigure={handleDeleteFigure}
+                    onScrollToLine={handleScrollToLine}
+                    statusTag={statusTag}
+                    statusLabel={statusLabel}
+                    materialLabel={materialLabel}
+                    formatDate={formatDate}
+                />
             </div>
             {modalOpen && <FigureModal figure={editingFigure} onSave={async (data) => { if (editingFigure) { await updateFigureAPI(editingFigure.id, data); } else { await createFigureAPI({ ...data, folder_path: newFigureFolder } as any); } await loadFigures(); }} onClose={() => setModalOpen(false)} />}
             {confirmOpen && <ConfirmModal title={confirmTitle} message={confirmMessage} onConfirm={confirmAction} onCancel={() => setConfirmOpen(false)} />}

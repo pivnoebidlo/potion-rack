@@ -15,6 +15,7 @@ export default function SettingsApp() {
     const [dbPath, setDbPath] = useState('');
     const [showStatusIndicators, setShowStatusIndicators] = useState(true);
     const [showCounters, setShowCounters] = useState(true);
+    const [showPaintColorDots, setShowPaintColorDots] = useState(true);
     const [dateFormat, setDateFormat] = useState('auto');
 
     const $t = t();
@@ -63,6 +64,11 @@ export default function SettingsApp() {
     useEffect(() => {
         const saved = localStorage.getItem('potion-rack-show-counters');
         if (saved !== null) setShowCounters(saved === 'true');
+    }, []);
+
+    useEffect(() => {
+        const saved = localStorage.getItem('potion-rack-show-paint-color-dots');
+        if (saved !== null) setShowPaintColorDots(saved === 'true');
     }, []);
 
     useEffect(() => {
@@ -249,6 +255,18 @@ export default function SettingsApp() {
                                 <div className={styles.settingControl}>
                                     <label className={styles.toggle}>
                                         <input type="checkbox" checked={showCounters} onChange={e => { setShowCounters(e.target.checked); localStorage.setItem('potion-rack-show-counters', e.target.checked.toString()); }} />
+                                        <span className={styles.slider}></span>
+                                    </label>
+                                </div>
+                            </div>
+                            <div className={styles.setting}>
+                                <div className={styles.settingInfo}>
+                                    <div className={styles.settingLabel}>{$t.showPaintColorDots || 'Цветные индикаторы красок'}</div>
+                                    <div className={styles.settingDesc}>{$t.showPaintColorDotsDesc || 'Показывать цветные кружки рядом с названиями красок в таблице'}</div>
+                                </div>
+                                <div className={styles.settingControl}>
+                                    <label className={styles.toggle}>
+                                        <input type="checkbox" checked={showPaintColorDots} onChange={e => { setShowPaintColorDots(e.target.checked); localStorage.setItem('potion-rack-show-paint-color-dots', e.target.checked.toString()); }} />
                                         <span className={styles.slider}></span>
                                     </label>
                                 </div>

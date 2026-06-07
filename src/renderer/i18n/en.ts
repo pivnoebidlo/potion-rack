@@ -136,4 +136,7 @@ export default {
     dateFormatDesc: 'Date display format',
     dateAuto: 'Auto',
     completedDate: 'Completion date',
+    en: 'Paint Color',
+    showPaintColorDots: 'Paint color indicators',
+    showPaintColorDotsDesc: 'Show colored dots next to paint names in the table',
 };

@@ -14,6 +14,7 @@ interface Paint {
     purchase_date?: string;
     price?: number;
     comment?: string;
+    color_hex?: string;
 }
 
 interface PaintModalProps {
@@ -38,6 +39,7 @@ export default function PaintModal({ paint, brands, series, baseColors, onSave, 
     const [purchaseDate, setPurchaseDate] = useState(paint?.purchase_date || '');
     const [price, setPrice] = useState(paint?.price?.toString() || '');
     const [comment, setComment] = useState(paint?.comment || '');
+    const [colorHex, setColorHex] = useState(paint?.color_hex || '');
     const [saving, setSaving] = useState(false);
 
     useEffect(() => {
@@ -52,8 +54,17 @@ export default function PaintModal({ paint, brands, series, baseColors, onSave, 
             setPurchaseDate(paint.purchase_date || '');
             setPrice(paint.price?.toString() || '');
             setComment(paint.comment || '');
+            setColorHex(paint.color_hex || '');
         }
     }, [paint]);
+
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') onClose();
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [onClose]);
 
     const handleSave = async () => {
         if (!brand.trim() || !colorName.trim()) return;
@@ -68,9 +79,10 @@ export default function PaintModal({ paint, brands, series, baseColors, onSave, 
                 base_color_id: baseColorId ? Number(baseColorId) : undefined,
                 rating,
                 status,
-                purchase_date: purchaseDate || undefined,
+                purchase_date: purchaseDate || null,
                 price: price ? parseFloat(price) : undefined,
                 comment: comment.trim() || undefined,
+                color_hex: colorHex || null,
             });
             onClose();
         } catch (err) {
@@ -104,6 +116,14 @@ export default function PaintModal({ paint, brands, series, baseColors, onSave, 
                         <label className={styles.label}>{$t.colorName} *</label>
                         <input className={styles.input} value={colorName} onChange={e => setColorName(e.target.value)} placeholder="e.g. Mephiston Red" />
                     </div>
+                    <div className={styles.group}>
+                        <label className={styles.label}>Цвет краски</label>
+                        <div style={{display:'flex', gap:8, alignItems:'center'}}>
+                            <input type="color" value={colorHex || '#000000'} onChange={e => setColorHex(e.target.value)} style={{width:36, height:36, padding:0, border:'1px solid var(--border)', borderRadius:'var(--radius-sm)', cursor:'pointer', background:'none'}} />
+                            <input className={styles.input} value={colorHex} onChange={e => setColorHex(e.target.value)} placeholder="#RRGGBB" style={{flex:1}} />
+                            {colorHex && <button onClick={() => setColorHex('')} style={{background:'none', border:'none', color:'var(--text-muted)', cursor:'pointer', fontSize:14}}>✕</button>}
+                        </div>
+                    </div>
                     <div className={styles.row}>
                         <div className={styles.group}>
                             <label className={styles.label}>{$t.article}</label>
@@ -135,7 +155,10 @@ export default function PaintModal({ paint, brands, series, baseColors, onSave, 
                     <div className={styles.row}>
                         <div className={styles.group}>
                             <label className={styles.label}>{$t.purchaseDate}</label>
-                            <input className={styles.input} type="date" value={purchaseDate} onChange={e => setPurchaseDate(e.target.value)} />
+                            <div style={{position:'relative'}}>
+                                <input className={styles.input} style={{width:'100%', paddingRight:24}} type="date" value={purchaseDate} onChange={e => setPurchaseDate(e.target.value)} />
+                                {purchaseDate && <button onClick={() => setPurchaseDate('')} style={{position:'absolute', right:6, top:'50%', transform:'translateY(-50%)', background:'none', border:'none', color:'var(--text-muted)', cursor:'pointer', fontSize:14, lineHeight:1}}>✕</button>}
+                            </div>
                         </div>
                         <div className={styles.group}>
                             <label className={styles.label}>{$t.rating}</label>
