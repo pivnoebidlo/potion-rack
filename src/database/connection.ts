@@ -6,16 +6,13 @@ let db: Database.Database | null = null;
 
 export function getDatabase(): Database.Database {
     if (!db) {
-        // Определяем путь для БД в зависимости от окружения
         let dbPath: string;
 
         if (app.isPackaged) {
-            // В собранном приложении — в папке пользователя
             const userDataPath = app.getPath('userData');
             dbPath = path.join(userDataPath, 'potion_rack.db');
         } else {
-            // В разработке — в текущей папке
-            dbPath = path.join(process.cwd(), 'potion_rack.db');
+            dbPath = path.join(process.cwd(), 'potion_rack_dev.db');
         }
 
         console.log(`📁 Database path: ${dbPath}`);

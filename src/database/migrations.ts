@@ -146,6 +146,15 @@ export function initDatabase(db: Database.Database): void {
             ALTER TABLE figures RENAME COLUMN description TO shop_url;
         `);
             }
+        },
+        {
+            version: 8,
+            name: 'Add color_hex to paints',
+            up: (db: Database.Database) => {
+                db.exec(`
+            ALTER TABLE paints ADD COLUMN color_hex TEXT;
+        `);
+            }
         }
     ];
 

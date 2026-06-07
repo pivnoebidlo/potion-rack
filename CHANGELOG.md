@@ -1,3 +1,21 @@
+## 0.3.2
+
+### Added
+[+] Paint color hex field in paint modal with color picker
+[+] Color indicator dots in paints table (real color or base color)
+[+] Toggle switch for paint color dots in Settings → Appearance
+[+] Grid view for paints with color swatch cards
+[+] Left filter panel in Paints (collapsible, with actions)
+[+] Escape key to close paint modal
+[+] Clear button for purchase date in paint modal
+
+### Changed
+[*] Date format from settings now applies to paints table
+[*] Paints toolbar replaced with left filter panel (consistent with Figures)
+
+### Fixed
+[-] Clearing date in paint modal now properly saves as NULL
+
 ## 0.3.1
 
 [+] Shop link field in figure card and info panel

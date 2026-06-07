@@ -42,7 +42,13 @@ ipcMain.handle('navigate', (event, page: string) => {
 
 // ─── Статьи — файловая система ───
 // Путь по умолчанию; может быть переопределён пользователем через настройки
-let figuresPath = path.join(app.getPath('userData'), 'figures');
+let figuresPath;
+if (app.isPackaged) {
+    figuresPath = path.join(app.getPath('userData'), 'figures');
+} else {
+    figuresPath = path.join(process.cwd(), 'dev-figures');
+}
+try { fs.mkdirSync(figuresPath, { recursive: true }); } catch (e) {}
 
 // Попытаться загрузить сохранённый путь из БД при старте
 try {

@@ -1,152 +1,155 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-// noinspection SqlDialectInspection,SqlNoDataSourceInspection
 import { Request, Response } from 'express';
-import { Database } from 'better-sqlite3';
+import { getDatabase } from '../database/connection';
 
 export class PaintsController {
-    private db: Database.Database;
-
-    constructor(db: Database.Database) {
-        this.db = db;
-    }
-
-    getAll = (req: Request, res: Response): void => {
+    async getAll(req: Request, res: Response): Promise<void> {
         try {
-            const rows = this.db.prepare(`
+            const db = getDatabase();
+            const paints = db.prepare(`
                 SELECT p.*, bc.name as base_color_name
                 FROM paints p
-                         LEFT JOIN base_colors bc ON p.base_color_id = bc.id
+                LEFT JOIN base_colors bc ON p.base_color_id = bc.id
                 ORDER BY p.brand, p.color_name
             `).all();
-            res.json(rows);
-        } catch (err) {
-            console.error('GET /api/paints error:', err);
-            res.status(500).json({ error: (err as Error).message });
+            res.json(paints);
+        } catch (error) {
+            console.error('Error fetching paints:', error);
+            res.status(500).json({ error: 'Failed to fetch paints' });
         }
-    };
+    }
 
-    getOne = (req: Request, res: Response): void => {
+    async getById(req: Request, res: Response): Promise<void> {
         try {
-            const row = this.db.prepare(`SELECT * FROM paints WHERE id = ?`).get(req.params.id);
-            res.json(row);
-        } catch (err) {
-            console.error('GET /api/paints/:id error:', err);
-            res.status(500).json({ error: (err as Error).message });
-        }
-    };
+            const db = getDatabase();
+            const paint = db.prepare(`
+                SELECT p.*, bc.name as base_color_name
+                FROM paints p
+                LEFT JOIN base_colors bc ON p.base_color_id = bc.id
+                WHERE p.id = ?
+            `).get(req.params.id);
 
-    create = (req: Request, res: Response): void => {
-        const { brand, series, color_name, article, base_color_id, rating, status, price, purchase_place, purchase_date, comment } = req.body;
-
-        try {
-            const result = this.db.prepare(`
-                INSERT INTO paints (brand, series, color_name, article, base_color_id, rating, status, price, purchase_place, purchase_date, comment)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            `).run(brand, series, color_name, article, base_color_id, rating || 3, status || 'instock', price, purchase_place, purchase_date, comment);
-
-            res.status(201).json({ id: result.lastInsertRowid, message: 'Paint created' });
-        } catch (err) {
-            const error = err as { code?: string; message: string };
-            // Обработка уникального ограничения (дубликат brand + color_name)
-            if (error.code === 'SQLITE_CONSTRAINT_UNIQUE') {
-                res.status(409).json({
-                    error: 'DUPLICATE_PAINT',
-                    message: `A paint with brand "${brand}" and color name "${color_name}" already exists!`
-                });
+            if (!paint) {
+                res.status(404).json({ error: 'Paint not found' });
                 return;
             }
-            console.error('POST /api/paints error:', err);
-            res.status(500).json({ error: error.message });
+
+            res.json(paint);
+        } catch (error) {
+            console.error('Error fetching paint:', error);
+            res.status(500).json({ error: 'Failed to fetch paint' });
         }
-    };
+    }
 
-    update = (req: Request, res: Response): void => {
-        const { brand, series, color_name, article, base_color_id, rating, status, price, purchase_place, purchase_date, comment } = req.body;
+    async create(req: Request, res: Response): Promise<void> {
+        try {
+            const db = getDatabase();
+            const { brand, series, color_name, article, base_color_id, rating, status, price, purchase_place, purchase_date, comment, color_hex } = req.body;
 
-        // Проверка на дубликат (исключая текущую запись)
-        if (brand && color_name) {
-            const existing = this.db.prepare(`
-            SELECT id FROM paints 
-            WHERE brand COLLATE NOCASE = ? 
-              AND color_name COLLATE NOCASE = ? 
-              AND id != ?
-        `).get(brand, color_name, req.params.id);
+            if (!brand || !color_name) {
+                res.status(400).json({ error: 'Brand and color name are required' });
+                return;
+            }
 
+            // Check for duplicates
+            const existing = db.prepare('SELECT id FROM paints WHERE brand = ? AND color_name = ?').get(brand, color_name);
             if (existing) {
-                res.status(409).json({
-                    error: 'DUPLICATE_PAINT',
-                    message: `A paint with brand "${brand}" and color name "${color_name}" already exists!`
-                });
+                res.status(409).json({ error: 'A paint with this brand and color name already exists', message: 'A paint with this brand and color name already exists!' });
                 return;
             }
+
+            const result = db.prepare(`
+                INSERT INTO paints (brand, series, color_name, article, base_color_id, rating, status, price, purchase_place, purchase_date, comment, color_hex)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `).run(
+                brand,
+                series || null,
+                color_name,
+                article || null,
+                base_color_id || null,
+                rating || 3,
+                status || 'instock',
+                price || null,
+                purchase_place || null,
+                purchase_date || null,
+                comment || null,
+                color_hex || null
+            );
+
+            const paint = db.prepare(`
+                SELECT p.*, bc.name as base_color_name
+                FROM paints p
+                LEFT JOIN base_colors bc ON p.base_color_id = bc.id
+                WHERE p.id = ?
+            `).get(result.lastInsertRowid);
+            res.status(201).json(paint);
+        } catch (error) {
+            console.error('Error creating paint:', error);
+            res.status(500).json({ error: 'Failed to create paint' });
         }
+    }
 
-        // Build dynamic update query for partial updates
-        const fields: string[] = [];
-        const values: any[] = [];
-
-        if (brand !== undefined) { fields.push('brand = ?'); values.push(brand); }
-        if (series !== undefined) { fields.push('series = ?'); values.push(series); }
-        if (color_name !== undefined) { fields.push('color_name = ?'); values.push(color_name); }
-        if (article !== undefined) { fields.push('article = ?'); values.push(article); }
-        if (base_color_id !== undefined) { fields.push('base_color_id = ?'); values.push(base_color_id); }
-        if (rating !== undefined) { fields.push('rating = ?'); values.push(rating); }
-        if (status !== undefined) { fields.push('status = ?'); values.push(status); }
-        if (price !== undefined) { fields.push('price = ?'); values.push(price); }
-        if (purchase_place !== undefined) { fields.push('purchase_place = ?'); values.push(purchase_place); }
-        if (purchase_date !== undefined) { fields.push('purchase_date = ?'); values.push(purchase_date); }
-        if (comment !== undefined) { fields.push('comment = ?'); values.push(comment); }
-
-        if (fields.length === 0) {
-            res.status(400).json({ error: 'No fields to update' });
-            return;
-        }
-
-        fields.push('updated_at = CURRENT_TIMESTAMP');
-        values.push(req.params.id);
-
-        const query = `UPDATE paints SET ${fields.join(', ')} WHERE id = ?`;
-
+    async update(req: Request, res: Response): Promise<void> {
         try {
-            this.db.prepare(query).run(...values);
-            res.json({ message: 'Paint updated' });
-        } catch (err) {
-            const error = err as { code?: string; message: string };
-            if (error.code === 'SQLITE_CONSTRAINT_UNIQUE') {
-                res.status(409).json({
-                    error: 'DUPLICATE_PAINT',
-                    message: `A paint with brand "${brand}" and color name "${color_name}" already exists!`
-                });
+            const db = getDatabase();
+            const { id } = req.params;
+            const { brand, series, color_name, article, base_color_id, rating, status, price, purchase_place, purchase_date, comment, color_hex } = req.body;
+
+            const paint = db.prepare('SELECT * FROM paints WHERE id = ?').get(id) as any;
+            if (!paint) {
+                res.status(404).json({ error: 'Paint not found' });
                 return;
             }
-            console.error('PUT /api/paints/:id error:', err);
-            res.status(500).json({ error: error.message });
+
+            const fields: string[] = [];
+            const values: any[] = [];
+
+            if (brand !== undefined) { fields.push('brand = ?'); values.push(brand); }
+            if (series !== undefined) { fields.push('series = ?'); values.push(series); }
+            if (color_name !== undefined) { fields.push('color_name = ?'); values.push(color_name); }
+            if (article !== undefined) { fields.push('article = ?'); values.push(article); }
+            if (base_color_id !== undefined) { fields.push('base_color_id = ?'); values.push(base_color_id || null); }
+            if (rating !== undefined) { fields.push('rating = ?'); values.push(rating); }
+            if (status !== undefined) { fields.push('status = ?'); values.push(status); }
+            if (price !== undefined) { fields.push('price = ?'); values.push(price); }
+            if (purchase_place !== undefined) { fields.push('purchase_place = ?'); values.push(purchase_place); }
+            if (purchase_date !== undefined) { fields.push('purchase_date = ?'); values.push(purchase_date || null); }
+            if (comment !== undefined) { fields.push('comment = ?'); values.push(comment); }
+            if (color_hex !== undefined) { fields.push('color_hex = ?'); values.push(color_hex || null); }
+
+            if (fields.length > 0) {
+                values.push(id);
+                db.prepare(`UPDATE paints SET ${fields.join(', ')} WHERE id = ?`).run(...values);
+            }
+
+            const updated = db.prepare(`
+                SELECT p.*, bc.name as base_color_name
+                FROM paints p
+                LEFT JOIN base_colors bc ON p.base_color_id = bc.id
+                WHERE p.id = ?
+            `).get(id);
+            res.json(updated);
+        } catch (error) {
+            console.error('Error updating paint:', error);
+            res.status(500).json({ error: 'Failed to update paint' });
         }
-    };
+    }
 
-    updateComment = (req: Request, res: Response): void => {
-        const { comment } = req.body;
-
+    async delete(req: Request, res: Response): Promise<void> {
         try {
-            this.db.prepare(`UPDATE paints SET comment = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`)
-                .run(comment, req.params.id);
-            res.json({ message: 'Comment updated' });
-        } catch (err) {
-            console.error('PATCH /api/paints/:id/comment error:', err);
-            res.status(500).json({ error: (err as Error).message });
-        }
-    };
+            const db = getDatabase();
+            const { id } = req.params;
 
-    delete = (req: Request, res: Response): void => {
-        const paintId = req.params.id as string;
+            const paint = db.prepare('SELECT * FROM paints WHERE id = ?').get(id);
+            if (!paint) {
+                res.status(404).json({ error: 'Paint not found' });
+                return;
+            }
 
-        try {
-            this.db.prepare(`DELETE FROM paint_images WHERE paint_id = ?`).run(paintId);
-            this.db.prepare(`DELETE FROM paints WHERE id = ?`).run(paintId);
-            res.json({ message: 'Paint and associated images deleted' });
-        } catch (err) {
-            console.error('DELETE /api/paints/:id error:', err);
-            res.status(500).json({ error: (err as Error).message });
+            db.prepare('DELETE FROM paints WHERE id = ?').run(id);
+            res.status(204).send();
+        } catch (error) {
+            console.error('Error deleting paint:', error);
+            res.status(500).json({ error: 'Failed to delete paint' });
         }
-    };
+    }
 }

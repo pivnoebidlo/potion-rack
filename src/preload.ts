@@ -31,6 +31,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     renameFolder: (oldPath: string, newPath: string) => ipcRenderer.invoke('folder:rename', oldPath, newPath),
     renameFigureFolder: (folderPath: string, oldName: string, newName: string) => ipcRenderer.invoke('figure:renameFolder', folderPath, oldName, newName),
     moveFolder: (oldPath: string, newPath: string) => ipcRenderer.invoke('folder:move', oldPath, newPath),
+    moveFigure: (oldFolderPath: string, figureName: string, newFolderPath: string) =>
+        ipcRenderer.invoke('figure:move', oldFolderPath, figureName, newFolderPath),
     exportPdf: (folderPath: string, figureName: string, htmlContent: string) =>
         ipcRenderer.invoke('article:exportPdf', folderPath, figureName, htmlContent),
     getDbPath: () => ipcRenderer.invoke('get-db-path'),

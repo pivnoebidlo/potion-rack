@@ -21,7 +21,14 @@ app.use(express.json({ limit: '10mb' }));
 
 // Динамическая раздача статики из папки figures
 app.use('/figures-data', (req, res, next) => {
-    let figuresDataPath = path.join(electronApp.getPath('userData'), 'figures');
+    let figuresDataPath;
+    if (electronApp.isPackaged) {
+        figuresDataPath = path.join(electronApp.getPath('userData'), 'figures');
+    } else {
+        figuresDataPath = path.join(process.cwd(), 'dev-figures');
+    }
+    try { fs.mkdirSync(figuresDataPath, { recursive: true }); } catch (e) {}
+
     try {
         const db = getDatabase();
         const savedPath = db.prepare("SELECT value FROM settings WHERE key = 'figuresPath'").get() as { value: string } | undefined;
@@ -47,7 +54,7 @@ initDatabase(db);
 seedDatabase(db);
 
 // Setup routes
-setupPaintRoutes(app, db);
+setupPaintRoutes(app);
 setupImageRoutes(app, db);
 setupSettingsRoutes(app, db);
 setupStatsRoutes(app, db);
