@@ -1,28 +1,13 @@
+import PaintDetailPanel from './PaintDetailPanel';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import styles from './PaintsApp.module.css';
 import PaintModal from './PaintModal';
 import ConfirmModal from './ConfirmModal';
-import placeholderImg from '../images/placeholder.png';
 import { t } from '../i18n';
-import { showToast } from './Toast';
-
-interface Paint {
-    id: number;
-    brand: string;
-    series?: string;
-    color_name: string;
-    article?: string;
-    base_color_id?: number;
-    base_color_name?: string;
-    rating?: number;
-    status?: string;
-    purchase_date?: string;
-    price?: number;
-    comment?: string;
-    created_at?: string;
-    updated_at?: string;
-    color_hex?: string;
-}
+import { Paint } from '../types/paint';
+import PaintFilterPanel from './PaintFilterPanel';
+import PaintListView from './PaintListView';
+import PaintGridView from './PaintGridView';
 
 export default function PaintsApp() {
     const $t = t();
@@ -66,7 +51,6 @@ export default function PaintsApp() {
     const [rightPanelCollapsed, setRightPanelCollapsed] = useState(false);
     const [rightPanelWidth, setRightPanelWidth] = useState(320);
     const [isResizing, setIsResizing] = useState(false);
-    const [hoverMain, setHoverMain] = useState(false);
 
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [confirmTitle, setConfirmTitle] = useState('');
@@ -187,10 +171,10 @@ export default function PaintsApp() {
         const method = data.id ? 'PUT' : 'POST';
         try {
             const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
-            if (res.status === 409) { const err = await res.json(); showToast(err.message || $t.duplicatePaint, 'error'); return; }
+            if (res.status === 409) { const err = await res.json(); alert(err.message || $t.duplicatePaint); return; }
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             await loadPaints();
-        } catch (err) { console.error('Save failed:', err); showToast('Failed to save paint', 'error'); }
+        } catch (err) { console.error('Save failed:', err); alert('Failed to save paint'); }
     };
 
     const handleUpdateComment = async (id: number, comment: string) => {
@@ -215,7 +199,7 @@ export default function PaintsApp() {
         setConfirmTitle($t.deletePaint); setConfirmMessage($t.deleteConfirm);
         setConfirmAction(() => async () => {
             await fetch(`http://127.0.0.1:8765/api/paints/${id}`, { method: 'DELETE' });
-            setSelectedId(null); await loadPaints(); showToast($t.deletePaint + ' — OK', 'success'); setConfirmOpen(false);
+            setSelectedId(null); await loadPaints(); alert($t.deletePaint + ' — OK'); setConfirmOpen(false);
         });
         setConfirmOpen(true);
     };
@@ -227,17 +211,17 @@ export default function PaintsApp() {
             r.onload = async () => {
                 const b64 = r.result as string;
                 await fetch(`http://127.0.0.1:8765/api/paints/${selectedId}/images`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ image_data: b64.split(',')[1], content_type: file.type, filename: file.name }) });
-                await loadImages(selectedId); showToast('Photo uploaded', 'success');
+                await loadImages(selectedId); alert('Photo uploaded');
             };
             r.readAsDataURL(file);
-        } catch (err) { console.error('Failed to upload image:', err); showToast('Failed to upload image', 'error'); }
+        } catch (err) { console.error('Failed to upload image:', err); alert('Failed to upload image'); }
     };
 
     const handleDeleteImage = (imgId: number) => {
         setConfirmTitle($t.deletePhoto); setConfirmMessage($t.deletePhotoConfirm);
         setConfirmAction(() => async () => {
             await fetch(`http://127.0.0.1:8765/api/paints/${selectedId}/images/${imgId}`, { method: 'DELETE' });
-            await loadImages(selectedId!); showToast('Photo deleted', 'success'); setConfirmOpen(false);
+            await loadImages(selectedId!); alert('Photo deleted'); setConfirmOpen(false);
         });
         setConfirmOpen(true);
     };
@@ -255,32 +239,6 @@ export default function PaintsApp() {
 
     if (loading) return <div className={styles.loading}>{$t.loading}</div>;
 
-    const formatDate = (dateStr?: string) => {
-        if (!dateStr) return '-';
-        const fmt = localStorage.getItem('potion-rack-date-format') || 'auto';
-        const date = new Date(dateStr);
-        if (isNaN(date.getTime())) return dateStr;
-        switch (fmt) {
-            case 'dd.mm.yyyy': return `${String(date.getDate()).padStart(2, '0')}.${String(date.getMonth() + 1).padStart(2, '0')}.${date.getFullYear()}`;
-            case 'yyyy-mm-dd': return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-            case 'mm/dd/yyyy': return `${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')}/${date.getFullYear()}`;
-            default: return new Intl.DateTimeFormat(navigator.language).format(date);
-        }
-    };
-
-    const getBaseColorHex = (id?: number) => {
-        const color = baseColors.find(c => c.id === id);
-        if (!color) return 'var(--text-muted)';
-        const map: Record<string, string> = {
-            'Red': '#dc2626', 'Blue': '#3b82f6', 'Green': '#4ade80',
-            'Yellow': '#f59e0b', 'Brown': '#92400e', 'Grey': '#6b7280',
-            'Purple': '#7c5cfc', 'Orange': '#f97316', 'Pink': '#ec4899',
-            'Gold': '#fbbf24', 'Silver': '#9ca3af', 'White': '#f9fafb',
-            'Black': '#111827'
-        };
-        return map[color.name] || 'var(--text-muted)';
-    };
-
     return (
         <div style={{ display: 'flex', height: '100vh', width: '100%', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
             <div style={{ width: 48, minWidth: 48, background: 'var(--bg-tertiary)', borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 8 }}>
@@ -289,125 +247,86 @@ export default function PaintsApp() {
                 <div onClick={() => navigateTo('settings')} style={{ width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 'var(--radius-sm)', cursor: 'pointer', marginBottom: 4, color: 'var(--text-secondary)' }} onMouseEnter={e => (e.target as HTMLElement).style.background = 'var(--bg-hover)'} onMouseLeave={e => (e.target as HTMLElement).style.background = 'none'}>⚙️</div>
             </div>
             <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
-                <div className={`${styles.filterPanel} ${filterPanelCollapsed ? styles.filterPanelCollapsed : ''}`}>
-                    <button className={styles.filterToggle} onClick={() => { setFilterPanelCollapsed(!filterPanelCollapsed); localStorage.setItem('paints-filter-panel-collapsed', (!filterPanelCollapsed).toString()); }}>{filterPanelCollapsed ? '▶' : '◀'}</button>
-                    <div className={styles.filterContent}>
-                        <div className={styles.filterGroup}><label className={styles.filterLabel}>{$t.brand}</label><select className={styles.filterSelect} value={brandFilter} onChange={e => setBrandFilter(e.target.value)}><option value="">{$t.all}</option>{brands.map(b => <option key={b} value={b}>{b}</option>)}</select></div>
-                        <div className={styles.filterGroup}><label className={styles.filterLabel}>{$t.series}</label><select className={styles.filterSelect} value={seriesFilter} onChange={e => setSeriesFilter(e.target.value)}><option value="">{$t.all}</option>{series.map(s => <option key={s} value={s}>{s}</option>)}</select></div>
-                        <div className={styles.filterGroup}><label className={styles.filterLabel}>{$t.baseColor}</label><select className={styles.filterSelect} value={baseColorFilter} onChange={e => setBaseColorFilter(e.target.value)}><option value="">{$t.all}</option>{baseColors.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></div>
-                        <div className={styles.filterGroup}><label className={styles.filterLabel}>{$t.status}</label><select className={styles.filterSelect} value={statusFilter} onChange={e => setStatusFilter(e.target.value)}><option value="">{$t.all}</option><option value="instock">{$t.inStock}</option><option value="low">{$t.low}</option><option value="out">{$t.outOfStock}</option><option value="ordered">{$t.ordered}</option></select></div>
-                        <div className={styles.filterGroup}><label className={styles.filterLabel}>{$t.search}</label><input className={styles.filterInput} type="text" placeholder={$t.search + '...'} value={searchFilter} onChange={e => setSearchFilter(e.target.value)} /></div>
-                        <hr className={styles.panelDivider} />
-                        <div className={styles.filterActions}>
-                            <button className={styles.iconBtn} onClick={resetFilters}>🔄</button>
-                            <button className={styles.iconBtn} onClick={() => { const next = viewMode === 'list' ? 'grid' : 'list'; setViewMode(next); localStorage.setItem('paints-view-mode', next); }}>{viewMode === 'list' ? '⊞' : '☰'}</button>
-                            <button className={styles.iconBtn} onClick={() => { setEditingPaint(null); setModalOpen(true); }}>➕</button>
-                        </div>
-                    </div>
-                </div>
+                <PaintFilterPanel
+                    collapsed={filterPanelCollapsed}
+                    brandFilter={brandFilter}
+                    seriesFilter={seriesFilter}
+                    baseColorFilter={baseColorFilter}
+                    statusFilter={statusFilter}
+                    searchFilter={searchFilter}
+                    viewMode={viewMode}
+                    brands={brands}
+                    series={series}
+                    baseColors={baseColors}
+                    onToggle={() => { setFilterPanelCollapsed(!filterPanelCollapsed); localStorage.setItem('paints-filter-panel-collapsed', (!filterPanelCollapsed).toString()); }}
+                    onBrandChange={setBrandFilter}
+                    onSeriesChange={setSeriesFilter}
+                    onBaseColorChange={setBaseColorFilter}
+                    onStatusChange={setStatusFilter}
+                    onSearchChange={setSearchFilter}
+                    onReset={resetFilters}
+                    onViewModeToggle={() => { const next = viewMode === 'list' ? 'grid' : 'list'; setViewMode(next); localStorage.setItem('paints-view-mode', next); }}
+                    onAddPaint={() => { setEditingPaint(null); setModalOpen(true); }}
+                />
                 <div className={styles.root} style={{ flex: 1 }}>
                     <div className={styles.tableContainer} ref={tableContainerRef}>
                         {viewMode === 'list' ? (
-                            <table className={styles.table}>
-                                <thead className={styles.tableHead}><tr><th onClick={() => handleSort('brand')}>{$t.brand} {sortColumn === 'brand' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}</th><th onClick={() => handleSort('series')}>{$t.series} {sortColumn === 'series' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}</th><th onClick={() => handleSort('color_name')}>{$t.colorName} {sortColumn === 'color_name' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}</th><th onClick={() => handleSort('article')}>{$t.article} {sortColumn === 'article' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}</th><th onClick={() => handleSort('base_color_name')}>{$t.baseColor} {sortColumn === 'base_color_name' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}</th><th onClick={() => handleSort('purchase_date')}>{$t.purchaseDate} {sortColumn === 'purchase_date' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}</th><th onClick={() => handleSort('price')}>{$t.price} {sortColumn === 'price' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}</th><th onClick={() => handleSort('rating')}>{$t.rating} {sortColumn === 'rating' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}</th><th onClick={() => handleSort('status')}>{$t.status} {sortColumn === 'status' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}</th><th></th></tr></thead>
-                                <tbody>
-                                {filtered.map(paint => (
-                                    <tr key={paint.id} ref={selectedId === paint.id ? selectedRowRef : null} className={`${styles.tableRow} ${selectedId === paint.id ? styles.tableRowSelected : ''}`} onClick={() => setSelectedId(paint.id)} onDoubleClick={() => { setEditingPaint(paint); setModalOpen(true); }}>
-                                        <td className={styles.tableCell}>{paint.brand}</td><td className={styles.tableCell}>{paint.series || '-'}</td>
-                                        <td className={styles.tableCell}><span style={{display:'inline-flex', alignItems:'center', gap:6}}>{showColorDots && ((paint as any).color_hex || paint.base_color_id) ? (<span style={{width:12, height:12, borderRadius:'50%', background: (paint as any).color_hex || getBaseColorHex(paint.base_color_id), flexShrink:0, border: '1px dashed var(--text-muted)'}} />) : showColorDots && (<span style={{width:12, height:12, borderRadius:'50%', background:'transparent', flexShrink:0, border:'1px dashed var(--text-muted)', position:'relative'}}><span style={{position:'absolute', top:'50%', left:'50%', transform:'translate(-50%,-50%)', color:'var(--text-muted)', fontSize:8}}>✕</span></span>)}{paint.color_name}</span></td>
-                                        <td className={styles.tableCell}>{paint.article || '-'}</td><td className={styles.tableCell}>{paint.base_color_name || '-'}</td><td className={styles.tableCell}>{formatDate(paint.purchase_date)}</td><td className={styles.tableCell}>{paint.price != null ? paint.price : '-'}</td>
-                                        <td className={styles.tableCell} onClick={e => e.stopPropagation()}>{Array.from({ length: 5 }, (_, i) => <span key={i} onClick={() => handleUpdateRating(paint.id, i + 1)} style={{ cursor: 'pointer', color: i < (paint.rating || 0) ? 'var(--star-active)' : 'var(--star-inactive)', fontSize: '16px' }}>★</span>)}</td>
-                                        <td className={styles.tableCell} onClick={e => e.stopPropagation()}><select value={paint.status || 'instock'} onChange={(e) => handleUpdateStatus(paint.id, e.target.value)} style={{ background: 'var(--bg-input)', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)', fontSize: 'var(--font-size-sm)', padding: '2px 4px', cursor: 'pointer', outline: 'none' }}><option value="instock">{$t.inStock}</option><option value="low">{$t.low}</option><option value="out">{$t.outOfStock}</option><option value="ordered">{$t.ordered}</option></select></td>
-                                        <td className={styles.tableCell}><button className={styles.iconBtn} onClick={e => { e.stopPropagation(); handleDeletePaint(paint.id); }}>🗑</button></td>
-                                    </tr>
-                                ))}
-                                </tbody>
-                            </table>
+                            <PaintListView
+                                filtered={filtered}
+                                selectedId={selectedId}
+                                showColorDots={showColorDots}
+                                sortColumn={sortColumn}
+                                sortDirection={sortDirection}
+                                baseColors={baseColors}
+                                selectedRowRef={selectedRowRef}
+                                onSelect={setSelectedId}
+                                onDoubleClick={(paint) => { setEditingPaint(paint); setModalOpen(true); }}
+                                onSort={handleSort}
+                                onUpdateRating={handleUpdateRating}
+                                onUpdateStatus={handleUpdateStatus}
+                                onDelete={handleDeletePaint}
+                            />
                         ) : (
-                            <>
-                            {showGridSortBar && (
-                                <div className={styles.sortBar}>
-                                    <span className={styles.sortLabel}>{$t.sortBy || 'Сортировка'}</span>
-                                    <select
-                                        className={styles.sortSelect}
-                                        value={sortColumn}
-                                        onChange={e => setSortColumn(e.target.value)}
-                                    >
-                                        <option value="brand">{$t.brand}</option>
-                                        <option value="series">{$t.series}</option>
-                                        <option value="color_name">{$t.colorName}</option>
-                                        <option value="article">{$t.article}</option>
-                                        <option value="base_color_name">{$t.baseColor}</option>
-                                        <option value="purchase_date">{$t.purchaseDate}</option>
-                                        <option value="price">{$t.price}</option>
-                                        <option value="rating">{$t.rating}</option>
-                                        <option value="status">{$t.status}</option>
-                                    </select>
-                                    <button
-                                        className={styles.sortDirBtn}
-                                        onClick={() => setSortDirection(d => d === 'asc' ? 'desc' : 'asc')}
-                                        title={sortDirection === 'asc' ? '↑' : '↓'}
-                                    >
-                                        {sortDirection === 'asc' ? '↑' : '↓'}
-                                    </button>
-                                </div>
-                                )}
-                                <div className={styles.grid}>
-                                    {filtered.map(paint => (
-                                        <div key={paint.id} className={`${styles.card} ${selectedId === paint.id ? styles.cardSelected : ''}`} onClick={() => setSelectedId(paint.id)} onDoubleClick={() => { setEditingPaint(paint); setModalOpen(true); }}>
-                                            <div
-                                                className={styles.cardSwatch}
-                                                style={{
-                                                    background: (paint as any).color_hex
-                                                        ? (paint as any).color_hex
-                                                        : paint.base_color_id
-                                                            ? getBaseColorHex(paint.base_color_id)
-                                                            : 'transparent',
-                                                }}
-                                            >
-                                                {!((paint as any).color_hex || paint.base_color_id) && (
-                                                    <span style={{
-                                                        color: 'var(--text-muted)',
-                                                        fontSize: 14,
-                                                        lineHeight: 1,
-                                                    }}>✕</span>
-                                                )}
-                                            </div>
-                                            <div className={styles.cardName}>{paint.color_name}</div>
-                                            <div className={styles.cardBrand}>{paint.brand}{paint.series ? ` · ${paint.series}` : ''}</div>
-                                            <div className={styles.cardMeta}>
-                                                <span className={styles.cardStars} onClick={e => e.stopPropagation()}>{Array.from({ length: 5 }, (_, i) => (<span key={i} onClick={() => handleUpdateRating(paint.id, i + 1)} style={{ cursor: 'pointer', color: i < (paint.rating || 0) ? 'var(--star-active)' : 'var(--star-inactive)' }}>★</span>))}</span>
-                                                {paint.price != null && <span>{paint.price}</span>}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </>
+                            <PaintGridView
+                                filtered={filtered}
+                                selectedId={selectedId}
+                                showGridSortBar={showGridSortBar}
+                                sortColumn={sortColumn}
+                                sortDirection={sortDirection}
+                                baseColors={baseColors}
+                                onSelect={setSelectedId}
+                                onDoubleClick={(paint) => { setEditingPaint(paint); setModalOpen(true); }}
+                                onSortColumnChange={setSortColumn}
+                                onSortDirectionToggle={() => setSortDirection(d => d === 'asc' ? 'desc' : 'asc')}
+                                onUpdateRating={handleUpdateRating}
+                            />
                         )}
                         {filtered.length === 0 && !loading && <div className={styles.emptyState}>{$t.noPaints}</div>}
                     </div>
                     <div className={styles.statusBar}><span>{$t.totalPaints}: {filtered.length}</span><span>&nbsp;|&nbsp;</span><span>{$t.brands}: {brands.length}</span></div>
                 </div>
-                {selectedId && (<>
-                    <div style={{ width: '4px', cursor: 'col-resize', background: isResizing ? 'var(--accent)' : 'var(--border)', transition: isResizing ? 'none' : 'background 0.2s', flexShrink: 0 }} onMouseDown={() => setIsResizing(true)} />
-                    <div className={`${styles.rightPanel} ${rightPanelCollapsed ? styles.rightPanelCollapsed : ''}`} style={{ width: rightPanelCollapsed ? 32 : rightPanelWidth, minWidth: rightPanelCollapsed ? 32 : rightPanelWidth }}>
-                        <button className={styles.collapseBtn} onClick={() => setRightPanelCollapsed(!rightPanelCollapsed)}>{rightPanelCollapsed ? '◀' : '▶'}</button>
-                        {!rightPanelCollapsed && (<div className={styles.panelContent}>
-                            {(() => { const p = paints.find(x => x.id === selectedId); if (!p) return null; return (<>
-                                <div style={{ fontSize: 'var(--font-size-lg)', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '2px', textAlign: 'center' }}>{p.brand} – {p.color_name}</div>
-                                {p.series && <div style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-secondary)', textAlign: 'center', marginBottom: '12px' }}>[{p.series}]</div>}
-                                {selectedImageId && images.length > 0 ? (<>
-                                    <div className={styles.galleryMain} onMouseEnter={() => setHoverMain(true)} onMouseLeave={() => setHoverMain(false)}><img src={`data:${images.find(i => i.id === selectedImageId)?.content_type || 'image/jpeg'};base64,${images.find(i => i.id === selectedImageId)?.image_data}`} alt="Selected paint" />
-                                        {hoverMain && (<div style={{ position: 'absolute', bottom: '8px', left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: '10px' }}><button onClick={(e) => { e.stopPropagation(); const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*'; inp.onchange = (ev) => { const f = (ev.target as HTMLInputElement).files?.[0]; if (f) handleUploadImage(f); }; inp.click(); }} style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'rgba(0,0,0,0.6)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', color: '#fff' }}>➕</button><button onClick={(e) => { e.stopPropagation(); handleSetPrimary(selectedImageId); }} style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'rgba(0,0,0,0.6)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', color: 'var(--star-active)' }}>★</button><button onClick={(e) => { e.stopPropagation(); handleDeleteImage(selectedImageId); }} style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'rgba(0,0,0,0.6)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', color: '#fff' }}>🗑</button></div>)}</div>
-                                    <div className={styles.galleryThumbnails}>{images.map((img: any) => (<div key={img.id} className={`${styles.thumbnail} ${selectedImageId === img.id ? styles.thumbnailActive : ''}`} onClick={() => setSelectedImageId(img.id)}><img src={`data:${img.content_type || 'image/jpeg'};base64,${img.image_data}`} alt={img.filename} /></div>))}</div>
-                                </>) : (<div className={styles.galleryMain} onMouseEnter={() => setHoverMain(true)} onMouseLeave={() => setHoverMain(false)}><img src={placeholderImg} alt="No photo" style={{ opacity: 0.3 }} />{hoverMain && (<div style={{ position: 'absolute', bottom: '8px', left: '50%', transform: 'translateX(-50%)', display: 'flex', gap: '10px' }}><button onClick={(e) => { e.stopPropagation(); const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*'; inp.onchange = (ev) => { const f = (ev.target as HTMLInputElement).files?.[0]; if (f) handleUploadImage(f); }; inp.click(); }} style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'rgba(0,0,0,0.6)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', color: '#fff' }}>➕</button></div>)}</div>)}
-                                <div style={{ borderTop: '1px solid var(--border)', margin: '16px 0 12px' }} />
-                                <div className={styles.detailsLabel}>{$t.comment}</div>
-                                <textarea ref={commentRef} value={p.comment || ''} onChange={(e) => { handleUpdateComment(p.id, e.target.value); e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }} style={{ width: '100%', minHeight: '40px', padding: '8px', background: 'var(--bg-input)', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)', fontSize: 'var(--font-size-sm)', resize: 'none', outline: 'none', boxSizing: 'border-box', overflow: 'hidden' }} placeholder={$t.commentPlaceholder} />
-                            </>); })()}
-                        </div>)}
-                    </div>
-                </>)}
+                {selectedId && (() => {
+                    const p = paints.find(x => x.id === selectedId);
+                    if (!p) return null;
+                    return (
+                        <PaintDetailPanel
+                            paint={p}
+                            images={images}
+                            selectedImageId={selectedImageId}
+                            rightPanelCollapsed={rightPanelCollapsed}
+                            rightPanelWidth={rightPanelWidth}
+                            isResizing={isResizing}
+                            commentRef={commentRef}
+                            onCollapse={() => setRightPanelCollapsed(!rightPanelCollapsed)}
+                            onImageSelect={setSelectedImageId}
+                            onResizeStart={() => setIsResizing(true)}
+                            onUpload={handleUploadImage}
+                            onSetPrimary={handleSetPrimary}
+                            onDeleteImage={handleDeleteImage}
+                            onCommentChange={handleUpdateComment}
+                        />
+                    );
+                })()}
             </div>
             {modalOpen && <PaintModal paint={editingPaint} brands={brands} series={series} baseColors={baseColors} onSave={handleSavePaint} onClose={() => setModalOpen(false)} />}
             {confirmOpen && <ConfirmModal title={confirmTitle} message={confirmMessage} onConfirm={confirmAction} onCancel={() => setConfirmOpen(false)} />}

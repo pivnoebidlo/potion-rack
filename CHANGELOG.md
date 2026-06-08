@@ -1,3 +1,12 @@
+## 0.3.4
+
+### Refactored
+[*] Extracted Paint type to shared types/paint.ts
+[*] Extracted formatDate and getBaseColorHex to utils/
+[*] Extracted PaintFilterPanel, PaintListView, PaintGridView, PaintDetailPanel from PaintsApp.tsx
+[*] Replaced all Toast notifications with alert dialogs in Paints
+[*] Removed unused imports from PaintsApp.tsx
+
 ## 0.3.3
 
 ### Added

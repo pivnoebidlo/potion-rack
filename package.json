@@ -1,11 +1,11 @@
 {
   "name": "potion-rack",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "type": "commonjs",
   "description": "Paint Manager for Miniatures",
   "author": {
     "name": "Potion Rack Team",
-    "email": "potionrack@example.com"
+    "email": "dima@niktokro.me"
   },
   "main": "dist/main.js",
   "scripts": {
