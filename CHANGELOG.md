@@ -1,3 +1,25 @@
+## 0.4.0
+
+### Added
+[+] Image resize on insert — dialog with presets (Small/Medium/Large/Original), sliders, and aspect ratio lock
+[+] Image resize for existing images — click ✂️ button on image in editor to resize
+[+] Image size stored in Markdown as `![alt](path =WxH)`
+[+] Live preview in resize dialog with dashed frame showing target dimensions
+
+### Changed
+[*] Image paths unified to ./images/ format
+[*] All editor hotkeys use key codes — work in any keyboard layout
+[*] Strikethrough hotkey: Cmd+X → Shift+Cmd+X
+[*] Toggle formatting: Bold/Italic/Strikethrough/Code remove formatting on second press
+
+### Fixed
+[-] Strikethrough text renders with line-through in editor
+[-] Cmd+Z before edit no longer clears article (triple protection)
+[-] Inline formatting works inside bullet/numbered lists
+[-] Images preserved during article:write cleanup (support =WxH syntax)
+[-] PDF export includes resized images with correct dimensions
+[-] Image preview in resize modal works for both ./images/ and ../images/ paths
+
 ## 0.3.6
 
 ### Added
