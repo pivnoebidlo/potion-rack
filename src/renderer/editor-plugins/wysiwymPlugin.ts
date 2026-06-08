@@ -3,14 +3,21 @@ import { RangeSetBuilder, StateField, StateEffect } from '@codemirror/state';
 
 // ============ Image Preview Widget ============
 export class ImagePreviewWidget extends WidgetType {
+    private img: HTMLImageElement | null = null;
+
     constructor(readonly src: string, readonly alt: string, readonly from: number, readonly to: number, readonly view: EditorView) { super(); }
+
     toDOM() {
         const container = document.createElement('span');
         container.style.display = 'block';
         container.style.margin = '8px 0';
         container.style.position = 'relative';
         const img = document.createElement('img');
+        this.img = img;
         img.src = this.src;
+        img.onerror = () => {
+            img.style.display = 'none';
+        };
         img.alt = this.alt;
         img.style.maxWidth = '100%';
         img.style.maxHeight = '600px';
@@ -43,6 +50,13 @@ export class ImagePreviewWidget extends WidgetType {
         container.appendChild(img);
         container.appendChild(deleteBtn);
         return container;
+    }
+
+    destroy() {
+        if (this.img) {
+            this.img.src = '';
+            this.img = null;
+        }
     }
 }
 
@@ -189,7 +203,7 @@ export const wysiwymPlugin = ViewPlugin.fromClass(class {
             }
         }
 
-        if (slug) {
+        if (slug && slug.trim()) {
             const imageRegex = /!\[([^\]]*)\]\((\.\.?\/images\/[^)]+)\)/g;
             const docText = doc.toString();
             let imgMatch;

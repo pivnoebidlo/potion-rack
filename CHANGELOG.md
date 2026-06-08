@@ -1,3 +1,21 @@
+## 0.3.6
+
+### Added
+[+] Custom app icon (icns/ico/png) — no more default Electron icon
+[+] Reindex figures folder: scan folder for .md files, rebuild database
+[+] Auto-reindex after selecting new figures folder
+[+] Empty figures (folder without .md) now indexed with NULL content
+[+] Broken image link validation during reindex with detailed report modal
+[+] Reindex button in Settings → Data (manual re-trigger for folder changes)
+
+### Changed
+[*] Figure folder and file names no longer slugified — keep original names with spaces and case
+[*] Removed second .replace for legacy ../images/ paths (unified to ./images/)
+
+### Fixed
+[-] 404 errors when switching between figures with and without images (partial fix — img.onerror + widget.destroy)
+[-] Double-encoding of special characters in image URLs
+
 ## 0.3.5
 
 ### Added

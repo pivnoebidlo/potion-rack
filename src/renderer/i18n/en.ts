@@ -160,4 +160,9 @@ export default {
     helpPreview: 'Preview / Edit',
     helpUndo: 'Undo',
     helpRedo: 'Redo',
+    reindexFigures: 'Reindex figures',
+    reindexResult: 'Reindex result',
+    figuresIndexed: 'Figures indexed',
+    imagesReferenced: 'Image references found',
+    brokenImageLinks: 'Broken image links',
 };
