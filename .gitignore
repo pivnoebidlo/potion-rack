@@ -22,3 +22,4 @@ public/css/*.purged
 *.log
 *.tmp
 *.cache
+/dev-figures/

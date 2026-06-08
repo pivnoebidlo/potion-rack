@@ -19,6 +19,8 @@ export default function SettingsApp() {
     const [showPaintColorDots, setShowPaintColorDots] = useState(true);
     const [showGridSortBar, setShowGridSortBar] = useState(true);
     const [dateFormat, setDateFormat] = useState('auto');
+    const [reindexResult, setReindexResult] = useState<{ figuresIndexed: number; imagesReferenced: number; brokenLinks: number; brokenLinksList: string[] } | null>(null);
+    const [reindexing, setReindexing] = useState(false);
 
     const $t = t();
 
@@ -113,6 +115,23 @@ export default function SettingsApp() {
             setFiguresPath(selectedPath);
             localStorage.setItem('potion-rack-figures-path', selectedPath);
             if (api.setFiguresPath) await api.setFiguresPath(selectedPath);
+            // Автоматический реиндекс
+            setReindexing(true);
+            try {
+                const result = await api.reindexFigures(selectedPath);
+                if (result?.success) {
+                    setReindexResult({
+                        figuresIndexed: result.figuresIndexed,
+                        imagesReferenced: result.imagesReferenced,
+                        brokenLinks: result.brokenLinks,
+                        brokenLinksList: result.brokenLinksList || [],
+                    });
+                }
+            } catch (err) {
+                console.error('Auto-reindex failed:', err);
+            } finally {
+                setReindexing(false);
+            }
         }
     };
 
@@ -185,6 +204,29 @@ export default function SettingsApp() {
     const handleReset = async () => {
         if (!confirm('Delete ALL data? This cannot be undone!')) return;
         if (!confirm('Are you really sure?')) return;
+    };
+
+    const handleReindex = async () => {
+        if (!figuresPath) return;
+        setReindexing(true);
+        try {
+            const result = await (window as any).electronAPI?.reindexFigures(figuresPath);
+            if (result?.success) {
+                setReindexResult({
+                    figuresIndexed: result.figuresIndexed,
+                    imagesReferenced: result.imagesReferenced,
+                    brokenLinks: result.brokenLinks,
+                    brokenLinksList: result.brokenLinksList || [],
+                });
+            } else {
+                alert(result?.error || 'Reindex failed');
+            }
+        } catch (err) {
+            console.error('Reindex failed:', err);
+            alert('Reindex failed');
+        } finally {
+            setReindexing(false);
+        }
     };
 
     return (
@@ -318,7 +360,19 @@ export default function SettingsApp() {
                                 </div>
                                 <div className={styles.settingControl}>
                                     <button className={`${styles.btn} ${styles.btnSecondary} ${styles.btnFixed}`} onClick={handleSelectFolder}>📂 {$t.selectFolder}</button>
-                                    {figuresPath && <div className={styles.pathText}>{figuresPath}</div>}
+                                    {figuresPath && (
+                                        <>
+                                            <div className={styles.pathText}>{figuresPath}</div>
+                                            <button
+                                                className={`${styles.btn} ${styles.btnSecondary}`}
+                                                onClick={handleReindex}
+                                                disabled={reindexing}
+                                                style={{ marginTop: 8 }}
+                                            >
+                                                {reindexing ? '⏳' : '🔄'} {$t.reindexFigures || 'Reindex figures'}
+                                            </button>
+                                        </>
+                                    )}
                                 </div>
                             </div>
                             <div className={styles.setting}>
@@ -362,6 +416,42 @@ export default function SettingsApp() {
                     )}
                 </div>
             </div>
+
+            {reindexResult && (
+                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }}>
+                    <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: 'var(--radius-xl)', padding: '24px', minWidth: '400px', maxWidth: '500px', boxShadow: '0 8px 24px rgba(0,0,0,0.5)' }}>
+                        <div style={{ fontSize: 'var(--font-size-lg)', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '16px' }}>
+                            {$t.reindexResult || 'Reindex complete'}
+                        </div>
+                        <div style={{ color: 'var(--text-secondary)', marginBottom: '8px', fontSize: 'var(--font-size-sm)' }}>
+                            {$t.figuresIndexed || 'Figures indexed'}: <strong>{reindexResult.figuresIndexed}</strong>
+                        </div>
+                        <div style={{ color: 'var(--text-secondary)', marginBottom: '8px', fontSize: 'var(--font-size-sm)' }}>
+                            {$t.imagesReferenced || 'Image references found'}: <strong>{reindexResult.imagesReferenced}</strong>
+                        </div>
+                        {reindexResult.brokenLinks > 0 && (
+                            <div style={{ color: 'var(--danger)', marginBottom: '8px', fontSize: 'var(--font-size-sm)' }}>
+                                ⚠️ {$t.brokenImageLinks || 'Broken image links'}: <strong>{reindexResult.brokenLinks}</strong>
+                            </div>
+                        )}
+                        {reindexResult.brokenLinksList.length > 0 && (
+                            <div style={{
+                                maxHeight: '150px', overflow: 'auto', background: 'var(--bg-input)',
+                                border: '1px solid var(--border-light)', borderRadius: 'var(--radius-sm)',
+                                padding: '8px', marginBottom: '16px', fontSize: '11px',
+                                color: 'var(--text-muted)', fontFamily: 'monospace'
+                            }}>
+                                {reindexResult.brokenLinksList.map((link, i) => (
+                                    <div key={i}>{link}</div>
+                                ))}
+                            </div>
+                        )}
+                        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                            <button onClick={() => setReindexResult(null)} style={{ padding: '8px 16px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: 'var(--font-size-sm)' }}>OK</button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {importConfirmOpen && !importResult && (
                 <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }}>

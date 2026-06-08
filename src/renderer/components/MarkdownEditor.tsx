@@ -61,7 +61,7 @@ export default function MarkdownEditor({ content, onChange, onSave, figureName, 
     const editorRef = useRef<HTMLDivElement>(null);
     const editorViewRefInternal = useRef<EditorView | null>(null);
     const lastSavedContent = useRef(content);
-    const slug = folderPath ? `${folderPath}/${slugify(figureName || '')}` : slugify(figureName || '');
+    const slug = folderPath ? `${folderPath}/${figureName || ''}` : (figureName || '');
     const safeSlug = safeEncode(slug);
 
     useEffect(() => {

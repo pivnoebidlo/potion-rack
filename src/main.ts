@@ -112,20 +112,16 @@ ipcMain.handle('set-figures-path', (_event, newPath: string) => {
     }
 });
 
-function slugify(name: string): string {
-    return name.toLowerCase().replace(/\s+/g, '_').replace(/[<>:"/\\|?*]/g, '').substring(0, 100);
-}
-
 function getFigureDir(folderPath: string, figureName: string): string {
     if (folderPath) {
-        return path.join(figuresPath, folderPath, slugify(figureName));
+        return path.join(figuresPath, folderPath, figureName);
     }
-    return path.join(figuresPath, slugify(figureName));
+    return path.join(figuresPath, figureName);
 }
 
 ipcMain.handle('article:read', (_event, folderPath: string, figureName: string) => {
     const dir = getFigureDir(folderPath, figureName);
-    const filePath = path.join(dir, `${slugify(figureName)}.md`);
+    const filePath = path.join(dir, `${figureName}.md`);
     try {
         if (fs.existsSync(filePath)) return fs.readFileSync(filePath, 'utf8');
     } catch (e) {
@@ -137,7 +133,7 @@ ipcMain.handle('article:read', (_event, folderPath: string, figureName: string) 
 ipcMain.handle('article:write', (_event, folderPath: string, figureName: string, content: string) => {
     if (!content || !content.trim()) return { success: false, error: 'Empty content' };
     const dir = getFigureDir(folderPath, figureName);
-    const filePath = path.join(dir, `${slugify(figureName)}.md`);
+    const filePath = path.join(dir, `${figureName}.md`);
     const imagesDir = path.join(dir, 'images');
 
     try {
@@ -248,6 +244,112 @@ ipcMain.handle('figures:listFolders', () => {
     return listFoldersRecursive(figuresPath, '');
 });
 
+ipcMain.handle('figures:reindex', (_event, targetPath: string) => {
+    if (!targetPath || !fs.existsSync(targetPath)) {
+        return { success: false, error: 'Folder not found' };
+    }
+
+    const db = getDatabase();
+    const brokenLinks: string[] = [];
+    let indexedCount = 0;
+    let imagesReferenced = 0;
+
+    try {
+        db.exec('BEGIN TRANSACTION');
+
+        // Очистка старых данных
+        db.exec('DELETE FROM figure_paints');
+        db.exec('DELETE FROM figure_images');
+        db.exec('DELETE FROM figures');
+
+        // Рекурсивно сканируем папку — ищем .md файлы
+        function scanDir(dirPath: string, relativePath: string) {
+            const entries = fs.readdirSync(dirPath, { withFileTypes: true });
+            for (const entry of entries) {
+                const fullPath = path.join(dirPath, entry.name);
+                const relPath = relativePath ? `${relativePath}/${entry.name}` : entry.name;
+
+                if (entry.isDirectory()) {
+                    // Проверяем, есть ли в этой папке .md файл (это папка фигурки?)
+                    const hasMd = fs.readdirSync(fullPath).some(f => f.endsWith('.md'));
+                    if (hasMd) {
+                        // Папка с .md файлами — обрабатываем каждый
+                        const mdFiles = fs.readdirSync(fullPath).filter(f => f.endsWith('.md'));
+                        for (const mdFile of mdFiles) {
+                            const figureName = mdFile.replace(/\.md$/, '');
+                            const mdPath = path.join(fullPath, mdFile);
+                            const content = fs.readFileSync(mdPath, 'utf8');
+                            const folderPath = relativePath || null;
+
+                            // Валидация картинок
+                            const imageRegex = /!\[.*?\]\(\.\/images\/([^)]+)\)/g;
+                            let match;
+                            const imagesDir = path.join(fullPath, 'images');
+                            while ((match = imageRegex.exec(content)) !== null) {
+                                imagesReferenced++;
+                                const imageFile = match[1];
+                                const imagePath = path.join(imagesDir, imageFile);
+                                if (!fs.existsSync(imagePath)) {
+                                    brokenLinks.push(`${relPath}/${mdFile}: ./images/${imageFile}`);
+                                }
+                            }
+
+                            // Вставляем в БД
+                            db.prepare(`
+                                INSERT INTO figures (name, folder_path, content, status)
+                                VALUES (?, ?, ?, 'draft')
+                            `).run(figureName, folderPath, content);
+                            indexedCount++;
+                        }
+                    } else {
+                        // Проверяем, есть ли в папке подпапки (кроме images)
+                        const hasSubdirs = fs.readdirSync(fullPath).some(f => {
+                            const fullF = path.join(fullPath, f);
+                            return fs.statSync(fullF).isDirectory() && f !== 'images';
+                        });
+                        if (!hasSubdirs) {
+                            // Папка без .md и без подпапок — пустая фигурка
+                            const figureName = entry.name;
+                            const folderPath = relativePath || null;
+                            db.prepare(`
+            INSERT INTO figures (name, folder_path, content, status)
+            VALUES (?, ?, NULL, 'draft')
+        `).run(figureName, folderPath);
+                            indexedCount++;
+                        } else {
+                            // Обычная папка с подпапками — сканируем дальше
+                            scanDir(fullPath, relPath);
+                        }
+                    }
+                }
+            }
+        }
+
+        scanDir(targetPath, '');
+        db.exec('COMMIT');
+
+        // Сохраняем путь в БД
+        db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('figuresPath', ?)").run(targetPath);
+
+        console.log(`📁 Reindexed: ${indexedCount} figures, ${imagesReferenced} image refs, ${brokenLinks.length} broken`);
+        if (brokenLinks.length > 0) {
+            console.log(`⚠️ Broken image links:\n${brokenLinks.join('\n')}`);
+        }
+
+        return {
+            success: true,
+            figuresIndexed: indexedCount,
+            imagesReferenced,
+            brokenLinks: brokenLinks.length,
+            brokenLinksList: brokenLinks.slice(0, 50) // не больше 50 в ответе
+        };
+    } catch (e) {
+        db.exec('ROLLBACK');
+        console.error('Reindex error:', e);
+        return { success: false, error: (e as Error).message };
+    }
+});
+
 ipcMain.handle('folder:create', (_event, folderPath: string) => {
     const fullPath = path.join(figuresPath, folderPath);
     try {
@@ -295,8 +397,8 @@ ipcMain.handle('figure:renameFolder', (_event, folderPath: string, oldName: stri
         if (fs.existsSync(dir)) {
             fs.mkdirSync(path.dirname(newDir), { recursive: true });
             fs.renameSync(dir, newDir);
-            const oldMd = path.join(newDir, `${slugify(oldName)}.md`);
-            const newMd = path.join(newDir, `${slugify(newName)}.md`);
+            const oldMd = path.join(newDir, `${oldName}.md`);
+            const newMd = path.join(newDir, `${newName}.md`);
             if (fs.existsSync(oldMd)) {
                 fs.renameSync(oldMd, newMd);
             }

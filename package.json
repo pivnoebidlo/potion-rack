@@ -1,6 +1,6 @@
 {
   "name": "potion-rack",
-  "version": "0.3.5",
+  "version": "0.3.6",
   "type": "commonjs",
   "description": "Paint Manager for Miniatures",
   "author": {
@@ -23,6 +23,7 @@
   "build": {
     "appId": "com.potionrack.app",
     "productName": "Potion Rack",
+    "icon": "build/icon.png",
     "directories": {
       "output": "release"
     },
@@ -36,6 +37,7 @@
       "**/*.node"
     ],
     "mac": {
+      "icon": "build/icon.icns",
       "target": [
         "dmg",
         "zip"
@@ -46,12 +48,14 @@
       "identity": null
     },
     "win": {
+      "icon": "build/icon.ico",
       "target": [
         "nsis",
         "portable"
       ]
     },
     "linux": {
+      "icon": "build/icon.png",
       "target": [
         "AppImage",
         "deb"

@@ -153,4 +153,9 @@ export default {
     helpPreview: 'Просмотр / Правка',
     helpUndo: 'Отменить',
     helpRedo: 'Вернуть',
+    reindexFigures: 'Переиндексировать статьи',
+    reindexResult: 'Результат индексации',
+    figuresIndexed: 'Фигурок проиндексировано',
+    imagesReferenced: 'Ссылок на изображения',
+    brokenImageLinks: 'Битых ссылок',
 };
