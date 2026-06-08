@@ -1,21 +1,8 @@
 import { useState, useEffect } from 'react';
 import styles from './PaintModal.module.css';
 import { t } from '../i18n';
+import { Paint } from '../types/paint';
 
-interface Paint {
-    id?: number;
-    brand: string;
-    series?: string;
-    color_name: string;
-    article?: string;
-    base_color_id?: number;
-    rating?: number;
-    status?: string;
-    purchase_date?: string;
-    price?: number;
-    comment?: string;
-    color_hex?: string;
-}
 
 interface PaintModalProps {
     paint: Paint | null;
