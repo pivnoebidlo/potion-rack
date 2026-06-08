@@ -135,6 +135,7 @@ ipcMain.handle('article:read', (_event, folderPath: string, figureName: string) 
 });
 
 ipcMain.handle('article:write', (_event, folderPath: string, figureName: string, content: string) => {
+    if (!content || !content.trim()) return { success: false, error: 'Empty content' };
     const dir = getFigureDir(folderPath, figureName);
     const filePath = path.join(dir, `${slugify(figureName)}.md`);
     const imagesDir = path.join(dir, 'images');

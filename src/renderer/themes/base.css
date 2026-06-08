@@ -29,3 +29,6 @@ input, textarea, select, [contenteditable] {
     background: var(--success);
 }
 
+.cm-strikethrough {
+    text-decoration: line-through !important;
+}

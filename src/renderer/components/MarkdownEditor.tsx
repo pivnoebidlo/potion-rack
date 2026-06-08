@@ -88,6 +88,7 @@ export default function MarkdownEditor({ content, onChange, onSave, figureName, 
             '.cm-matchingBracket': { background: 'var(--accent-light)' },
             '.cm-heading': { textDecoration: 'none !important', borderBottom: 'none !important' },
             '.cm-headingMark': { textDecoration: 'none !important' },
+            '.cm-strikethrough': { textDecoration: 'line-through' },
         });
         const updateListener = EditorView.updateListener.of((update) => {
             if (update.docChanged) onChange(update.state.doc.toString());
@@ -120,6 +121,7 @@ export default function MarkdownEditor({ content, onChange, onSave, figureName, 
 
     useEffect(() => {
         if (content === lastSavedContent.current) return;
+        if (content.trim() === '') return;
         const timer = setTimeout(() => { lastSavedContent.current = content; onSave(); }, 500);
         return () => clearTimeout(timer);
     }, [content, onSave]);
@@ -133,33 +135,108 @@ export default function MarkdownEditor({ content, onChange, onSave, figureName, 
     useEffect(() => {
         const h = (e: KeyboardEvent) => {
             const mod = e.metaKey || e.ctrlKey; if (!mod) return;
-            if (e.key === 'e') { e.preventDefault(); e.stopPropagation(); setPreview(p => { if (p) setTimeout(() => editorViewRefInternal.current?.focus(), 50); return !p; }); return; }
+
+            if (e.code === 'KeyX' && e.shiftKey) {
+                e.preventDefault();
+                e.stopPropagation();
+                toggleWrap('~~');
+                return;
+            }
+            if (e.code === 'KeyE' && !e.shiftKey) {
+                e.preventDefault();
+                e.stopPropagation();
+                setPreview(p => { if (p) setTimeout(() => editorViewRefInternal.current?.focus(), 50); return !p; });
+                return;
+            }
+
             const v = editorViewRefInternal.current; if (!v?.hasFocus) return;
-            switch (e.key) {
-                case 's': e.preventDefault(); onSave(); break;
-                case 'b': e.preventDefault(); insertText('**', '**'); break;
-                case 'i': e.preventDefault(); insertText('*', '*'); break;
-                case 'x': e.preventDefault(); insertText('~~', '~~'); break;
-                case 'k': e.preventDefault(); insertText('`', '`'); break;
-                case 'u': e.preventDefault(); handleInsertLink(); break;
-                case 'l': e.preventDefault(); insertBlock('---', ''); break;
-                case '1': e.preventDefault(); insertLine('#'); break;
-                case '2': e.preventDefault(); insertLine('##'); break;
-                case '3': e.preventDefault(); insertLine('###'); break;
-                case 'q': e.preventDefault(); insertLine('>'); break;
-                case 'I': if (e.shiftKey) { e.preventDefault(); handleInsertImage(); } break;
+            switch (e.code) {
+                case 'KeyS':
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onSave();
+                    break;
+                case 'KeyB':
+                    e.preventDefault();
+                    e.stopPropagation();
+                    toggleWrap('**');
+                    break;
+                case 'KeyI':
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (e.shiftKey) {
+                        handleInsertImage();
+                    } else {
+                        toggleWrap('*');
+                    }
+                    break;
+                case 'KeyK':
+                    e.preventDefault();
+                    e.stopPropagation();
+                    toggleWrap('`');
+                    break;
+                case 'KeyU':
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleInsertLink();
+                    break;
+                case 'KeyL':
+                    e.preventDefault();
+                    e.stopPropagation();
+                    insertBlock('---', '');
+                    break;
+                case 'Digit1':
+                    e.preventDefault();
+                    e.stopPropagation();
+                    insertLine('#');
+                    break;
+                case 'Digit2':
+                    e.preventDefault();
+                    e.stopPropagation();
+                    insertLine('##');
+                    break;
+                case 'Digit3':
+                    e.preventDefault();
+                    e.stopPropagation();
+                    insertLine('###');
+                    break;
+                case 'KeyQ':
+                    e.preventDefault();
+                    e.stopPropagation();
+                    insertLine('>');
+                    break;
             }
         };
-        window.addEventListener('keydown', h);
-        return () => window.removeEventListener('keydown', h);
+        window.addEventListener('keydown', h, true);
+        return () => window.removeEventListener('keydown', h, true);
     }, [onSave]);
 
-    const insertText = useCallback((before: string, after = '') => {
+    const toggleWrap = useCallback((marker: string) => {
         const v = editorViewRefInternal.current; if (!v) return;
-        const { from, to } = v.state.selection.main; const s = v.state.sliceDoc(from, to);
-        v.dispatch({ changes: { from, to, insert: before + s + after }, selection: { anchor: from + before.length, head: from + before.length + s.length } });
+        const { from, to } = v.state.selection.main;
+        const s = v.state.sliceDoc(from, to);
+        const len = marker.length;
+
+        const before = v.state.sliceDoc(Math.max(0, from - len), from);
+        const after = v.state.sliceDoc(to, Math.min(v.state.doc.length, to + len));
+
+        if (before === marker && after === marker) {
+            v.dispatch({
+                changes: [
+                    { from: from - len, to: from },
+                    { from: to, to: to + len }
+                ],
+                selection: { anchor: from - len, head: to - len }
+            });
+        } else {
+            v.dispatch({
+                changes: { from, to, insert: marker + s + marker },
+                selection: { anchor: from + len, head: from + len + s.length }
+            });
+        }
         v.focus();
     }, []);
+
     const insertLine = useCallback((prefix: string) => {
         const v = editorViewRefInternal.current; if (!v) return;
         const line = v.state.doc.lineAt(v.state.selection.main.from);
@@ -229,9 +306,9 @@ export default function MarkdownEditor({ content, onChange, onSave, figureName, 
         <div className={styles.root}>
             <div className={styles.toolbar}>
                 <div className={styles.toolbarGroup}>
-                    <button className={styles.tbBtn} title="Bold (Cmd+B)" onClick={() => insertText('**', '**')}><strong>B</strong></button>
-                    <button className={styles.tbBtn} title="Italic (Cmd+I)" onClick={() => insertText('*', '*')}><em>I</em></button>
-                    <button className={styles.tbBtn} title="Strikethrough (Cmd+X)" onClick={() => insertText('~~', '~~')}><s>S</s></button>
+                    <button className={styles.tbBtn} title="Bold (Cmd+B)" onClick={() => toggleWrap('**')}><strong>B</strong></button>
+                    <button className={styles.tbBtn} title="Italic (Cmd+I)" onClick={() => toggleWrap('*')}><em>I</em></button>
+                    <button className={styles.tbBtn} title="Strikethrough (Shift+Cmd+X)" onClick={() => toggleWrap('~~')}><s>S</s></button>
                     <button className={styles.tbBtn} title="Horizontal line (Cmd+L)" onClick={() => insertBlock('---', '')}>—</button>
                 </div>
                 <div className={styles.toolbarGroup}>
@@ -243,7 +320,7 @@ export default function MarkdownEditor({ content, onChange, onSave, figureName, 
                     <button className={styles.tbBtn} title="Bullet list" onClick={() => insertLine('-')}>•</button>
                     <button className={styles.tbBtn} title="Numbered list" onClick={() => insertLine('1.')}>1.</button>
                     <button className={styles.tbBtn} title="Quote (Cmd+Q)" onClick={() => insertLine('>')}>❝</button>
-                    <button className={styles.tbBtn} title="Code (Cmd+K)" onClick={() => insertText('`', '`')}>&lt;/&gt;</button>
+                    <button className={styles.tbBtn} title="Code (Cmd+K)" onClick={() => toggleWrap('`')}>&lt;/&gt;</button>
                 </div>
                 <div className={styles.toolbarGroup}>
                     <button className={styles.tbBtn} title="Link (Cmd+U)" onClick={handleInsertLink}>🔗</button>
