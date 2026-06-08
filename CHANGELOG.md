@@ -1,66 +1,21 @@
-## 0.3.2
+## 0.3.3
 
 ### Added
-[+] Paint color hex field in paint modal with color picker
-[+] Color indicator dots in paints table (real color or base color)
-[+] Toggle switch for paint color dots in Settings → Appearance
-[+] Grid view for paints with color swatch cards
-[+] Left filter panel in Paints (collapsible, with actions)
-[+] Escape key to close paint modal
-[+] Clear button for purchase date in paint modal
+[+] Database path selection in Settings → Data
+[+] Sort bar in grid view with column selector and direction toggle
+[+] Toggle switch for grid sort bar in Settings → Appearance
+[+] Clear button for paint color hex field in modal
+[+] Import result dialog showing count of imported paints, images, and skipped duplicates
+[+] Crossed-out circle indicator for paints without color in grid view
 
 ### Changed
-[*] Date format from settings now applies to paints table
-[*] Paints toolbar replaced with left filter panel (consistent with Figures)
+[*] Color hex clear button now positioned inside input (consistent with other fields)
+[*] Import confirmation now shows results in a modal instead of disappearing silently
 
 ### Fixed
-[-] Clearing date in paint modal now properly saves as NULL
+[-] Clearing paint color hex in modal now properly saves as NULL
+[-] Grid view cards without color now show transparent background instead of muted color
+[-] English locale key "en" renamed to "paintColor" (typo fix)
 
-## 0.3.1
-
-[+] Shop link field in figure card and info panel
-[+] Purchase date and completion date fields in figure modal and info panel
-[+] Date format setting (auto / dd.mm.yyyy / yyyy-mm-dd / mm/dd/yyyy)
-[+] Clear buttons for date fields
-[+] Table insertion button with size dialog (draft — visual editing not yet available)
-[\*] Material now defaults to resin instead of plastic
-[\*] Localized material names in info panel
-[\*] Replaced "Comment" field with "Shop link"
-[–] Editor bugs in Figures (input focus, preview/edit switching)
-
-## 0.3.0
-
-[+] New right panel in Figures: folder statistics, figure info, table of contents, help
-[+] Toggle switches for folder counters and status indicators in Settings
-[+] Export to PDF with images
-[+] Drag-and-drop for figures and folders in the tree
-[+] WYSIWYM editor with live Markdown formatting, toolbar, and hotkeys
-[\*] Redesigned right panel with collapsible sections
-[\*] Recursive rename/delete for folders with nested content
-[\*] CSS icons for folders and arrows (replaced emoji)
-[\*] Various visual improvements in Figures
-[-] Removed old Vanilla JS components and unused files
-[-] Removed Toast notifications from Settings
-[-] Removed photo gallery from right panel (duplicated editor)
-
-## 0.2.1
-
-[+] WYSIWYM Markdown editor
-[+] Status indicators in the folder tree
-[+] Figure counters next to folder names
-[+] Context menu in the folder tree (right click)
-[+] Editor hotkeys
-[+] Autosave (500ms debounce)
-[+] Editor toolbar
-[\*] Fixed keyboard navigation in the folder tree
-[\*] Fixed sorting: folders first, then figures, alphabetical
-[\*] Fixed recursive delete for nested folders
-[\*] Various editor bugfixes
-
-## 0.2.0
-
-[+] Full rewrite from Vanilla JS to React
-[+] New miniatures editor with Markdown support
-[+] Redesigned Settings dialog
-[\*] Visual improvements across the app
-[\*] Multiple bugfixes
+### Removed
+[-] Settings table excluded from backup export (prevents potential conflicts on import)

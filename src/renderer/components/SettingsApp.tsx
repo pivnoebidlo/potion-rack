@@ -11,11 +11,13 @@ export default function SettingsApp() {
     const [version, setVersion] = useState('');
     const [importConfirmOpen, setImportConfirmOpen] = useState(false);
     const [importFile, setImportFile] = useState<File | null>(null);
+    const [importResult, setImportResult] = useState<{ paintsImported: number; imagesImported: number; skippedDuplicates: number } | null>(null);
     const [figuresPath, setFiguresPath] = useState('');
     const [dbPath, setDbPath] = useState('');
     const [showStatusIndicators, setShowStatusIndicators] = useState(true);
     const [showCounters, setShowCounters] = useState(true);
     const [showPaintColorDots, setShowPaintColorDots] = useState(true);
+    const [showGridSortBar, setShowGridSortBar] = useState(true);
     const [dateFormat, setDateFormat] = useState('auto');
 
     const $t = t();
@@ -69,6 +71,11 @@ export default function SettingsApp() {
     useEffect(() => {
         const saved = localStorage.getItem('potion-rack-show-paint-color-dots');
         if (saved !== null) setShowPaintColorDots(saved === 'true');
+    }, []);
+
+    useEffect(() => {
+        const saved = localStorage.getItem('potion-rack-show-grid-sort-bar');
+        if (saved !== null) setShowGridSortBar(saved === 'true');
     }, []);
 
     useEffect(() => {
@@ -150,14 +157,29 @@ export default function SettingsApp() {
         try {
             const text = await importFile.text();
             const data = JSON.parse(text);
-            await fetch('http://127.0.0.1:8765/api/backup/import', {
+            const res = await fetch('http://127.0.0.1:8765/api/backup/import', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data),
             });
+            const result = await res.json();
+            if (res.ok) {
+                setImportResult({
+                    paintsImported: result.paintsImported,
+                    imagesImported: result.imagesImported,
+                    skippedDuplicates: result.skippedDuplicates,
+                });
+            } else {
+                alert(result.error || 'Import failed');
+                setImportConfirmOpen(false);
+                setImportFile(null);
+            }
+        } catch (err) {
+            console.error('Import failed:', err);
+            alert('Import failed');
             setImportConfirmOpen(false);
             setImportFile(null);
-        } catch (err) { console.error('Import failed:', err); }
+        }
     };
 
     const handleReset = async () => {
@@ -271,6 +293,18 @@ export default function SettingsApp() {
                                     </label>
                                 </div>
                             </div>
+                            <div className={styles.setting}>
+                                <div className={styles.settingInfo}>
+                                    <div className={styles.settingLabel}>{$t.showGridSortBar || 'Панель сортировки в grid'}</div>
+                                    <div className={styles.settingDesc}>{$t.showGridSortBarDesc || 'Показывать панель сортировки в виде карточек (grid).'}</div>
+                                </div>
+                                <div className={styles.settingControl}>
+                                    <label className={styles.toggle}>
+                                        <input type="checkbox" checked={showGridSortBar} onChange={e => { setShowGridSortBar(e.target.checked); localStorage.setItem('potion-rack-show-grid-sort-bar', e.target.checked.toString()); }} />
+                                        <span className={styles.slider}></span>
+                                    </label>
+                                </div>
+                            </div>
                         </div>
                     )}
 
@@ -329,7 +363,7 @@ export default function SettingsApp() {
                 </div>
             </div>
 
-            {importConfirmOpen && (
+            {importConfirmOpen && !importResult && (
                 <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }}>
                     <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: 'var(--radius-xl)', padding: '24px', minWidth: '400px', boxShadow: '0 8px 24px rgba(0,0,0,0.5)' }}>
                         <div style={{ fontSize: 'var(--font-size-lg)', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '12px' }}>{$t.importBackup}</div>
@@ -337,6 +371,28 @@ export default function SettingsApp() {
                         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
                             <button onClick={() => { setImportConfirmOpen(false); setImportFile(null); }} style={{ padding: '8px 16px', background: 'var(--bg-hover)', color: 'var(--text-primary)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: 'var(--font-size-sm)' }}>{$t.cancel}</button>
                             <button onClick={performImport} style={{ padding: '8px 16px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: 'var(--font-size-sm)' }}>{$t.import}</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {importResult && (
+                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }}>
+                    <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: 'var(--radius-xl)', padding: '24px', minWidth: '400px', boxShadow: '0 8px 24px rgba(0,0,0,0.5)' }}>
+                        <div style={{ fontSize: 'var(--font-size-lg)', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '16px' }}>✅ {$t.importBackup}</div>
+                        <div style={{ color: 'var(--text-secondary)', marginBottom: '8px', fontSize: 'var(--font-size-sm)' }}>
+                            {$t.importedPaints || 'Импортировано красок'}: <strong>{importResult.paintsImported}</strong>
+                        </div>
+                        <div style={{ color: 'var(--text-secondary)', marginBottom: '8px', fontSize: 'var(--font-size-sm)' }}>
+                            {$t.importedImages || 'Фото'}: <strong>{importResult.imagesImported}</strong>
+                        </div>
+                        {importResult.skippedDuplicates > 0 && (
+                            <div style={{ color: 'var(--text-muted)', marginBottom: '16px', fontSize: 'var(--font-size-sm)' }}>
+                                {$t.skippedDuplicates || 'Пропущено дубликатов'}: <strong>{importResult.skippedDuplicates}</strong>
+                            </div>
+                        )}
+                        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                            <button onClick={() => { setImportResult(null); setImportConfirmOpen(false); setImportFile(null); }} style={{ padding: '8px 16px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: 'var(--font-size-sm)' }}>OK</button>
                         </div>
                     </div>
                 </div>

@@ -55,10 +55,10 @@ seedDatabase(db);
 
 // Setup routes
 setupPaintRoutes(app);
-setupImageRoutes(app, db);
-setupSettingsRoutes(app, db);
-setupStatsRoutes(app, db);
-setupBackupRoutes(app, db);
+setupImageRoutes(app);
+setupSettingsRoutes(app);
+setupStatsRoutes(app);
+setupBackupRoutes(app);
 setupFiguresRoutes(app);
 
 export function startServer() {

@@ -1,16 +1,11 @@
 import { Request, Response } from 'express';
-import Database from 'better-sqlite3';
+import { getDatabase } from '../database/connection';
 
 export class ImagesController {
-    private db: Database.Database;
-
-    constructor(db: Database.Database) {
-        this.db = db;
-    }
-
     getAll = (req: Request, res: Response): void => {
         try {
-            const rows = this.db.prepare(`
+            const db = getDatabase();
+            const rows = db.prepare(`
                 SELECT id, paint_id, content_type, filename, is_primary, created_at, image_data
                 FROM paint_images WHERE paint_id = ?
                 ORDER BY is_primary DESC, created_at ASC
@@ -35,7 +30,8 @@ export class ImagesController {
 
     getOne = (req: Request, res: Response): void => {
         try {
-            const row = this.db.prepare(`SELECT image_data, content_type FROM paint_images WHERE id = ? AND paint_id = ?`)
+            const db = getDatabase();
+            const row = db.prepare(`SELECT image_data, content_type FROM paint_images WHERE id = ? AND paint_id = ?`)
                 .get(req.params.image_id, req.params.id) as { image_data: Buffer; content_type: string };
 
             if (!row) {
@@ -63,10 +59,11 @@ export class ImagesController {
         const imageBuffer = Buffer.from(base64Data, 'base64');
 
         try {
-            const countRow = this.db.prepare(`SELECT COUNT(*) as cnt FROM paint_images WHERE paint_id = ?`).get(req.params.id) as { cnt: number };
+            const db = getDatabase();
+            const countRow = db.prepare(`SELECT COUNT(*) as cnt FROM paint_images WHERE paint_id = ?`).get(req.params.id) as { cnt: number };
             const isPrimary = countRow.cnt === 0 ? 1 : 0;
 
-            const result = this.db.prepare(`
+            const result = db.prepare(`
                 INSERT INTO paint_images (paint_id, image_data, content_type, filename, is_primary)
                 VALUES (?, ?, ?, ?, ?)
             `).run(req.params.id, imageBuffer, content_type || 'image/jpeg', filename || null, isPrimary);
@@ -80,7 +77,8 @@ export class ImagesController {
 
     delete = (req: Request, res: Response): void => {
         try {
-            this.db.prepare(`DELETE FROM paint_images WHERE id = ? AND paint_id = ?`).run(req.params.image_id, req.params.id);
+            const db = getDatabase();
+            db.prepare(`DELETE FROM paint_images WHERE id = ? AND paint_id = ?`).run(req.params.image_id, req.params.id);
             res.json({ message: 'Image deleted' });
         } catch (err) {
             console.error('DELETE /api/paints/:id/images/:image_id error:', err);
@@ -90,8 +88,9 @@ export class ImagesController {
 
     setPrimary = (req: Request, res: Response): void => {
         try {
-            this.db.prepare(`UPDATE paint_images SET is_primary = 0 WHERE paint_id = ?`).run(req.params.id);
-            this.db.prepare(`UPDATE paint_images SET is_primary = 1 WHERE id = ? AND paint_id = ?`).run(req.params.image_id, req.params.id);
+            const db = getDatabase();
+            db.prepare(`UPDATE paint_images SET is_primary = 0 WHERE paint_id = ?`).run(req.params.id);
+            db.prepare(`UPDATE paint_images SET is_primary = 1 WHERE id = ? AND paint_id = ?`).run(req.params.image_id, req.params.id);
             res.json({ message: 'Primary image updated' });
         } catch (err) {
             console.error('PUT /api/paints/:id/images/:image_id/primary error:', err);
