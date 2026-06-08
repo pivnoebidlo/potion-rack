@@ -142,7 +142,7 @@ export const wysiwymPlugin = ViewPlugin.fromClass(class {
                 const cursorInside = cursor >= markerStart && cursor <= line.to;
                 items.push({ from: markerStart, to: markerEnd, decoration: Decoration.mark({ attributes: { style: cursorInside ? HIDDEN_MARKER_VISIBLE : HIDDEN_MARKER } }) });
                 items.push({ from: markerStart, to: markerStart, decoration: Decoration.widget({ widget: new class extends WidgetType { toDOM() { const d = document.createElement('span'); d.textContent = '•'; d.style.color = 'var(--list-marker, var(--accent))'; d.style.marginRight = '8px'; return d; } }, side: 0 }) });
-                continue;
+                // Не делаем continue — позволяем инлайн-форматированию обработать текст после маркера
             }
             const inlineRegex = /(\*\*(.+?)\*\*)|(\*(.+?)\*)|(~~(.+?)~~)|(`(.+?)`)/g;
             let match;
@@ -162,7 +162,9 @@ export const wysiwymPlugin = ViewPlugin.fromClass(class {
                     items.push({ from: to - 1, to, decoration: Decoration.mark({ attributes: { style: markerStyle } }) });
                 } else if (strike) {
                     items.push({ from, to: from + 2, decoration: Decoration.mark({ attributes: { style: markerStyle } }) });
-                    items.push({ from: from + 2, to: to - 2, decoration: Decoration.mark({ attributes: { style: 'text-decoration: line-through; color: var(--text-muted);' } }) });
+                    items.push({ from: from + 2, to: to - 2, decoration: Decoration.mark({ attributes: {
+                                style: 'text-decoration: line-through !important; color: var(--text-muted);'
+                            } }) });
                     items.push({ from: to - 2, to, decoration: Decoration.mark({ attributes: { style: markerStyle } }) });
                 } else if (code) {
                     items.push({ from, to: from + 1, decoration: Decoration.mark({ attributes: { style: markerStyle } }) });

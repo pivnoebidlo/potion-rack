@@ -1,7 +1,6 @@
 import { marked } from 'marked';
 import { EditorView } from '@codemirror/view';
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { fetchFigures, updateFigureAPI, deleteFigureAPI, createFigureAPI, Figure } from '../services/apiFigures';
 import styles from './FiguresApp.module.css';
 import FigureModal from './FigureModal';
 import ConfirmModal from './ConfirmModal';
@@ -11,6 +10,8 @@ import ContextMenu from './ContextMenu';
 import MarkdownEditor from './MarkdownEditor';
 import RightPanel from './RightPanel';
 import { t } from '../i18n';
+import { fetchFigures, updateFigureAPI, deleteFigureAPI, createFigureAPI } from '../services/apiFigures';
+import { Figure } from '../types/figure';
 
 export default function FiguresApp() {
     const $t = t();
@@ -97,6 +98,7 @@ export default function FiguresApp() {
 
     const handleSave = async () => {
         if (!selected) return;
+        if (!editorContent.trim()) return;
         if ((window as any).electronAPI?.writeArticle) await (window as any).electronAPI.writeArticle(selected.folder_path || '', selected.name, editorContent);
         await updateFigureAPI(selected.id, { content: editorContent });
         await loadFigures();
@@ -232,22 +234,6 @@ export default function FiguresApp() {
         view.focus();
     };
 
-    const statusTag = (s: string) => { if (s === 'draft') return styles.tagNew; if (s === 'in-progress') return styles.tagProgress; if (s === 'completed') return styles.tagDone; return ''; };
-    const statusLabel = (s: string) => { if (s === 'draft') return $t.draft; if (s === 'in-progress') return $t.inProgress; if (s === 'completed') return $t.completed; return s; };
-    const materialLabel = (m: string) => { switch (m) { case 'plastic': return $t.plastic; case 'resin': return $t.resin; case 'metal': return $t.metal; default: return m; } };
-    const formatDate = (dateStr?: string) => {
-        if (!dateStr) return '';
-        const fmt = localStorage.getItem('potion-rack-date-format') || 'auto';
-        const date = new Date(dateStr);
-        if (isNaN(date.getTime())) return dateStr;
-        switch (fmt) {
-            case 'dd.mm.yyyy': return `${String(date.getDate()).padStart(2, '0')}.${String(date.getMonth() + 1).padStart(2, '0')}.${date.getFullYear()}`;
-            case 'yyyy-mm-dd': return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-            case 'mm/dd/yyyy': return `${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')}/${date.getFullYear()}`;
-            default: return new Intl.DateTimeFormat(navigator.language).format(date);
-        }
-    };
-
     const folderStats = selectedFolder ? {
         total: allFiguresInFolder.length,
         inProgress: allFiguresInFolder.filter(f => f.status === 'in-progress').length,
@@ -310,10 +296,6 @@ export default function FiguresApp() {
                     onEditFigure={(f) => { setEditingFigure(f); setModalOpen(true); }}
                     onDeleteFigure={handleDeleteFigure}
                     onScrollToLine={handleScrollToLine}
-                    statusTag={statusTag}
-                    statusLabel={statusLabel}
-                    materialLabel={materialLabel}
-                    formatDate={formatDate}
                 />
             </div>
             {modalOpen && <FigureModal figure={editingFigure} onSave={async (data) => { if (editingFigure) { await updateFigureAPI(editingFigure.id, data); } else { await createFigureAPI({ ...data, folder_path: newFigureFolder } as any); } await loadFigures(); }} onClose={() => setModalOpen(false)} />}

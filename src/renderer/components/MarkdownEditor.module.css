@@ -129,3 +129,7 @@
     border: 1px solid var(--border);
     padding: 4px 8px;
 }
+
+.editorWrapper :global(.cm-strikethrough) {
+    text-decoration: line-through !important;
+}
