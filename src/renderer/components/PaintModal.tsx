@@ -61,10 +61,14 @@ export default function PaintModal({ paint, brands, series, baseColors, onSave, 
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if (e.key === 'Escape') onClose();
+            if ((e.metaKey || e.ctrlKey) && e.key === 's') {
+                e.preventDefault();
+                handleSave();
+            }
         };
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [onClose]);
+    }, [onClose, brand, seriesVal, colorName, article, baseColorId, rating, status, purchaseDate, price, comment, colorHex]);
 
     const handleSave = async () => {
         if (!brand.trim() || !colorName.trim()) return;
@@ -73,14 +77,14 @@ export default function PaintModal({ paint, brands, series, baseColors, onSave, 
             await onSave({
                 id: paint?.id,
                 brand: brand.trim(),
-                series: seriesVal.trim() || undefined,
+                series: seriesVal.trim() || null,
                 color_name: colorName.trim(),
-                article: article.trim() || undefined,
-                base_color_id: baseColorId ? Number(baseColorId) : undefined,
+                article: article.trim() || null,
+                base_color_id: baseColorId ? Number(baseColorId) : null,
                 rating,
                 status,
                 purchase_date: purchaseDate || null,
-                price: price ? parseFloat(price) : undefined,
+                price: price ? parseFloat(price) : null,
                 comment: comment.trim() || undefined,
                 color_hex: colorHex || null,
             });
@@ -108,7 +112,10 @@ export default function PaintModal({ paint, brands, series, baseColors, onSave, 
                         </div>
                         <div className={styles.group}>
                             <label className={styles.label}>{$t.series}</label>
-                            <input className={styles.input} value={seriesVal} onChange={e => setSeriesVal(e.target.value)} placeholder={$t.series + '...'} list="series-list" />
+                            <div style={{position:'relative'}}>
+                                <input className={styles.input} style={{width:'100%', paddingRight:24}} value={seriesVal} onChange={e => setSeriesVal(e.target.value)} placeholder={$t.series + '...'} list="series-list" />
+                                {seriesVal && <button onClick={() => setSeriesVal('')} style={{position:'absolute', right:6, top:'50%', transform:'translateY(-50%)', background:'none', border:'none', color:'var(--text-muted)', cursor:'pointer', fontSize:14, lineHeight:1}}>✕</button>}
+                            </div>
                             <datalist id="series-list">{series.map(s => <option key={s} value={s} />)}</datalist>
                         </div>
                     </div>
@@ -117,17 +124,22 @@ export default function PaintModal({ paint, brands, series, baseColors, onSave, 
                         <input className={styles.input} value={colorName} onChange={e => setColorName(e.target.value)} placeholder="e.g. Mephiston Red" />
                     </div>
                     <div className={styles.group}>
-                        <label className={styles.label}>Цвет краски</label>
+                        <label className={styles.label}>{$t.paintColor || 'Цвет краски'}</label>
                         <div style={{display:'flex', gap:8, alignItems:'center'}}>
                             <input type="color" value={colorHex || '#000000'} onChange={e => setColorHex(e.target.value)} style={{width:36, height:36, padding:0, border:'1px solid var(--border)', borderRadius:'var(--radius-sm)', cursor:'pointer', background:'none'}} />
-                            <input className={styles.input} value={colorHex} onChange={e => setColorHex(e.target.value)} placeholder="#RRGGBB" style={{flex:1}} />
-                            {colorHex && <button onClick={() => setColorHex('')} style={{background:'none', border:'none', color:'var(--text-muted)', cursor:'pointer', fontSize:14}}>✕</button>}
+                            <div style={{position:'relative', flex:1}}>
+                                <input className={styles.input} value={colorHex} onChange={e => setColorHex(e.target.value)} placeholder="#RRGGBB" style={{width:'100%', paddingRight:24}} />
+                                {colorHex && <button onClick={() => setColorHex('')} style={{position:'absolute', right:6, top:'50%', transform:'translateY(-50%)', background:'none', border:'none', color:'var(--text-muted)', cursor:'pointer', fontSize:14, lineHeight:1}}>✕</button>}
+                            </div>
                         </div>
                     </div>
                     <div className={styles.row}>
                         <div className={styles.group}>
                             <label className={styles.label}>{$t.article}</label>
-                            <input className={styles.input} value={article} onChange={e => setArticle(e.target.value)} placeholder="e.g. 22-03" />
+                            <div style={{position:'relative'}}>
+                                <input className={styles.input} style={{width:'100%', paddingRight:24}} value={article} onChange={e => setArticle(e.target.value)} placeholder="e.g. 22-03" />
+                                {article && <button onClick={() => setArticle('')} style={{position:'absolute', right:6, top:'50%', transform:'translateY(-50%)', background:'none', border:'none', color:'var(--text-muted)', cursor:'pointer', fontSize:14, lineHeight:1}}>✕</button>}
+                            </div>
                         </div>
                         <div className={styles.group}>
                             <label className={styles.label}>{$t.baseColor}</label>
@@ -149,7 +161,10 @@ export default function PaintModal({ paint, brands, series, baseColors, onSave, 
                         </div>
                         <div className={styles.group}>
                             <label className={styles.label}>{$t.price}</label>
-                            <input className={styles.input} value={price} onChange={e => setPrice(e.target.value)} placeholder="0.00" />
+                            <div style={{position:'relative'}}>
+                                <input className={styles.input} style={{width:'100%', paddingRight:24}} value={price} onChange={e => setPrice(e.target.value)} placeholder="0.00" />
+                                {price && <button onClick={() => setPrice('')} style={{position:'absolute', right:6, top:'50%', transform:'translateY(-50%)', background:'none', border:'none', color:'var(--text-muted)', cursor:'pointer', fontSize:14, lineHeight:1}}>✕</button>}
+                            </div>
                         </div>
                     </div>
                     <div className={styles.row}>

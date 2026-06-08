@@ -41,6 +41,10 @@ export default function PaintsApp() {
         return localStorage.getItem('potion-rack-show-paint-color-dots') !== 'false';
     });
 
+    const [showGridSortBar, setShowGridSortBar] = useState(() => {
+        return localStorage.getItem('potion-rack-show-grid-sort-bar') !== 'false';
+    });
+
     const [brandFilter, setBrandFilter] = useState('');
     const [seriesFilter, setSeriesFilter] = useState('');
     const [baseColorFilter, setBaseColorFilter] = useState('');
@@ -90,6 +94,12 @@ export default function PaintsApp() {
     useEffect(() => { loadPaints(); }, [loadPaints]);
     useEffect(() => { if (!loading && paints.length > 0 && selectedId === null) setSelectedId(paints[0].id); }, [loading, paints, selectedId]);
     useEffect(() => { const saved = localStorage.getItem('potion-rack-show-paint-color-dots'); if (saved !== null) setShowColorDots(saved === 'true'); }, []);
+    useEffect(() => {
+        const saved = localStorage.getItem('potion-rack-show-paint-color-dots');
+        if (saved !== null) setShowColorDots(saved === 'true');
+        const savedSortBar = localStorage.getItem('potion-rack-show-grid-sort-bar');
+        if (savedSortBar !== null) setShowGridSortBar(savedSortBar === 'true');
+    }, []);
 
     useEffect(() => {
         if (selectedRowRef.current && tableContainerRef.current) {
@@ -304,7 +314,7 @@ export default function PaintsApp() {
                                 {filtered.map(paint => (
                                     <tr key={paint.id} ref={selectedId === paint.id ? selectedRowRef : null} className={`${styles.tableRow} ${selectedId === paint.id ? styles.tableRowSelected : ''}`} onClick={() => setSelectedId(paint.id)} onDoubleClick={() => { setEditingPaint(paint); setModalOpen(true); }}>
                                         <td className={styles.tableCell}>{paint.brand}</td><td className={styles.tableCell}>{paint.series || '-'}</td>
-                                        <td className={styles.tableCell}><span style={{display:'inline-flex', alignItems:'center', gap:6}}>{showColorDots && ((paint as any).color_hex || paint.base_color_id) && (<span style={{width:12, height:12, borderRadius:'50%', background: (paint as any).color_hex || getBaseColorHex(paint.base_color_id), flexShrink:0, border:'1px solid var(--border-light)'}} />)}{paint.color_name}</span></td>
+                                        <td className={styles.tableCell}><span style={{display:'inline-flex', alignItems:'center', gap:6}}>{showColorDots && ((paint as any).color_hex || paint.base_color_id) ? (<span style={{width:12, height:12, borderRadius:'50%', background: (paint as any).color_hex || getBaseColorHex(paint.base_color_id), flexShrink:0, border: '1px dashed var(--text-muted)'}} />) : showColorDots && (<span style={{width:12, height:12, borderRadius:'50%', background:'transparent', flexShrink:0, border:'1px dashed var(--text-muted)', position:'relative'}}><span style={{position:'absolute', top:'50%', left:'50%', transform:'translate(-50%,-50%)', color:'var(--text-muted)', fontSize:8}}>✕</span></span>)}{paint.color_name}</span></td>
                                         <td className={styles.tableCell}>{paint.article || '-'}</td><td className={styles.tableCell}>{paint.base_color_name || '-'}</td><td className={styles.tableCell}>{formatDate(paint.purchase_date)}</td><td className={styles.tableCell}>{paint.price != null ? paint.price : '-'}</td>
                                         <td className={styles.tableCell} onClick={e => e.stopPropagation()}>{Array.from({ length: 5 }, (_, i) => <span key={i} onClick={() => handleUpdateRating(paint.id, i + 1)} style={{ cursor: 'pointer', color: i < (paint.rating || 0) ? 'var(--star-active)' : 'var(--star-inactive)', fontSize: '16px' }}>★</span>)}</td>
                                         <td className={styles.tableCell} onClick={e => e.stopPropagation()}><select value={paint.status || 'instock'} onChange={(e) => handleUpdateStatus(paint.id, e.target.value)} style={{ background: 'var(--bg-input)', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)', fontSize: 'var(--font-size-sm)', padding: '2px 4px', cursor: 'pointer', outline: 'none' }}><option value="instock">{$t.inStock}</option><option value="low">{$t.low}</option><option value="out">{$t.outOfStock}</option><option value="ordered">{$t.ordered}</option></select></td>
@@ -314,19 +324,65 @@ export default function PaintsApp() {
                                 </tbody>
                             </table>
                         ) : (
-                            <div className={styles.grid}>
-                                {filtered.map(paint => (
-                                    <div key={paint.id} className={`${styles.card} ${selectedId === paint.id ? styles.cardSelected : ''}`} onClick={() => setSelectedId(paint.id)} onDoubleClick={() => { setEditingPaint(paint); setModalOpen(true); }}>
-                                        <div className={styles.cardTop}><div className={styles.cardSwatch} style={{ background: (paint as any).color_hex || getBaseColorHex(paint.base_color_id) }} /><span className={`${styles.statusBadge} ${paint.status === 'instock' ? styles.statusOk : paint.status === 'low' ? styles.statusLow : paint.status === 'out' ? styles.statusOut : styles.statusOrdered}`}>{paint.status === 'instock' ? $t.inStock : paint.status === 'low' ? $t.low : paint.status === 'out' ? $t.outOfStock : $t.ordered}</span></div>
-                                        <div className={styles.cardName}>{paint.color_name}</div>
-                                        <div className={styles.cardBrand}>{paint.brand}{paint.series ? ` · ${paint.series}` : ''}</div>
-                                        <div className={styles.cardMeta}>
-                                            <span className={styles.cardStars} onClick={e => e.stopPropagation()}>{Array.from({ length: 5 }, (_, i) => (<span key={i} onClick={() => handleUpdateRating(paint.id, i + 1)} style={{ cursor: 'pointer', color: i < (paint.rating || 0) ? 'var(--star-active)' : 'var(--star-inactive)' }}>★</span>))}</span>
-                                            {paint.price != null && <span>{paint.price}</span>}
+                            <>
+                            {showGridSortBar && (
+                                <div className={styles.sortBar}>
+                                    <span className={styles.sortLabel}>{$t.sortBy || 'Сортировка'}</span>
+                                    <select
+                                        className={styles.sortSelect}
+                                        value={sortColumn}
+                                        onChange={e => setSortColumn(e.target.value)}
+                                    >
+                                        <option value="brand">{$t.brand}</option>
+                                        <option value="series">{$t.series}</option>
+                                        <option value="color_name">{$t.colorName}</option>
+                                        <option value="article">{$t.article}</option>
+                                        <option value="base_color_name">{$t.baseColor}</option>
+                                        <option value="purchase_date">{$t.purchaseDate}</option>
+                                        <option value="price">{$t.price}</option>
+                                        <option value="rating">{$t.rating}</option>
+                                        <option value="status">{$t.status}</option>
+                                    </select>
+                                    <button
+                                        className={styles.sortDirBtn}
+                                        onClick={() => setSortDirection(d => d === 'asc' ? 'desc' : 'asc')}
+                                        title={sortDirection === 'asc' ? '↑' : '↓'}
+                                    >
+                                        {sortDirection === 'asc' ? '↑' : '↓'}
+                                    </button>
+                                </div>
+                                )}
+                                <div className={styles.grid}>
+                                    {filtered.map(paint => (
+                                        <div key={paint.id} className={`${styles.card} ${selectedId === paint.id ? styles.cardSelected : ''}`} onClick={() => setSelectedId(paint.id)} onDoubleClick={() => { setEditingPaint(paint); setModalOpen(true); }}>
+                                            <div
+                                                className={styles.cardSwatch}
+                                                style={{
+                                                    background: (paint as any).color_hex
+                                                        ? (paint as any).color_hex
+                                                        : paint.base_color_id
+                                                            ? getBaseColorHex(paint.base_color_id)
+                                                            : 'transparent',
+                                                }}
+                                            >
+                                                {!((paint as any).color_hex || paint.base_color_id) && (
+                                                    <span style={{
+                                                        color: 'var(--text-muted)',
+                                                        fontSize: 14,
+                                                        lineHeight: 1,
+                                                    }}>✕</span>
+                                                )}
+                                            </div>
+                                            <div className={styles.cardName}>{paint.color_name}</div>
+                                            <div className={styles.cardBrand}>{paint.brand}{paint.series ? ` · ${paint.series}` : ''}</div>
+                                            <div className={styles.cardMeta}>
+                                                <span className={styles.cardStars} onClick={e => e.stopPropagation()}>{Array.from({ length: 5 }, (_, i) => (<span key={i} onClick={() => handleUpdateRating(paint.id, i + 1)} style={{ cursor: 'pointer', color: i < (paint.rating || 0) ? 'var(--star-active)' : 'var(--star-inactive)' }}>★</span>))}</span>
+                                                {paint.price != null && <span>{paint.price}</span>}
+                                            </div>
                                         </div>
-                                    </div>
-                                ))}
-                            </div>
+                                    ))}
+                                </div>
+                            </>
                         )}
                         {filtered.length === 0 && !loading && <div className={styles.emptyState}>{$t.noPaints}</div>}
                     </div>

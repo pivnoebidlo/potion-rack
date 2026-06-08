@@ -1,24 +1,12 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-// noinspection SqlDialectInspection,SqlNoDataSourceInspection
-
 import { Request, Response } from 'express';
-import Database from 'better-sqlite3';
+import { getDatabase } from '../database/connection';
 
 export class BackupController {
-    private db: Database.Database;
-
-    constructor(db: Database.Database) {
-        this.db = db;
-    }
-
     exportBackup = (req: Request, res: Response): void => {
         try {
-            const paints = this.db.prepare(`SELECT * FROM paints ORDER BY id`).all();
-            const images = this.db.prepare(`SELECT id, paint_id, content_type, filename, is_primary, created_at, image_data FROM paint_images`).all();
-            const settingsRows = this.db.prepare(`SELECT key, value FROM settings`).all() as { key: string; value: string }[];
-
-            const settingsObj: Record<string, string> = {};
-            settingsRows.forEach(s => { settingsObj[s.key] = s.value; });
+            const db = getDatabase();
+            const paints = db.prepare(`SELECT * FROM paints ORDER BY id`).all();
+            const images = db.prepare(`SELECT id, paint_id, content_type, filename, is_primary, created_at, image_data FROM paint_images`).all();
 
             const imagesWithBase64 = (images as any[]).map(img => ({
                 ...img,
@@ -29,8 +17,7 @@ export class BackupController {
                 version: '1.0',
                 exportedAt: new Date().toISOString(),
                 paints: paints,
-                images: imagesWithBase64,
-                settings: settingsObj
+                images: imagesWithBase64
             };
 
             console.log(`📦 Exporting backup with ${(paints as any[]).length} paints and ${(images as any[]).length} images`);
@@ -54,22 +41,22 @@ export class BackupController {
         console.log(`   Images: ${backup.images?.length || 0}`);
 
         try {
-            this.db.exec(`BEGIN TRANSACTION`);
+            const db = getDatabase();
+            db.exec(`BEGIN TRANSACTION`);
 
             let importedCount = 0;
             let skippedCount = 0;
             let importedImagesCount = 0;
 
-            const getPaintStmt = this.db.prepare(`SELECT id FROM paints WHERE brand = ? AND color_name = ? COLLATE NOCASE`);
-            const insertPaintStmt = this.db.prepare(`
+            const getPaintStmt = db.prepare(`SELECT id FROM paints WHERE brand = ? AND color_name = ? COLLATE NOCASE`);
+            const insertPaintStmt = db.prepare(`
                 INSERT INTO paints (brand, series, color_name, article, base_color_id, rating, status, price, purchase_place, purchase_date, comment)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `);
-            const insertImageStmt = this.db.prepare(`
+            const insertImageStmt = db.prepare(`
                 INSERT INTO paint_images (paint_id, image_data, content_type, filename, is_primary)
                 VALUES (?, ?, ?, ?, ?)
             `);
-            const upsertSettingStmt = this.db.prepare(`INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)`);
 
             for (const paint of (backup.paints || [])) {
                 const existing = getPaintStmt.get(paint.brand, paint.color_name);
@@ -102,11 +89,7 @@ export class BackupController {
                 }
             }
 
-            for (const [key, value] of Object.entries(backup.settings || {})) {
-                upsertSettingStmt.run(key, String(value));
-            }
-
-            this.db.exec(`COMMIT`);
+            db.exec(`COMMIT`);
 
             console.log(`✅ Import completed: ${importedCount} paints, ${importedImagesCount} images, ${skippedCount} skipped`);
             res.json({
@@ -116,7 +99,8 @@ export class BackupController {
                 skippedDuplicates: skippedCount
             });
         } catch (err) {
-            this.db.exec(`ROLLBACK`);
+            const db = getDatabase();
+            db.exec(`ROLLBACK`);
             console.error('Import backup error:', err);
             res.status(500).json({ error: (err as Error).message });
         }

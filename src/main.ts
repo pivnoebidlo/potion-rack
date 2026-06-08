@@ -2,7 +2,7 @@ import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron';
 import path from 'path';
 import fs from 'fs';
 import { startServer } from './server';
-import { getDatabase } from './database/connection';
+import { getDatabase, switchDatabase, getDbPath } from './database/connection';
 const packageJson = require('../package.json');
 const version = packageJson.version;
 
@@ -41,7 +41,6 @@ ipcMain.handle('navigate', (event, page: string) => {
 });
 
 // ─── Статьи — файловая система ───
-// Путь по умолчанию; может быть переопределён пользователем через настройки
 let figuresPath;
 if (app.isPackaged) {
     figuresPath = path.join(app.getPath('userData'), 'figures');
@@ -50,7 +49,6 @@ if (app.isPackaged) {
 }
 try { fs.mkdirSync(figuresPath, { recursive: true }); } catch (e) {}
 
-// Попытаться загрузить сохранённый путь из БД при старте
 try {
     const db = getDatabase();
     const savedPath = db.prepare("SELECT value FROM settings WHERE key = 'figuresPath'").get() as { value: string } | undefined;
@@ -59,7 +57,6 @@ try {
         console.log(`📁 Figures path loaded from DB: ${figuresPath}`);
     }
 } catch (e) {
-    // БД ещё не инициализирована — используем дефолтный путь
     console.log(`📁 Using default figures path: ${figuresPath}`);
 }
 
@@ -89,17 +86,19 @@ ipcMain.handle('dialog:selectDbPath', async () => {
     return result.filePaths[0];
 });
 
+ipcMain.handle('get-db-path', () => {
+    return getDbPath();
+});
+
 ipcMain.handle('set-db-path', (_event, newPath: string) => {
-    // Здесь можно добавить логику переключения БД
-    // Пока просто сохраняем для будущего использования
-    return { success: true };
+    const success = switchDatabase(newPath);
+    return { success };
 });
 
 ipcMain.handle('set-figures-path', (_event, newPath: string) => {
     figuresPath = newPath;
     try {
         fs.mkdirSync(figuresPath, { recursive: true });
-        // Сохраняем путь в БД
         try {
             const db = getDatabase();
             db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('figuresPath', ?)").run(newPath);
@@ -117,17 +116,12 @@ function slugify(name: string): string {
     return name.toLowerCase().replace(/\s+/g, '_').replace(/[<>:"/\\|?*]/g, '').substring(0, 100);
 }
 
-// ─── Article handlers ───
 function getFigureDir(folderPath: string, figureName: string): string {
     if (folderPath) {
         return path.join(figuresPath, folderPath, slugify(figureName));
     }
     return path.join(figuresPath, slugify(figureName));
 }
-
-ipcMain.handle('get-db-path', () => {
-    return path.join(app.getPath('userData'), 'potion_rack.db');
-});
 
 ipcMain.handle('article:read', (_event, folderPath: string, figureName: string) => {
     const dir = getFigureDir(folderPath, figureName);
@@ -138,6 +132,40 @@ ipcMain.handle('article:read', (_event, folderPath: string, figureName: string) 
         console.error('Read article error:', e);
     }
     return '';
+});
+
+ipcMain.handle('article:write', (_event, folderPath: string, figureName: string, content: string) => {
+    const dir = getFigureDir(folderPath, figureName);
+    const filePath = path.join(dir, `${slugify(figureName)}.md`);
+    const imagesDir = path.join(dir, 'images');
+
+    try {
+        fs.mkdirSync(dir, { recursive: true });
+        fs.writeFileSync(filePath, content, 'utf8');
+
+        if (fs.existsSync(imagesDir)) {
+            const imageRegex = /!\[.*?\]\(\.\.\/images\/([^)]+)\)/g;
+            const usedImages = new Set<string>();
+            let match;
+            while ((match = imageRegex.exec(content)) !== null) {
+                usedImages.add(match[1]);
+            }
+
+            const files = fs.readdirSync(imagesDir);
+            for (const file of files) {
+                if (!usedImages.has(file)) {
+                    const filePath = path.join(imagesDir, file);
+                    fs.unlinkSync(filePath);
+                    console.log(`🗑 Cleaned up unused image: ${file}`);
+                }
+            }
+        }
+
+        return { success: true };
+    } catch (e) {
+        console.error('Write article error:', e);
+        return { success: false };
+    }
 });
 
 ipcMain.handle('article:saveImage', (_event, folderPath: string, figureName: string, fileName: string, base64Data: string) => {
@@ -183,13 +211,11 @@ ipcMain.handle('article:delete', (_event, folderPath: string, figureName: string
     return { success: false };
 });
 
-// ─── Дерево папок (рекурсивное) ───
 function listFoldersRecursive(dirPath: string, basePath: string): { name: string; path: string; isDirectory: boolean }[] {
     const result: { name: string; path: string; isDirectory: boolean }[] = [];
     try {
         if (!fs.existsSync(dirPath)) return result;
 
-        // Проверяем, не является ли текущая папка папкой фигурки
         const isFigureFolder = fs.readdirSync(dirPath).some(f => f.endsWith('.md'));
 
         const entries = fs.readdirSync(dirPath, { withFileTypes: true });
@@ -198,10 +224,8 @@ function listFoldersRecursive(dirPath: string, basePath: string): { name: string
                 const fullPath = path.join(dirPath, entry.name);
                 const relativePath = basePath ? `${basePath}/${entry.name}` : entry.name;
 
-                // Пропускаем images только если родитель — папка фигурки
                 if (entry.name === 'images' && isFigureFolder) continue;
 
-                // Пропускаем папку, если внутри есть .md (это папка фигурки)
                 const childHasMd = fs.readdirSync(fullPath).some(f => f.endsWith('.md'));
                 if (childHasMd) continue;
 
@@ -223,45 +247,6 @@ ipcMain.handle('figures:listFolders', () => {
     return listFoldersRecursive(figuresPath, '');
 });
 
-ipcMain.handle('article:write', (_event, folderPath: string, figureName: string, content: string) => {
-    const dir = getFigureDir(folderPath, figureName);
-    const filePath = path.join(dir, `${slugify(figureName)}.md`);
-    const imagesDir = path.join(dir, 'images');
-
-    try {
-        // Сохраняем .md файл
-        fs.mkdirSync(dir, { recursive: true });
-        fs.writeFileSync(filePath, content, 'utf8');
-
-        // Очистка неиспользуемых картинок
-        if (fs.existsSync(imagesDir)) {
-            // Найти все ссылки на картинки в контенте
-            const imageRegex = /!\[.*?\]\(\.\.\/images\/([^)]+)\)/g;
-            const usedImages = new Set<string>();
-            let match;
-            while ((match = imageRegex.exec(content)) !== null) {
-                usedImages.add(match[1]);
-            }
-
-            // Удалить файлы, которых нет в контенте
-            const files = fs.readdirSync(imagesDir);
-            for (const file of files) {
-                if (!usedImages.has(file)) {
-                    const filePath = path.join(imagesDir, file);
-                    fs.unlinkSync(filePath);
-                    console.log(`🗑 Cleaned up unused image: ${file}`);
-                }
-            }
-        }
-
-        return { success: true };
-    } catch (e) {
-        console.error('Write article error:', e);
-        return { success: false };
-    }
-});
-
-// ─── Операции с папками ───
 ipcMain.handle('folder:create', (_event, folderPath: string) => {
     const fullPath = path.join(figuresPath, folderPath);
     try {
@@ -286,7 +271,6 @@ ipcMain.handle('folder:delete', (_event, folderPath: string) => {
     }
 });
 
-// Переименование папки
 ipcMain.handle('folder:rename', (_event, oldPath: string, newPath: string) => {
     const fullOldPath = path.join(figuresPath, oldPath);
     const fullNewPath = path.join(figuresPath, newPath);
@@ -303,7 +287,6 @@ ipcMain.handle('folder:rename', (_event, oldPath: string, newPath: string) => {
     }
 });
 
-// Переименование фигурки
 ipcMain.handle('figure:renameFolder', (_event, folderPath: string, oldName: string, newName: string) => {
     const dir = getFigureDir(folderPath, oldName);
     const newDir = getFigureDir(folderPath, newName);

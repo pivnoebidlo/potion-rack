@@ -380,3 +380,65 @@
     gap: 6px;
 }
 .filterActions .btn { flex: 1; }
+
+.cardSwatch {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    border: 1px dashed var(--text-muted);
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Панель сортировки для grid */
+.sortBar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    margin: 0 12px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-sm);
+    font-size: var(--font-size-xs);
+    color: var(--text-secondary);
+}
+.sortLabel {
+    font-size: var(--font-size-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 600;
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+.sortSelect {
+    padding: 4px 6px;
+    background: var(--bg-input);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    font-size: var(--font-size-xs);
+    outline: none;
+    cursor: pointer;
+    min-width: 120px;
+}
+.sortSelect:focus {
+    border-color: var(--accent);
+}
+.sortDirBtn {
+    background: var(--bg-input);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    cursor: pointer;
+    padding: 4px 10px;
+    font-size: 14px;
+    line-height: 1;
+}
+.sortDirBtn:hover {
+    border-color: var(--accent);
+    background: var(--bg-hover);
+}
