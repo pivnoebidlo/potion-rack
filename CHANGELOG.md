@@ -19,6 +19,7 @@
 [-] Images preserved during article:write cleanup (support =WxH syntax)
 [-] PDF export includes resized images with correct dimensions
 [-] Image preview in resize modal works for both ./images/ and ../images/ paths
+[-] Database path now persists across app restarts
 
 ## 0.3.6
 
