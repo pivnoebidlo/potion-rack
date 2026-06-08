@@ -5,7 +5,15 @@ import { RangeSetBuilder, StateField, StateEffect } from '@codemirror/state';
 export class ImagePreviewWidget extends WidgetType {
     private img: HTMLImageElement | null = null;
 
-    constructor(readonly src: string, readonly alt: string, readonly from: number, readonly to: number, readonly view: EditorView) { super(); }
+    constructor(
+        readonly src: string,
+        readonly alt: string,
+        readonly from: number,
+        readonly to: number,
+        readonly view: EditorView,
+        readonly displayWidth?: number,
+        readonly displayHeight?: number
+    ) { super(); }
 
     toDOM() {
         const container = document.createElement('span');
@@ -19,12 +27,18 @@ export class ImagePreviewWidget extends WidgetType {
             img.style.display = 'none';
         };
         img.alt = this.alt;
-        img.style.maxWidth = '100%';
-        img.style.maxHeight = '600px';
+        if (this.displayWidth) img.style.width = `${this.displayWidth}px`;
+        if (this.displayHeight) img.style.height = `${this.displayHeight}px`;
+        if (!this.displayWidth && !this.displayHeight) {
+            img.style.maxWidth = '100%';
+            img.style.maxHeight = '600px';
+        }
         img.style.borderRadius = '6px';
         img.style.display = 'block';
         img.style.objectFit = 'contain';
         img.style.margin = '0 auto';
+
+        // Кнопка удаления
         const deleteBtn = document.createElement('button');
         deleteBtn.textContent = '✕';
         deleteBtn.style.position = 'absolute';
@@ -41,14 +55,47 @@ export class ImagePreviewWidget extends WidgetType {
         deleteBtn.style.display = 'none';
         deleteBtn.style.alignItems = 'center';
         deleteBtn.style.justifyContent = 'center';
-        container.addEventListener('mouseenter', () => { deleteBtn.style.display = 'flex'; });
-        container.addEventListener('mouseleave', () => { deleteBtn.style.display = 'none'; });
         deleteBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             this.view.dispatch({ changes: { from: this.from, to: this.to } });
         });
+
+        // Кнопка ресайза
+        const resizeBtn = document.createElement('button');
+        resizeBtn.textContent = '✂️';
+        resizeBtn.style.position = 'absolute';
+        resizeBtn.style.top = '4px';
+        resizeBtn.style.right = '32px';
+        resizeBtn.style.background = 'var(--bg-primary)';
+        resizeBtn.style.color = 'var(--text-primary)';
+        resizeBtn.style.border = 'none';
+        resizeBtn.style.borderRadius = '50%';
+        resizeBtn.style.width = '24px';
+        resizeBtn.style.height = '24px';
+        resizeBtn.style.fontSize = '12px';
+        resizeBtn.style.cursor = 'pointer';
+        resizeBtn.style.display = 'none';
+        resizeBtn.style.alignItems = 'center';
+        resizeBtn.style.justifyContent = 'center';
+        resizeBtn.title = 'Resize image';
+        resizeBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const cb = this.view.state.field(resizeCallbackField, false);
+            if (cb) cb(this.from, this.to, this.displayWidth, this.displayHeight);
+        });
+
+        container.addEventListener('mouseenter', () => {
+            deleteBtn.style.display = 'flex';
+            resizeBtn.style.display = 'flex';
+        });
+        container.addEventListener('mouseleave', () => {
+            deleteBtn.style.display = 'none';
+            resizeBtn.style.display = 'none';
+        });
+
         container.appendChild(img);
         container.appendChild(deleteBtn);
+        container.appendChild(resizeBtn);
         return container;
     }
 
@@ -70,6 +117,16 @@ export const slugField = StateField.define<string>({
     create: () => '',
     update: (value, tr) => {
         for (const e of tr.effects) if (e.is(setSlug)) return e.value;
+        return value;
+    }
+});
+
+// ============ Resize Callback State ============
+export const setResizeCallback = StateEffect.define<(from: number, to: number, currentWidth?: number, currentHeight?: number) => void>();
+export const resizeCallbackField = StateField.define<((from: number, to: number, currentWidth?: number, currentHeight?: number) => void) | null>({
+    create: () => null,
+    update: (value, tr) => {
+        for (const e of tr.effects) if (e.is(setResizeCallback)) return e.value;
         return value;
     }
 });
@@ -156,7 +213,6 @@ export const wysiwymPlugin = ViewPlugin.fromClass(class {
                 const cursorInside = cursor >= markerStart && cursor <= line.to;
                 items.push({ from: markerStart, to: markerEnd, decoration: Decoration.mark({ attributes: { style: cursorInside ? HIDDEN_MARKER_VISIBLE : HIDDEN_MARKER } }) });
                 items.push({ from: markerStart, to: markerStart, decoration: Decoration.widget({ widget: new class extends WidgetType { toDOM() { const d = document.createElement('span'); d.textContent = '•'; d.style.color = 'var(--list-marker, var(--accent))'; d.style.marginRight = '8px'; return d; } }, side: 0 }) });
-                // Не делаем continue — позволяем инлайн-форматированию обработать текст после маркера
             }
             const inlineRegex = /(\*\*(.+?)\*\*)|(\*(.+?)\*)|(~~(.+?)~~)|(`(.+?)`)/g;
             let match;
@@ -204,7 +260,7 @@ export const wysiwymPlugin = ViewPlugin.fromClass(class {
         }
 
         if (slug && slug.trim()) {
-            const imageRegex = /!\[([^\]]*)\]\((\.\.?\/images\/[^)]+)\)/g;
+            const imageRegex = /!\[([^\]]*)\]\((\.\.?\/images\/[^)]+?)(?:\s*=\s*(\d+)?x?(\d+)?)?\)/g;
             const docText = doc.toString();
             let imgMatch;
             while ((imgMatch = imageRegex.exec(docText)) !== null) {
@@ -212,7 +268,9 @@ export const wysiwymPlugin = ViewPlugin.fromClass(class {
                 const to = from + imgMatch[0].length;
                 const relativePath = imgMatch[2].replace(/^\.\.?\//, '');
                 const absoluteUrl = `http://127.0.0.1:8765/figures-data/${safeSlug}/${relativePath}`;
-                items.push({ from, to, decoration: Decoration.replace({ widget: new ImagePreviewWidget(absoluteUrl, imgMatch[1], from, to, view) }) });
+                const width = imgMatch[3] ? parseInt(imgMatch[3]) : undefined;
+                const height = imgMatch[4] ? parseInt(imgMatch[4]) : undefined;
+                items.push({ from, to, decoration: Decoration.replace({ widget: new ImagePreviewWidget(absoluteUrl, imgMatch[1], from, to, view, width, height) }) });
             }
         }
 

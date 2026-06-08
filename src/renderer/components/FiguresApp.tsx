@@ -201,10 +201,40 @@ export default function FiguresApp() {
         if (!figure) return;
         try {
             const content = await (window as any).electronAPI?.readArticle(figure.folder_path || '', figure.name);
-            const slug = (figure.folder_path ? `${figure.folder_path}/` : '') + figure.name.toLowerCase().replace(/\s+/g, '_').replace(/[<>:"/\\|?*]/g, '');
+            const slug = (figure.folder_path ? `${figure.folder_path}/` : '') + (figure.name || '');
             const safeSlug = encodeURIComponent(slug);
-            const resolvedContent = (content || '').replace(/\(\.\/images\//g, `(http://127.0.0.1:8765/figures-data/${safeSlug}/images/`).replace(/\(\.\.\/images\//g, `(http://127.0.0.1:8765/figures-data/${safeSlug}/images/`);
-            const htmlContent = marked(resolvedContent);
+            let resolvedContent = content || '';
+
+            // Шаг 1: вырезаем размеры
+            const sizeMap: Record<string, { w?: string; h?: string }> = {};
+            resolvedContent = resolvedContent.replace(
+                /!\[([^\]]*)\]\((\.\.?\/images\/[^)]+?)\s*=\s*(\d+)?x?(\d+)?\)/g,
+                (match, alt, path, w, h) => {
+                    sizeMap[path] = { w, h };
+                    return `![${alt}](${path})`;
+                }
+            );
+
+            // Шаг 2: заменяем пути на HTTP
+            resolvedContent = resolvedContent.replace(/\(\.\/images\//g, `(http://127.0.0.1:8765/figures-data/${safeSlug}/images/`);
+            resolvedContent = resolvedContent.replace(/\(\.\.\/images\//g, `(http://127.0.0.1:8765/figures-data/${safeSlug}/images/`);
+
+            // Шаг 3: применяем размеры
+            resolvedContent = resolvedContent.replace(
+                /!\[([^\]]*)\]\((http:\/\/127\.0\.0\.1:8765\/figures-data\/[^)]+?)\)/g,
+                (match, alt, url) => {
+                    const origPath = Object.keys(sizeMap).find(p => url.endsWith(p.replace(/^\.\.?\/images\//, '')));
+                    const size = origPath ? sizeMap[origPath] : null;
+                    let attrs = `src="${url}" alt="${alt}"`;
+                    if (size?.w) attrs += ` width="${size.w}"`;
+                    if (size?.h) attrs += ` height="${size.h}"`;
+                    if (!size?.w && !size?.h) attrs += ' style="max-width:100%;max-height:500px;display:block;margin:12px auto;border-radius:6px;"';
+                    return `<img ${attrs} />`;
+                }
+            );
+
+            const htmlContent = marked(resolvedContent) as string;
+            console.log('PDF htmlContent:', htmlContent?.substring(0, 500));
             await (window as any).electronAPI?.exportPdf(figure.folder_path || '', figure.name, htmlContent);
         } catch (err) { console.error('Export PDF failed:', err); }
     };

@@ -11,8 +11,9 @@ import { marked } from 'marked';
 import styles from './MarkdownEditor.module.css';
 import TableDialog from './TableDialog';
 import { t } from '../i18n';
-import { wysiwymPlugin, setSlug, slugField } from '../editor-plugins/wysiwymPlugin';
+import { wysiwymPlugin, setSlug, slugField, setResizeCallback, resizeCallbackField } from '../editor-plugins/wysiwymPlugin';
 import { tableNavPlugin } from '../editor-plugins/tableNavPlugin';
+import ImageResizeModal from './ImageResizeModal';
 
 function slugify(name: string): string {
     return name.toLowerCase().replace(/\s+/g, '_').replace(/[<>:"/\\|?*]/g, '').substring(0, 100);
@@ -58,6 +59,9 @@ export default function MarkdownEditor({ content, onChange, onSave, figureName, 
     const $t = t();
     const [preview, setPreview] = useState(false);
     const [tableDialogOpen, setTableDialogOpen] = useState(false);
+    const [resizeModalOpen, setResizeModalOpen] = useState(false);
+    const [resizeImagePath, setResizeImagePath] = useState('');
+    const [resizeInsertCallback, setResizeInsertCallback] = useState<(width: number | null, height: number | null) => void>(() => {});
     const editorRef = useRef<HTMLDivElement>(null);
     const editorViewRefInternal = useRef<EditorView | null>(null);
     const lastSavedContent = useRef(content);
@@ -71,6 +75,7 @@ export default function MarkdownEditor({ content, onChange, onSave, figureName, 
         if (existingView) {
             const hadFocus = existingView.hasFocus;
             existingView.dispatch({ effects: setSlug.of(slug) });
+            existingView.dispatch({ effects: setResizeCallback.of(handleResizeExisting) });
             if (existingView.state.doc.toString() !== content) {
                 existingView.dispatch({ changes: { from: 0, to: existingView.state.doc.length, insert: content } });
             }
@@ -98,6 +103,7 @@ export default function MarkdownEditor({ content, onChange, onSave, figureName, 
                 doc: content,
                 extensions: [
                     slugField.init(() => slug),
+                    resizeCallbackField,
                     keymap.of([...defaultKeymap, ...historyKeymap]),
                     history(),
                     markdown({ base: markdownLanguage, codeLanguages: languages }),
@@ -116,6 +122,7 @@ export default function MarkdownEditor({ content, onChange, onSave, figureName, 
         });
         editorViewRefInternal.current = view;
         if (editorViewRef) editorViewRef.current = view;
+        view.dispatch({ effects: setResizeCallback.of(handleResizeExisting) });
         setPreview(false);
     }, [slug, content]);
 
@@ -264,10 +271,24 @@ export default function MarkdownEditor({ content, onChange, onSave, figureName, 
         inp.onchange = async (e) => {
             const f = (e.target as HTMLInputElement).files?.[0]; if (!f) return;
             try {
+                console.log('🖼 Starting image upload:', f.name, 'folder:', folderPath, 'figure:', figureName);
                 const c = await compressImage(f, 1920, 1920, 0.85);
+                console.log('🖼 Image compressed, saving...');
                 const r = await (window as any).electronAPI?.saveImage(folderPath || '', figureName || 'unknown', f.name, c.split(',')[1]);
-                if (r?.success) { const v = editorViewRefInternal.current; if (!v) return; v.dispatch({ changes: { from: v.state.selection.main.from, insert: `![${f.name}](.${r.path})\n` } }); v.focus(); }
-            } catch (err) { console.error(err); }
+                console.log('🖼 Save result:', r);
+                if (r?.success) {
+                    setResizeImagePath(r.path);
+                    setResizeInsertCallback(() => (width: number | null, height: number | null) => {
+                        const v = editorViewRefInternal.current; if (!v) return;
+                        const sizeStr = width ? (height ? ` =${width}x${height}` : ` =${width}`) : '';
+                        v.dispatch({ changes: { from: v.state.selection.main.from, insert: `![${f.name}](.${r.path}${sizeStr})\n` } });
+                        v.focus();
+                    });
+                    setResizeModalOpen(true);
+                } else {
+                    console.error('Save failed:', r);
+                }
+            } catch (err) { console.error('Upload error:', err); }
         };
         inp.click();
     }, [figureName, folderPath]);
@@ -276,6 +297,24 @@ export default function MarkdownEditor({ content, onChange, onSave, figureName, 
         const { from, to } = v.state.selection.main; const s = v.state.sliceDoc(from, to) || 'link text';
         v.dispatch({ changes: { from, to, insert: `[${s}](url)` }, selection: { anchor: from + s.length + 3, head: from + s.length + 6 } });
         v.focus();
+    }, []);
+
+    const handleResizeExisting = useCallback((from: number, to: number, currentWidth?: number, currentHeight?: number) => {
+        const v = editorViewRefInternal.current; if (!v) return;
+        const text = v.state.sliceDoc(from, to);
+        const match = text.match(/!\[([^\]]*)\]\((\.\.?\/images\/[^)]+?)(?:\s*=\s*\d*x?\d*)?\)/);
+        if (match) {
+            const imgPath = match[2];
+            console.log('Resize existing:', { from, to, imgPath, safeSlug, figureName, folderPath });
+            setResizeImagePath(imgPath);
+            setResizeInsertCallback(() => (width: number | null, height: number | null) => {
+                const alt = match[1];
+                const sizeStr = width ? (height ? ` =${width}x${height}` : ` =${width}`) : '';
+                v.dispatch({ changes: { from, to, insert: `![${alt}](${imgPath}${sizeStr})` } });
+                v.focus();
+            });
+            setResizeModalOpen(true);
+        }
     }, []);
 
     useEffect(() => {
@@ -288,7 +327,16 @@ export default function MarkdownEditor({ content, onChange, onSave, figureName, 
                     try {
                         const c = await compressImage(f, 1920, 1920, 0.85);
                         const r = await (window as any).electronAPI?.saveImage(folderPath || '', figureName || 'unknown', f.name, c.split(',')[1]);
-                        if (r?.success) v.dispatch({ changes: { from: v.state.selection.main.from, insert: `![${f.name}](.${r.path})\n` } });
+                        if (r?.success) {
+                            setResizeImagePath(r.path);
+                            setResizeInsertCallback(() => (width: number | null, height: number | null) => {
+                                const v = editorViewRefInternal.current; if (!v) return;
+                                const sizeStr = width ? (height ? ` =${width}x${height}` : ` =${width}`) : '';
+                                v.dispatch({ changes: { from: v.state.selection.main.from, insert: `![${f.name}](.${r.path}${sizeStr})\n` } });
+                                v.focus();
+                            });
+                            setResizeModalOpen(true);
+                        }
                     } catch (err) { console.error(err); }
                     return;
                 }
@@ -298,9 +346,35 @@ export default function MarkdownEditor({ content, onChange, onSave, figureName, 
         return () => el.removeEventListener('paste', h);
     }, [figureName, folderPath]);
 
-    const resolvedContent = (content || '')
-        .replace(/\(\.\/images\//g, `(http://127.0.0.1:8765/figures-data/${safeSlug}/images/`)
-        .replace(/\(\.\.\/images\//g, `(http://127.0.0.1:8765/figures-data/${safeSlug}/images/`);
+    let resolvedContent = content || '';
+
+// Шаг 1: вырезаем размеры и сохраняем
+    const sizeMap: Record<string, { w?: string; h?: string }> = {};
+    resolvedContent = resolvedContent.replace(
+        /!\[([^\]]*)\]\((\.\.?\/images\/[^)]+?)\s*=\s*(\d+)?x?(\d+)?\)/g,
+        (match, alt, path, w, h) => {
+            sizeMap[path] = { w, h };
+            return `![${alt}](${path})`;
+        }
+    );
+
+// Шаг 2: заменяем ./images/ и ../images/ на HTTP
+    resolvedContent = resolvedContent.replace(/\(\.\/images\//g, `(http://127.0.0.1:8765/figures-data/${safeSlug}/images/`);
+    resolvedContent = resolvedContent.replace(/\(\.\.\/images\//g, `(http://127.0.0.1:8765/figures-data/${safeSlug}/images/`);
+
+// Шаг 3: применяем размеры — заменяем ![alt](url) на <img>
+    resolvedContent = resolvedContent.replace(
+        /!\[([^\]]*)\]\((http:\/\/127\.0\.0\.1:8765\/figures-data\/[^)]+?)\)/g,
+        (match, alt, url) => {
+            const origPath = Object.keys(sizeMap).find(p => url.endsWith(p.replace(/^\.\.?\/images\//, '')));
+            const size = origPath ? sizeMap[origPath] : null;
+            let attrs = `src="${url}" alt="${alt}"`;
+            if (size?.w) attrs += ` width="${size.w}"`;
+            if (size?.h) attrs += ` height="${size.h}"`;
+            if (!size?.w && !size?.h) attrs += ' style="max-width:100%;max-height:500px;display:block;margin:12px auto;border-radius:6px;"';
+            return `<img ${attrs} />`;
+        }
+    );
 
     return (
         <div className={styles.root}>
@@ -335,6 +409,17 @@ export default function MarkdownEditor({ content, onChange, onSave, figureName, 
             <div className={styles.editorWrapper} ref={editorRef} style={{ display: preview ? 'none' : 'block', height: '100%' }} />
             {tableDialogOpen && (
                 <TableDialog onInsert={handleInsertTable} onClose={() => setTableDialogOpen(false)} />
+            )}
+            {resizeModalOpen && (
+                <ImageResizeModal
+                    imagePath={resizeImagePath}
+                    safeSlug={safeSlug}
+                    onInsert={(w, h) => {
+                        resizeInsertCallback(w, h);
+                        setResizeModalOpen(false);
+                    }}
+                    onCancel={() => setResizeModalOpen(false)}
+                />
             )}
         </div>
     );

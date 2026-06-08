@@ -141,7 +141,7 @@ ipcMain.handle('article:write', (_event, folderPath: string, figureName: string,
         fs.writeFileSync(filePath, content, 'utf8');
 
         if (fs.existsSync(imagesDir)) {
-            const imageRegex = /!\[.*?\]\(\.\.\/images\/([^)]+)\)/g;
+            const imageRegex = /!\[.*?\]\(\.\.?\/images\/([^)\s]+?)(?:\s*=\s*\d+x?\d*)?\)/g;
             const usedImages = new Set<string>();
             let match;
             while ((match = imageRegex.exec(content)) !== null) {
@@ -490,7 +490,21 @@ ipcMain.handle('article:exportPdf', (_event, folderPath: string, figureName: str
 
     printWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(styledHtml)}`);
 
-    printWindow.webContents.on('did-finish-load', () => {
+    printWindow.webContents.on('did-finish-load', async () => {
+        // Ждём загрузки всех картинок
+        await printWindow.webContents.executeJavaScript(`
+        new Promise((resolve) => {
+            const imgs = document.querySelectorAll('img');
+            if (imgs.length === 0) return resolve();
+            let loaded = 0;
+            imgs.forEach(img => {
+                if (img.complete) { loaded++; if (loaded === imgs.length) resolve(); }
+                else { img.onload = img.onerror = () => { loaded++; if (loaded === imgs.length) resolve(); }; }
+            });
+            if (loaded === imgs.length) resolve();
+            setTimeout(resolve, 5000);
+        })
+    `);
         setTimeout(async () => {
             const { dialog } = require('electron');
             const result = await dialog.showSaveDialog(printWindow, {
