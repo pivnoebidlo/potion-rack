@@ -21,30 +21,49 @@ app.use(express.json({ limit: '10mb' }));
 
 // Динамическая раздача статики из папки figures
 app.use('/figures-data', (req, res, next) => {
-    let figuresDataPath;
-    if (electronApp.isPackaged) {
-        figuresDataPath = path.join(electronApp.getPath('userData'), 'figures');
-    } else {
-        figuresDataPath = path.join(process.cwd(), 'dev-figures');
-    }
-    try { fs.mkdirSync(figuresDataPath, { recursive: true }); } catch (e) {}
-
     try {
-        const db = getDatabase();
-        const savedPath = db.prepare("SELECT value FROM settings WHERE key = 'figuresPath'").get() as { value: string } | undefined;
-        if (savedPath?.value && fs.existsSync(savedPath.value)) {
-            figuresDataPath = savedPath.value;
+        let figuresDataPath;
+        if (electronApp.isPackaged) {
+            figuresDataPath = path.join(electronApp.getPath('userData'), 'figures');
+        } else {
+            figuresDataPath = path.join(process.cwd(), 'dev-figures');
         }
-    } catch (e) {}
 
-    const requestPath = decodeURIComponent(req.path);
-    const filePath = path.join(figuresDataPath, requestPath);
-    console.log('📷 Figures data:', req.path, '→', filePath, 'exists:', fs.existsSync(filePath));
+        // Читаем сохранённый путь из конфиг-файла
+        const configPath = path.join(
+            electronApp.getPath('userData'),
+            electronApp.isPackaged ? 'figurespath.cfg' : 'figurespath.dev.cfg'
+        );
+        try {
+            if (fs.existsSync(configPath)) {
+                const savedPath = fs.readFileSync(configPath, 'utf8').trim();
+                if (savedPath && fs.existsSync(savedPath)) {
+                    figuresDataPath = savedPath;
+                }
+            }
+        } catch (e) {
+            console.error('Failed to read figures path config:', e);
+        }
 
-    if (fs.existsSync(filePath)) {
-        res.sendFile(filePath);
-    } else {
-        res.status(404).send('File not found');
+        try { fs.mkdirSync(figuresDataPath, { recursive: true }); } catch (e) {}
+
+        const requestPath = decodeURIComponent(req.path);
+        const filePath = path.join(figuresDataPath, requestPath);
+        console.log('📷 Figures data:', req.path, '→', filePath, 'exists:', fs.existsSync(filePath));
+
+        if (fs.existsSync(filePath)) {
+            res.sendFile(filePath, (err) => {
+                if (err) {
+                    console.error('❌ Send file error:', err);
+                    if (!res.headersSent) res.status(500).send('Error');
+                }
+            });
+        } else {
+            res.status(404).send('File not found');
+        }
+    } catch (e) {
+        console.error('❌ Figures data error:', e);
+        if (!res.headersSent) res.status(500).send('Internal error');
     }
 });
 

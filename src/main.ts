@@ -41,22 +41,53 @@ ipcMain.handle('navigate', (event, page: string) => {
 });
 
 // ─── Статьи — файловая система ───
-let figuresPath;
+function getFiguresPathConfigFile(): string {
+    const fileName = app.isPackaged ? 'figurespath.cfg' : 'figurespath.dev.cfg';
+    return path.join(app.getPath('userData'), fileName);
+}
+
+function readFiguresPathFromConfig(): string | null {
+    try {
+        const configPath = getFiguresPathConfigFile();
+        if (fs.existsSync(configPath)) {
+            const savedPath = fs.readFileSync(configPath, 'utf8').trim();
+            if (savedPath && fs.existsSync(savedPath)) {
+                return savedPath;
+            }
+        }
+    } catch (e) {
+        console.error('Failed to read figures path config:', e);
+    }
+    return null;
+}
+
+function writeFiguresPathToConfig(newPath: string): void {
+    try {
+        const dir = path.dirname(getFiguresPathConfigFile());
+        if (!fs.existsSync(dir)) {
+            fs.mkdirSync(dir, { recursive: true });
+        }
+        fs.writeFileSync(getFiguresPathConfigFile(), newPath, 'utf8');
+    } catch (e) {
+        console.error('Failed to write figures path config:', e);
+    }
+}
+
+let figuresPath: string;
+
+// Определяем дефолтный путь
 if (app.isPackaged) {
     figuresPath = path.join(app.getPath('userData'), 'figures');
 } else {
     figuresPath = path.join(process.cwd(), 'dev-figures');
 }
-try { fs.mkdirSync(figuresPath, { recursive: true }); } catch (e) {}
 
-try {
-    const db = getDatabase();
-    const savedPath = db.prepare("SELECT value FROM settings WHERE key = 'figuresPath'").get() as { value: string } | undefined;
-    if (savedPath?.value && fs.existsSync(savedPath.value)) {
-        figuresPath = savedPath.value;
-        console.log(`📁 Figures path loaded from DB: ${figuresPath}`);
-    }
-} catch (e) {
+// Пробуем загрузить сохранённый путь из конфига
+const savedFiguresPath = readFiguresPathFromConfig();
+if (savedFiguresPath) {
+    figuresPath = savedFiguresPath;
+    console.log(`📁 Figures path loaded from config: ${figuresPath}`);
+} else {
     console.log(`📁 Using default figures path: ${figuresPath}`);
 }
 
@@ -99,18 +130,17 @@ ipcMain.handle('set-figures-path', (_event, newPath: string) => {
     figuresPath = newPath;
     try {
         fs.mkdirSync(figuresPath, { recursive: true });
-        try {
-            const db = getDatabase();
-            db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('figuresPath', ?)").run(newPath);
-        } catch (dbErr) {
-            console.error('Failed to save figures path to DB:', dbErr);
-        }
+        writeFiguresPathToConfig(newPath);
         return { success: true };
     } catch (e) {
         console.error('Failed to create figures directory:', e);
         return { success: false, error: (e as Error).message };
     }
 });
+
+function slugify(name: string): string {
+    return name.toLowerCase().replace(/\s+/g, '_').replace(/[<>:"/\\|?*]/g, '').substring(0, 100);
+}
 
 function getFigureDir(folderPath: string, figureName: string): string {
     if (folderPath) {
@@ -270,10 +300,8 @@ ipcMain.handle('figures:reindex', (_event, targetPath: string) => {
                 const relPath = relativePath ? `${relativePath}/${entry.name}` : entry.name;
 
                 if (entry.isDirectory()) {
-                    // Проверяем, есть ли в этой папке .md файл (это папка фигурки?)
                     const hasMd = fs.readdirSync(fullPath).some(f => f.endsWith('.md'));
                     if (hasMd) {
-                        // Папка с .md файлами — обрабатываем каждый
                         const mdFiles = fs.readdirSync(fullPath).filter(f => f.endsWith('.md'));
                         for (const mdFile of mdFiles) {
                             const figureName = mdFile.replace(/\.md$/, '');
@@ -294,7 +322,6 @@ ipcMain.handle('figures:reindex', (_event, targetPath: string) => {
                                 }
                             }
 
-                            // Вставляем в БД
                             db.prepare(`
                                 INSERT INTO figures (name, folder_path, content, status)
                                 VALUES (?, ?, ?, 'draft')
@@ -302,22 +329,19 @@ ipcMain.handle('figures:reindex', (_event, targetPath: string) => {
                             indexedCount++;
                         }
                     } else {
-                        // Проверяем, есть ли в папке подпапки (кроме images)
                         const hasSubdirs = fs.readdirSync(fullPath).some(f => {
                             const fullF = path.join(fullPath, f);
                             return fs.statSync(fullF).isDirectory() && f !== 'images';
                         });
                         if (!hasSubdirs) {
-                            // Папка без .md и без подпапок — пустая фигурка
                             const figureName = entry.name;
                             const folderPath = relativePath || null;
                             db.prepare(`
-            INSERT INTO figures (name, folder_path, content, status)
-            VALUES (?, ?, NULL, 'draft')
-        `).run(figureName, folderPath);
+                                INSERT INTO figures (name, folder_path, content, status)
+                                VALUES (?, ?, NULL, 'draft')
+                            `).run(figureName, folderPath);
                             indexedCount++;
                         } else {
-                            // Обычная папка с подпапками — сканируем дальше
                             scanDir(fullPath, relPath);
                         }
                     }
@@ -327,9 +351,6 @@ ipcMain.handle('figures:reindex', (_event, targetPath: string) => {
 
         scanDir(targetPath, '');
         db.exec('COMMIT');
-
-        // Сохраняем путь в БД
-        db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('figuresPath', ?)").run(targetPath);
 
         console.log(`📁 Reindexed: ${indexedCount} figures, ${imagesReferenced} image refs, ${brokenLinks.length} broken`);
         if (brokenLinks.length > 0) {
@@ -341,7 +362,7 @@ ipcMain.handle('figures:reindex', (_event, targetPath: string) => {
             figuresIndexed: indexedCount,
             imagesReferenced,
             brokenLinks: brokenLinks.length,
-            brokenLinksList: brokenLinks.slice(0, 50) // не больше 50 в ответе
+            brokenLinksList: brokenLinks.slice(0, 50)
         };
     } catch (e) {
         db.exec('ROLLBACK');
@@ -493,18 +514,18 @@ ipcMain.handle('article:exportPdf', (_event, folderPath: string, figureName: str
     printWindow.webContents.on('did-finish-load', async () => {
         // Ждём загрузки всех картинок
         await printWindow.webContents.executeJavaScript(`
-        new Promise((resolve) => {
-            const imgs = document.querySelectorAll('img');
-            if (imgs.length === 0) return resolve();
-            let loaded = 0;
-            imgs.forEach(img => {
-                if (img.complete) { loaded++; if (loaded === imgs.length) resolve(); }
-                else { img.onload = img.onerror = () => { loaded++; if (loaded === imgs.length) resolve(); }; }
-            });
-            if (loaded === imgs.length) resolve();
-            setTimeout(resolve, 5000);
-        })
-    `);
+            new Promise((resolve) => {
+                const imgs = document.querySelectorAll('img');
+                if (imgs.length === 0) return resolve();
+                let loaded = 0;
+                imgs.forEach(img => {
+                    if (img.complete) { loaded++; if (loaded === imgs.length) resolve(); }
+                    else { img.onload = img.onerror = () => { loaded++; if (loaded === imgs.length) resolve(); }; }
+                });
+                if (loaded === imgs.length) resolve();
+                setTimeout(resolve, 5000);
+            })
+        `);
         setTimeout(async () => {
             const { dialog } = require('electron');
             const result = await dialog.showSaveDialog(printWindow, {

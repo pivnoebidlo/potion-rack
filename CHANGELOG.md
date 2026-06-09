@@ -1,3 +1,19 @@
+## 0.4.1
+
+### Changed
+[*] Database path and figures path now stored in config files (dbpath.cfg, figurespath.cfg) instead of SQLite settings
+[*] Dev and prod use separate config files — no more cross-contamination between environments
+[*] Server static file handler wrapped in try/catch — no more crashes on missing images
+
+### Refactored
+[*] Extracted all modals from FiguresApp.tsx into FiguresModals.tsx
+[*] Removed unused imports and props from FiguresApp and RightPanel
+
+### Fixed
+[-] Database path persists across app restarts
+[-] Figures path persists across app restarts
+[-] Dev and prod no longer share the same articles folder
+
 ## 0.4.0
 
 ### Added
