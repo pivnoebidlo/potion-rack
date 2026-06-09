@@ -1,3 +1,13 @@
+## 0.4.5
+
+### Refactored
+[*] Extracted inline styles from PaintModal into CSS module classes
+[*] Extracted inline styles from FigureModal into CSS module classes
+[*] Removed debug console.log statements from MarkdownEditor and FiguresApp
+
+### Fixed
+[-] Removed unused fetch in FigureModal handleSave
+
 ## 0.4.4
 
 ### Added
