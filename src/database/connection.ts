@@ -15,7 +15,8 @@ function getDefaultDbPath(): string {
 }
 
 function getDbPathConfigFile(): string {
-    return path.join(app.getPath('userData'), 'dbpath.cfg');
+    const fileName = app.isPackaged ? 'dbpath.cfg' : 'dbpath.dev.cfg';
+    return path.join(app.getPath('userData'), fileName);
 }
 
 function readDbPathFromConfig(): string | null {

@@ -1,3 +1,18 @@
+## 0.4.2
+
+### Added
+[+] Keyboard navigation in paints grid view: Left/Right for prev/next card, Up/Down for row jump
+
+### Changed
+[*] Database path config now split between dev (dbpath.dev.cfg) and prod (dbpath.cfg)
+
+### Refactored
+[*] Extracted all inline styles from ImageResizeModal into ImageResizeModal.module.css
+
+### Fixed
+[-] Dev and prod environments now fully isolated — separate DB and figures path configs
+
+
 ## 0.4.1
 
 ### Changed

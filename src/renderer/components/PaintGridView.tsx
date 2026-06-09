@@ -61,10 +61,11 @@ export default function PaintGridView({
                     </button>
                 </div>
             )}
-            <div className={styles.grid}>
-                {filtered.map(paint => (
+            <div className={styles.grid} data-grid-container>
+            {filtered.map(paint => (
                     <div
                         key={paint.id}
+                        data-paint-id={paint.id}
                         className={`${styles.card} ${selectedId === paint.id ? styles.cardSelected : ''}`}
                         onClick={() => onSelect(paint.id)}
                         onDoubleClick={() => onDoubleClick(paint)}
