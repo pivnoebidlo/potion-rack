@@ -178,4 +178,13 @@ export default {
     lockRatioOff: 'Aspect ratio unlocked',
     sizeSavedAs: 'Size saved as',
     insert: 'Insert',
+    checkForUpdates: 'Check for updates',
+    checkForUpdatesDesc: 'Check for new versions on GitHub Releases',
+    updateAvailable: 'Update available',
+    downloadUpdate: 'Download',
+    currentVersion: 'Current version',
+    upToDate: 'You are running the latest version',
+    updateCheckFailed: 'Failed to check for updates',
+    later: 'Later',
+    downloadFromGithub: 'Download from GitHub →',
 };

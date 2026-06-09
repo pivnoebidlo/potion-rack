@@ -1,6 +1,6 @@
 {
   "name": "potion-rack",
-  "version": "0.4.3",
+  "version": "0.4.4",
   "type": "commonjs",
   "description": "Paint Manager for Miniatures",
   "author": {
@@ -36,12 +36,14 @@
     "asarUnpack": [
       "**/*.node"
     ],
+    "publish": {
+      "provider": "github",
+      "owner": "pivnoebidlo",
+      "repo": "potion-rack"
+    },
     "mac": {
       "icon": "build/icon.icns",
-      "target": [
-        "dmg",
-        "zip"
-      ],
+      "target": ["dmg", "zip"],
       "category": "public.app-category.productivity",
       "hardenedRuntime": false,
       "gatekeeperAssess": false,
@@ -49,17 +51,11 @@
     },
     "win": {
       "icon": "build/icon.ico",
-      "target": [
-        "nsis",
-        "portable"
-      ]
+      "target": ["nsis", "portable"]
     },
     "linux": {
       "icon": "build/icon.png",
-      "target": [
-        "AppImage",
-        "deb"
-      ],
+      "target": ["AppImage", "deb"],
       "category": "Graphics"
     }
   },
@@ -98,6 +94,7 @@
     "better-sqlite3": "^12.10.0",
     "codemirror": "^6.0.2",
     "cors": "^2.8.6",
+    "electron-updater": "^6.8.9",
     "express": "^5.2.1",
     "marked": "^18.0.4",
     "prismjs": "^1.30.0",

@@ -21,6 +21,9 @@ export default function SettingsApp() {
     const [dateFormat, setDateFormat] = useState('auto');
     const [reindexResult, setReindexResult] = useState<{ figuresIndexed: number; imagesReferenced: number; brokenLinks: number; brokenLinksList: string[] } | null>(null);
     const [reindexing, setReindexing] = useState(false);
+    const [updateCheckLoading, setUpdateCheckLoading] = useState(false);
+    const [updateAvailable, setUpdateAvailable] = useState<{ version: string; url: string; body: string } | null>(null);
+    const [updateModalOpen, setUpdateModalOpen] = useState(false);
 
     const $t = t();
 
@@ -115,7 +118,6 @@ export default function SettingsApp() {
             setFiguresPath(selectedPath);
             localStorage.setItem('potion-rack-figures-path', selectedPath);
             if (api.setFiguresPath) await api.setFiguresPath(selectedPath);
-            // Автоматический реиндекс
             setReindexing(true);
             try {
                 const result = await api.reindexFigures(selectedPath);
@@ -229,6 +231,29 @@ export default function SettingsApp() {
         }
     };
 
+    const handleCheckUpdates = async () => {
+        setUpdateCheckLoading(true);
+        setUpdateAvailable(null);
+        try {
+            const api = (window as any).electronAPI;
+            if (!api?.checkForUpdates) return;
+            const release = await api.checkForUpdates();
+            if (release?.version && release.version !== version) {
+                setUpdateAvailable(release);
+                setUpdateModalOpen(true);
+            } else if (release?.version) {
+                alert($t.upToDate || 'You are running the latest version');
+            } else {
+                alert($t.updateCheckFailed || 'Failed to check for updates');
+            }
+        } catch (err) {
+            console.error('Update check failed:', err);
+            alert($t.updateCheckFailed || 'Failed to check for updates');
+        } finally {
+            setUpdateCheckLoading(false);
+        }
+    };
+
     return (
         <div className={styles.root}>
             <div className={styles.sidebar}>
@@ -248,6 +273,26 @@ export default function SettingsApp() {
                     {tab === 'general' && (
                         <div className={styles.section}>
                             <div className={styles.sectionTitle}>{$t.general}</div>
+
+                            {/* Проверка обновлений */}
+                            <div className={styles.setting}>
+                                <div className={styles.settingInfo}>
+                                    <div className={styles.settingLabel}>{$t.version} {version}</div>
+                                    <div className={styles.settingDesc}>{updateAvailable ? `${$t.updateAvailable || 'Update available'}: v${updateAvailable.version}` : ($t.checkForUpdatesDesc || 'Check for new versions on GitHub Releases')}</div>
+                                </div>
+                                <div className={styles.settingControl}>
+                                    {updateAvailable ? (
+                                        <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={() => setUpdateModalOpen(true)}>
+                                            {$t.downloadUpdate || 'Download v' + updateAvailable.version}
+                                        </button>
+                                    ) : (
+                                        <button className={`${styles.btn} ${styles.btnSecondary}`} onClick={handleCheckUpdates} disabled={updateCheckLoading}>
+                                            {updateCheckLoading ? '⏳' : '🔄'} {$t.checkForUpdates || 'Check for updates'}
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+
                             <div className={styles.setting}>
                                 <div className={styles.settingInfo}>
                                     <div className={styles.settingLabel}>{$t.language}</div>
@@ -416,6 +461,44 @@ export default function SettingsApp() {
                     )}
                 </div>
             </div>
+
+            {updateModalOpen && updateAvailable && (
+                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }}>
+                    <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '24px', width: '420px', boxShadow: '0 8px 32px rgba(0,0,0,0.5)' }}>
+                        <div style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px' }}>
+                            🆕 {$t.updateAvailable || 'Update available'} — v{updateAvailable.version}
+                        </div>
+                        <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '16px' }}>
+                            {$t.currentVersion || 'Current version'}: {version}
+                        </div>
+                        {updateAvailable.body && (
+                            <div style={{
+                                background: 'var(--bg-input)', border: '1px solid var(--border-light)',
+                                borderRadius: 'var(--radius-sm)', padding: '12px', fontSize: '11px',
+                                color: 'var(--text-secondary)', maxHeight: '150px', overflowY: 'auto',
+                                marginBottom: '20px', lineHeight: 1.6, whiteSpace: 'pre-wrap',
+                                fontFamily: 'var(--font-sans)',
+                            }}>
+                                {updateAvailable.body}
+                            </div>
+                        )}
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+                            <button
+                                onClick={() => setUpdateModalOpen(false)}
+                                style={{ padding: '8px 16px', background: 'var(--bg-input)', color: 'var(--text-secondary)', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: '13px' }}
+                            >
+                                {$t.later || 'Later'}
+                            </button>
+                            <button
+                                onClick={() => { (window as any).electronAPI?.openExternal?.(updateAvailable.url); }}
+                                style={{ padding: '8px 16px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontSize: '13px' }}
+                            >
+                                {$t.downloadFromGithub || 'Download from GitHub →'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {reindexResult && (
                 <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }}>

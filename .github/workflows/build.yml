@@ -100,6 +100,12 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
 
+      - name: Ad-hoc sign
+        run: |
+          codesign --force --deep --sign - "release/mac-arm64/Potion Rack.app" || \
+          codesign --force --deep --sign - "release/mac/Potion Rack.app" || \
+          echo "No .app found for signing — skipping"
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:

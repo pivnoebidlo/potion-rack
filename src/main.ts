@@ -3,6 +3,7 @@ import path from 'path';
 import fs from 'fs';
 import { startServer } from './server';
 import { getDatabase, switchDatabase, getDbPath } from './database/connection';
+import { autoUpdater } from 'electron-updater';
 const packageJson = require('../package.json');
 const version = packageJson.version;
 
@@ -38,6 +39,42 @@ ipcMain.handle('navigate', (event, page: string) => {
         else if (page === 'paints') mainWindow.loadFile(path.join(__dirname, '../dist/renderer/paints.html'));
         else if (page === 'settings') mainWindow.loadFile(path.join(__dirname, '../dist/renderer/settings.html'));
     }
+});
+
+ipcMain.handle('check-for-updates', async () => {
+    try {
+        const https = require('https');
+        return new Promise((resolve, reject) => {
+            https.get({
+                hostname: 'api.github.com',
+                path: '/repos/pivnoebidlo/potion-rack/releases/latest',
+                headers: { 'User-Agent': 'potion-rack' }
+            }, (res: any) => {
+                let data = '';
+                res.on('data', (chunk: string) => data += chunk);
+                res.on('end', () => {
+                    try {
+                        const release = JSON.parse(data);
+                        resolve({
+                            version: (release.tag_name || '').replace(/^v/, ''),
+                            url: release.html_url,
+                            body: release.body || '',
+                            assets: (release.assets || []).map((a: any) => ({
+                                name: a.name,
+                                url: a.browser_download_url
+                            }))
+                        });
+                    } catch (e) { reject(e); }
+                });
+            }).on('error', reject);
+        });
+    } catch (e) {
+        return { error: (e as Error).message };
+    }
+});
+
+ipcMain.handle('open-external', (_event, url: string) => {
+    shell.openExternal(url);
 });
 
 // ─── Статьи — файловая система ───
@@ -105,7 +142,6 @@ function cleanupUnusedImages() {
             const fullPath = path.join(dirPath, entry.name);
             if (entry.isDirectory()) {
                 if (entry.name === 'images') {
-                    // Нашли папку images — ищем родительский .md файл
                     const parentDir = path.dirname(fullPath);
                     const mdFiles = fs.readdirSync(parentDir).filter(f => f.endsWith('.md'));
 
@@ -113,7 +149,6 @@ function cleanupUnusedImages() {
                         const imageFiles = fs.readdirSync(fullPath);
                         const usedImages = new Set<string>();
 
-                        // Собираем использованные картинки из всех .md файлов
                         for (const mdFile of mdFiles) {
                             try {
                                 const content = fs.readFileSync(path.join(parentDir, mdFile), 'utf8');
@@ -125,7 +160,6 @@ function cleanupUnusedImages() {
                             } catch (e) {}
                         }
 
-                        // Удаляем неиспользуемые
                         for (const img of imageFiles) {
                             if (!usedImages.has(img)) {
                                 try {
@@ -323,12 +357,10 @@ ipcMain.handle('figures:reindex', (_event, targetPath: string) => {
     try {
         db.exec('BEGIN TRANSACTION');
 
-        // Очистка старых данных
         db.exec('DELETE FROM figure_paints');
         db.exec('DELETE FROM figure_images');
         db.exec('DELETE FROM figures');
 
-        // Рекурсивно сканируем папку — ищем .md файлы
         function scanDir(dirPath: string, relativePath: string) {
             const entries = fs.readdirSync(dirPath, { withFileTypes: true });
             for (const entry of entries) {
@@ -345,7 +377,6 @@ ipcMain.handle('figures:reindex', (_event, targetPath: string) => {
                             const content = fs.readFileSync(mdPath, 'utf8');
                             const folderPath = relativePath || null;
 
-                            // Валидация картинок
                             const imageRegex = /!\[.*?\]\(\.\/images\/([^)]+)\)/g;
                             let match;
                             const imagesDir = path.join(fullPath, 'images');
@@ -548,7 +579,6 @@ ipcMain.handle('article:exportPdf', (_event, folderPath: string, figureName: str
     printWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(styledHtml)}`);
 
     printWindow.webContents.on('did-finish-load', async () => {
-        // Ждём загрузки всех картинок
         await printWindow.webContents.executeJavaScript(`
             new Promise((resolve) => {
                 const imgs = document.querySelectorAll('img');
@@ -594,7 +624,15 @@ function createWindow() {
     mainWindow.on('closed', () => { mainWindow = null; });
 }
 
-app.whenReady().then(() => { startServer(); serverStarted = true; createWindow(); });
+app.whenReady().then(() => {
+    // Автообновление для Windows и Linux
+    if (process.platform === 'win32' || process.platform === 'linux') {
+        autoUpdater.checkForUpdatesAndNotify();
+    }
+    startServer();
+    serverStarted = true;
+    createWindow();
+});
 app.on('window-all-closed', () => { if (serverStarted) console.log('Shutting down server...'); app.quit(); });
 app.on('activate', () => { if (mainWindow === null) createWindow(); });
 app.on('before-quit', () => console.log('Potion Rack is shutting down...'));
