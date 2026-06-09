@@ -2,16 +2,13 @@ import { marked } from 'marked';
 import { EditorView } from '@codemirror/view';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import styles from './FiguresApp.module.css';
-import FigureModal from './FigureModal';
-import ConfirmModal from './ConfirmModal';
-import PromptModal from './PromptModal';
 import FolderTree, { FolderTarget } from './FolderTree';
-import ContextMenu from './ContextMenu';
 import MarkdownEditor from './MarkdownEditor';
 import RightPanel from './RightPanel';
 import { t } from '../i18n';
-import { fetchFigures, updateFigureAPI, deleteFigureAPI, createFigureAPI } from '../services/apiFigures';
+import { fetchFigures, updateFigureAPI, deleteFigureAPI } from '../services/apiFigures';
 import { Figure } from '../types/figure';
+import FiguresModals from './FiguresModals';
 
 export default function FiguresApp() {
     const $t = t();
@@ -328,10 +325,31 @@ export default function FiguresApp() {
                     onScrollToLine={handleScrollToLine}
                 />
             </div>
-            {modalOpen && <FigureModal figure={editingFigure} onSave={async (data) => { if (editingFigure) { await updateFigureAPI(editingFigure.id, data); } else { await createFigureAPI({ ...data, folder_path: newFigureFolder } as any); } await loadFigures(); }} onClose={() => setModalOpen(false)} />}
-            {confirmOpen && <ConfirmModal title={confirmTitle} message={confirmMessage} onConfirm={confirmAction} onCancel={() => setConfirmOpen(false)} />}
-            {contextMenu && <ContextMenu x={contextMenu.x} y={contextMenu.y} target={contextMenu.target} onClose={() => setContextMenu(null)} onNewFigure={handleNewFigure} onNewFolder={handleNewFolder} onRename={handleRename} onExportPdf={handleExportPdf} onDelete={handleDeleteTarget} />}
-            {promptOpen && <PromptModal title={promptTitle} defaultValue={promptDefault} onConfirm={(value) => { setPromptOpen(false); promptCallback(value); }} onCancel={() => setPromptOpen(false)} />}
+            <FiguresModals
+                modalOpen={modalOpen}
+                editingFigure={editingFigure}
+                newFigureFolder={newFigureFolder}
+                confirmOpen={confirmOpen}
+                confirmTitle={confirmTitle}
+                confirmMessage={confirmMessage}
+                confirmAction={confirmAction}
+                contextMenu={contextMenu}
+                promptOpen={promptOpen}
+                promptTitle={promptTitle}
+                promptDefault={promptDefault}
+                promptCallback={promptCallback}
+                onCloseModal={() => setModalOpen(false)}
+                onCloseConfirm={() => setConfirmOpen(false)}
+                onCloseContextMenu={() => setContextMenu(null)}
+                onClosePrompt={() => setPromptOpen(false)}
+                onConfirmPrompt={(value) => promptCallback(value)}
+                onSaveFigure={loadFigures}
+                onNewFigure={handleNewFigure}
+                onNewFolder={handleNewFolder}
+                onRename={handleRename}
+                onExportPdf={handleExportPdf}
+                onDeleteTarget={handleDeleteTarget}
+            />
         </div>
     );
 }
