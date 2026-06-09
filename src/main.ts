@@ -60,18 +60,6 @@ try {
     console.log(`📁 Using default figures path: ${figuresPath}`);
 }
 
-// Загружаем сохранённый путь к БД
-try {
-    const db = getDatabase();
-    const savedDbPath = db.prepare("SELECT value FROM settings WHERE key = 'dbPath'").get() as { value: string } | undefined;
-    if (savedDbPath?.value && fs.existsSync(savedDbPath.value) && savedDbPath.value !== getDbPath()) {
-        console.log(`📁 Switching to saved DB: ${savedDbPath.value}`);
-        switchDatabase(savedDbPath.value);
-    }
-} catch (e) {
-    console.log('📁 Using default DB path');
-}
-
 try { fs.mkdirSync(figuresPath, { recursive: true }); } catch (e) {}
 
 // ─── Handlers для управления путём статей ───
@@ -104,14 +92,6 @@ ipcMain.handle('get-db-path', () => {
 
 ipcMain.handle('set-db-path', (_event, newPath: string) => {
     const success = switchDatabase(newPath);
-    if (success) {
-        try {
-            const db = getDatabase();
-            db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('dbPath', ?)").run(newPath);
-        } catch (e) {
-            console.error('Failed to save DB path to settings:', e);
-        }
-    }
     return { success };
 });
 
