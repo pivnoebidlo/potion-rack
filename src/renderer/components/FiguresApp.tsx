@@ -73,12 +73,17 @@ export default function FiguresApp() {
 
     useEffect(() => {
         if (selected) {
+            // Сразу показываем контент из БД
+            setEditorContent(selected.content || '');
+            // Асинхронно подгружаем свежий с диска
             if ((window as any).electronAPI?.readArticle) {
                 (window as any).electronAPI.readArticle(selected.folder_path || '', selected.name).then((content: string) => {
                     const cleaned = content.replace(/!\[([^\]]*)\]\(data:image\/[^;]+;base64,[^)]+\)/g, '[$1 - old image]');
-                    setEditorContent(cleaned || selected.content || '');
+                    if (cleaned !== selected.content) {
+                        setEditorContent(cleaned || selected.content || '');
+                    }
                 });
-            } else { setEditorContent(selected.content || ''); }
+            }
         }
     }, [selected]);
 
@@ -99,6 +104,26 @@ export default function FiguresApp() {
         if ((window as any).electronAPI?.writeArticle) await (window as any).electronAPI.writeArticle(selected.folder_path || '', selected.name, editorContent);
         await updateFigureAPI(selected.id, { content: editorContent });
         await loadFigures();
+    };
+
+    const handleSelectFigure = async (id: number) => {
+        // Сохраняем текущую статью перед переключением
+        if (selected && editorContent !== selected.content) {
+            if (editorContent.trim()) {
+                if ((window as any).electronAPI?.writeArticle) {
+                    await (window as any).electronAPI.writeArticle(selected.folder_path || '', selected.name, editorContent);
+                }
+                await updateFigureAPI(selected.id, { content: editorContent });
+                // Обновляем figures в памяти сразу
+                setFigures(prev => prev.map(f => f.id === selected.id ? { ...f, content: editorContent } : f));
+            }
+        }
+        // Синхронно устанавливаем контент новой статьи
+        const newFigure = figures.find(f => f.id === id);
+        if (newFigure) {
+            setEditorContent(newFigure.content || '');
+        }
+        setSelectedId(id);
     };
 
     const navigateTo = (page: string) => { if (page === 'paints') window.location.href = 'paints.html'; else if (page === 'settings') window.location.href = 'settings.html'; else window.location.href = 'figures.html'; };
@@ -284,7 +309,7 @@ export default function FiguresApp() {
                         </div>
                         <FolderTree
                             figures={figures} diskFolders={diskFolders} selectedId={selectedId} selectedFolder={selectedFolder}
-                            onSelectFigure={(id) => setSelectedId(id)}
+                            onSelectFigure={handleSelectFigure}
                             onSelectFolder={(path) => { setSelectedFolder(path); setSelectedId(null); }}
                             onDoubleClickFigure={(id) => { const figure = figures.find(f => f.id === id); if (figure) { setEditingFigure(figure); setModalOpen(true); } }}
                             onContextMenu={handleContextMenu} onMoveFigure={handleMoveFigure} onMoveFolder={handleMoveFolder} searchQuery={search}
@@ -319,7 +344,7 @@ export default function FiguresApp() {
                     onToggleInfo={() => setInfoCollapsed(!infoCollapsed)}
                     onToggleToc={() => setTocCollapsed(!tocCollapsed)}
                     onToggleHelp={() => setHelpCollapsed(!helpCollapsed)}
-                    onSelectFigure={(id) => setSelectedId(id)}
+                    onSelectFigure={handleSelectFigure}
                     onEditFigure={(f) => { setEditingFigure(f); setModalOpen(true); }}
                     onDeleteFigure={handleDeleteFigure}
                     onScrollToLine={handleScrollToLine}

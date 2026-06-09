@@ -12,7 +12,8 @@ export class ImagePreviewWidget extends WidgetType {
         readonly to: number,
         readonly view: EditorView,
         readonly displayWidth?: number,
-        readonly displayHeight?: number
+        readonly displayHeight?: number,
+        readonly isSelected?: boolean
     ) { super(); }
 
     toDOM() {
@@ -37,6 +38,11 @@ export class ImagePreviewWidget extends WidgetType {
         img.style.display = 'block';
         img.style.objectFit = 'contain';
         img.style.margin = '0 auto';
+        if (this.isSelected) {
+            img.style.outline = '2px solid var(--accent)';
+            img.style.outlineOffset = '2px';
+            img.style.borderRadius = '4px';
+        }
 
         // Кнопка удаления
         const deleteBtn = document.createElement('button');
@@ -270,7 +276,10 @@ export const wysiwymPlugin = ViewPlugin.fromClass(class {
                 const absoluteUrl = `http://127.0.0.1:8765/figures-data/${safeSlug}/${relativePath}`;
                 const width = imgMatch[3] ? parseInt(imgMatch[3]) : undefined;
                 const height = imgMatch[4] ? parseInt(imgMatch[4]) : undefined;
-                items.push({ from, to, decoration: Decoration.replace({ widget: new ImagePreviewWidget(absoluteUrl, imgMatch[1], from, to, view, width, height) }) });
+                const selFrom = view.state.selection.main.from;
+                const selTo = view.state.selection.main.to;
+                const isSelected = (selFrom <= to && selTo >= from);
+                items.push({ from, to, decoration: Decoration.replace({ widget: new ImagePreviewWidget(absoluteUrl, imgMatch[1], from, to, view, width, height, isSelected) }) });
             }
         }
 

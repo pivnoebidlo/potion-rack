@@ -15,10 +15,6 @@ import { wysiwymPlugin, setSlug, slugField, setResizeCallback, resizeCallbackFie
 import { tableNavPlugin } from '../editor-plugins/tableNavPlugin';
 import ImageResizeModal from './ImageResizeModal';
 
-function slugify(name: string): string {
-    return name.toLowerCase().replace(/\s+/g, '_').replace(/[<>:"/\\|?*]/g, '').substring(0, 100);
-}
-
 function safeEncode(str: string): string {
     return str.replace(/&/g, '%26').replace(/ /g, '%20').replace(/#/g, '%23');
 }
@@ -55,6 +51,58 @@ interface MarkdownEditorProps {
     editorViewRef?: React.MutableRefObject<EditorView | null>;
 }
 
+// Пул EditorView по slug — глобальный кеш
+const viewPool = new Map<string, { view: EditorView; container: HTMLDivElement }>();
+
+function createEditorView(
+    content: string,
+    slug: string,
+    parent: HTMLElement,
+    onChange: (v: string) => void,
+    handleResizeExisting: (from: number, to: number, w?: number, h?: number) => void
+): EditorView {
+    const editorTheme = EditorView.theme({
+        '&': { background: 'var(--bg-primary)', color: 'var(--text-primary)', height: '100%' },
+        '.cm-scroller': { background: 'var(--bg-primary)', overflow: 'auto', height: '100%' },
+        '.cm-content': { background: 'var(--bg-primary)', color: 'var(--text-primary)', caretColor: 'var(--text-primary)', padding: '24px 32px', fontSize: 'var(--font-size-md)', lineHeight: '1.8' },
+        '.cm-gutters': { display: 'none' },
+        '.cm-activeLine': { background: 'transparent' },
+        '.cm-cursor': { borderLeftColor: 'var(--text-primary)' },
+        '.cm-selectionBackground': { background: 'var(--accent-light) !important', borderRadius: '2px' },
+        '.cm-matchingBracket': { background: 'var(--accent-light)' },
+        '.cm-heading': { textDecoration: 'none !important', borderBottom: 'none !important' },
+        '.cm-headingMark': { textDecoration: 'none !important' },
+        '.cm-strikethrough': { textDecoration: 'line-through' },
+    });
+    const updateListener = EditorView.updateListener.of((update) => {
+        if (update.docChanged) onChange(update.state.doc.toString());
+    });
+    const view = new EditorView({
+        state: EditorState.create({
+            doc: content,
+            extensions: [
+                slugField.init(() => slug),
+                resizeCallbackField,
+                keymap.of([...defaultKeymap, ...historyKeymap]),
+                history(),
+                markdown({ base: markdownLanguage, codeLanguages: languages }),
+                syntaxHighlighting(defaultHighlightStyle),
+                autocompletion(),
+                closeBrackets(),
+                bracketMatching(),
+                EditorView.lineWrapping,
+                tableNavPlugin,
+                wysiwymPlugin,
+                updateListener,
+                editorTheme,
+            ],
+        }),
+        parent,
+    });
+    view.dispatch({ effects: setResizeCallback.of(handleResizeExisting) });
+    return view;
+}
+
 export default function MarkdownEditor({ content, onChange, onSave, figureName, folderPath, editorViewRef }: MarkdownEditorProps) {
     const $t = t();
     const [preview, setPreview] = useState(false);
@@ -64,74 +112,71 @@ export default function MarkdownEditor({ content, onChange, onSave, figureName, 
     const [resizeInsertCallback, setResizeInsertCallback] = useState<(width: number | null, height: number | null) => void>(() => {});
     const editorRef = useRef<HTMLDivElement>(null);
     const editorViewRefInternal = useRef<EditorView | null>(null);
-    const lastSavedContent = useRef(content);
     const slug = folderPath ? `${folderPath}/${figureName || ''}` : (figureName || '');
     const safeSlug = safeEncode(slug);
 
+    const handleResizeExisting = useCallback((from: number, to: number, currentWidth?: number, currentHeight?: number) => {
+        const v = editorViewRefInternal.current; if (!v) return;
+        const text = v.state.sliceDoc(from, to);
+        const match = text.match(/!\[([^\]]*)\]\((\.\.?\/images\/[^)]+?)(?:\s*=\s*\d*x?\d*)?\)/);
+        if (match) {
+            const imgPath = match[2];
+            setResizeImagePath(imgPath);
+            setResizeInsertCallback(() => (width: number | null, height: number | null) => {
+                const alt = match[1];
+                const sizeStr = width ? (height ? ` =${width}x${height}` : ` =${width}`) : '';
+                v.dispatch({ changes: { from, to, insert: `![${alt}](${imgPath}${sizeStr})` } });
+                v.focus();
+            });
+            setResizeModalOpen(true);
+        }
+    }, []);
+
+    // Монтирование/переключение EditorView
     useEffect(() => {
         if (!editorRef.current) return;
-        if (!content && !slug) return;
-        const existingView = editorViewRefInternal.current;
-        if (existingView) {
-            const hadFocus = existingView.hasFocus;
-            existingView.dispatch({ effects: setSlug.of(slug) });
-            existingView.dispatch({ effects: setResizeCallback.of(handleResizeExisting) });
-            if (existingView.state.doc.toString() !== content) {
-                existingView.dispatch({ changes: { from: 0, to: existingView.state.doc.length, insert: content } });
-            }
-            if (hadFocus) existingView.focus();
-            return;
-        }
-        const editorTheme = EditorView.theme({
-            '&': { background: 'var(--bg-primary)', color: 'var(--text-primary)', height: '100%' },
-            '.cm-scroller': { background: 'var(--bg-primary)', overflow: 'auto', height: '100%' },
-            '.cm-content': { background: 'var(--bg-primary)', color: 'var(--text-primary)', caretColor: 'var(--text-primary)', padding: '24px 32px', fontSize: 'var(--font-size-md)', lineHeight: '1.8' },
-            '.cm-gutters': { display: 'none' },
-            '.cm-activeLine': { background: 'transparent' },
-            '.cm-cursor': { borderLeftColor: 'var(--text-primary)' },
-            '.cm-selectionBackground': { background: 'var(--accent-light) !important', borderRadius: '2px' },
-            '.cm-matchingBracket': { background: 'var(--accent-light)' },
-            '.cm-heading': { textDecoration: 'none !important', borderBottom: 'none !important' },
-            '.cm-headingMark': { textDecoration: 'none !important' },
-            '.cm-strikethrough': { textDecoration: 'line-through' },
-        });
-        const updateListener = EditorView.updateListener.of((update) => {
-            if (update.docChanged) onChange(update.state.doc.toString());
-        });
-        const view = new EditorView({
-            state: EditorState.create({
-                doc: content,
-                extensions: [
-                    slugField.init(() => slug),
-                    resizeCallbackField,
-                    keymap.of([...defaultKeymap, ...historyKeymap]),
-                    history(),
-                    markdown({ base: markdownLanguage, codeLanguages: languages }),
-                    syntaxHighlighting(defaultHighlightStyle),
-                    autocompletion(),
-                    closeBrackets(),
-                    bracketMatching(),
-                    EditorView.lineWrapping,
-                    tableNavPlugin,
-                    wysiwymPlugin,
-                    updateListener,
-                    editorTheme,
-                ],
-            }),
-            parent: editorRef.current,
-        });
-        editorViewRefInternal.current = view;
-        if (editorViewRef) editorViewRef.current = view;
-        view.dispatch({ effects: setResizeCallback.of(handleResizeExisting) });
-        setPreview(false);
-    }, [slug, content]);
+        if (!slug) return;
 
-    useEffect(() => {
-        if (content === lastSavedContent.current) return;
-        if (content.trim() === '') return;
-        const timer = setTimeout(() => { lastSavedContent.current = content; onSave(); }, 500);
-        return () => clearTimeout(timer);
-    }, [content, onSave]);
+        const container = editorRef.current;
+
+        // Отмонтируем предыдущий view из DOM (но сохраняем в пуле)
+        const currentView = editorViewRefInternal.current;
+        if (currentView) {
+            const currentSlug = [...viewPool.entries()].find(([, v]) => v.view === currentView)?.[0];
+            if (currentSlug && currentSlug !== slug) {
+                const pooled = viewPool.get(currentSlug);
+                if (pooled) {
+                    pooled.container.appendChild(currentView.dom);
+                }
+            }
+        }
+
+        // Достаём или создаём view для нового slug
+        let pooled = viewPool.get(slug);
+        if (!pooled) {
+            const viewContainer = document.createElement('div');
+            viewContainer.style.display = 'none';
+            document.body.appendChild(viewContainer);
+            const view = createEditorView(content, slug, viewContainer, onChange, handleResizeExisting);
+            pooled = { view, container: viewContainer };
+            viewPool.set(slug, pooled);
+        } else {
+            if (pooled.view.state.doc.toString() !== content) {
+                pooled.view.dispatch({
+                    changes: { from: 0, to: pooled.view.state.doc.length, insert: content }
+                });
+            }
+        }
+
+        container.innerHTML = '';
+        container.appendChild(pooled.view.dom);
+        editorViewRefInternal.current = pooled.view;
+        if (editorViewRef) editorViewRef.current = pooled.view;
+        pooled.view.dispatch({ effects: setSlug.of(slug) });
+        pooled.view.dispatch({ effects: setResizeCallback.of(handleResizeExisting) });
+
+        setPreview(false);
+    }, [slug]);
 
     useEffect(() => {
         const h = (e: MouseEvent) => { const a = (e.target as HTMLElement).closest('a'); if (a?.getAttribute('href')) { e.preventDefault(); window.open(a.getAttribute('href')!, '_blank'); } };
@@ -141,6 +186,29 @@ export default function MarkdownEditor({ content, onChange, onSave, figureName, 
 
     useEffect(() => {
         const h = (e: KeyboardEvent) => {
+            // Удаление картинки целиком по Backspace/Delete (до проверки mod)
+            if (e.key === 'Backspace' || e.key === 'Delete') {
+                const v = editorViewRefInternal.current;
+                if (v?.hasFocus) {
+                    const pos = e.key === 'Backspace' ? v.state.selection.main.from : v.state.selection.main.to;
+                    const docText = v.state.doc.toString();
+                    const imageRegex = /!\[([^\]]*)\]\((\.\.?\/images\/[^)]+?(?:\s*=\s*\d*x?\d*)?)\)/g;
+                    let match;
+                    while ((match = imageRegex.exec(docText)) !== null) {
+                        const imgFrom = match.index;
+                        const imgTo = imgFrom + match[0].length;
+                        const cursorAtEnd = e.key === 'Delete' && pos >= imgFrom && pos < imgTo;
+                        const cursorAtStart = e.key === 'Backspace' && pos > imgFrom && pos <= imgTo;
+                        if (cursorAtEnd || cursorAtStart) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            v.dispatch({ changes: { from: imgFrom, to: imgTo } });
+                            return;
+                        }
+                    }
+                }
+            }
+
             const mod = e.metaKey || e.ctrlKey; if (!mod) return;
 
             if (e.code === 'KeyX' && e.shiftKey) {
@@ -271,22 +339,20 @@ export default function MarkdownEditor({ content, onChange, onSave, figureName, 
         inp.onchange = async (e) => {
             const f = (e.target as HTMLInputElement).files?.[0]; if (!f) return;
             try {
-                console.log('🖼 Starting image upload:', f.name, 'folder:', folderPath, 'figure:', figureName);
                 const c = await compressImage(f, 1920, 1920, 0.85);
-                console.log('🖼 Image compressed, saving...');
                 const r = await (window as any).electronAPI?.saveImage(folderPath || '', figureName || 'unknown', f.name, c.split(',')[1]);
-                console.log('🖼 Save result:', r);
                 if (r?.success) {
                     setResizeImagePath(r.path);
                     setResizeInsertCallback(() => (width: number | null, height: number | null) => {
                         const v = editorViewRefInternal.current; if (!v) return;
                         const sizeStr = width ? (height ? ` =${width}x${height}` : ` =${width}`) : '';
-                        v.dispatch({ changes: { from: v.state.selection.main.from, insert: `![${f.name}](.${r.path}${sizeStr})\n` } });
+                        const insertPos = v.state.selection.main.from;
+                        const inserted = `![${f.name}](.${r.path}${sizeStr})\n`;
+                        v.dispatch({ changes: { from: insertPos, insert: inserted } });
+                        v.dispatch({ selection: { anchor: insertPos + inserted.length } });
                         v.focus();
                     });
                     setResizeModalOpen(true);
-                } else {
-                    console.error('Save failed:', r);
                 }
             } catch (err) { console.error('Upload error:', err); }
         };
@@ -297,24 +363,6 @@ export default function MarkdownEditor({ content, onChange, onSave, figureName, 
         const { from, to } = v.state.selection.main; const s = v.state.sliceDoc(from, to) || 'link text';
         v.dispatch({ changes: { from, to, insert: `[${s}](url)` }, selection: { anchor: from + s.length + 3, head: from + s.length + 6 } });
         v.focus();
-    }, []);
-
-    const handleResizeExisting = useCallback((from: number, to: number, currentWidth?: number, currentHeight?: number) => {
-        const v = editorViewRefInternal.current; if (!v) return;
-        const text = v.state.sliceDoc(from, to);
-        const match = text.match(/!\[([^\]]*)\]\((\.\.?\/images\/[^)]+?)(?:\s*=\s*\d*x?\d*)?\)/);
-        if (match) {
-            const imgPath = match[2];
-            console.log('Resize existing:', { from, to, imgPath, safeSlug, figureName, folderPath });
-            setResizeImagePath(imgPath);
-            setResizeInsertCallback(() => (width: number | null, height: number | null) => {
-                const alt = match[1];
-                const sizeStr = width ? (height ? ` =${width}x${height}` : ` =${width}`) : '';
-                v.dispatch({ changes: { from, to, insert: `![${alt}](${imgPath}${sizeStr})` } });
-                v.focus();
-            });
-            setResizeModalOpen(true);
-        }
     }, []);
 
     useEffect(() => {
@@ -332,7 +380,10 @@ export default function MarkdownEditor({ content, onChange, onSave, figureName, 
                             setResizeInsertCallback(() => (width: number | null, height: number | null) => {
                                 const v = editorViewRefInternal.current; if (!v) return;
                                 const sizeStr = width ? (height ? ` =${width}x${height}` : ` =${width}`) : '';
-                                v.dispatch({ changes: { from: v.state.selection.main.from, insert: `![${f.name}](.${r.path}${sizeStr})\n` } });
+                                const insertPos = v.state.selection.main.from;
+                                const inserted = `![${f.name}](.${r.path}${sizeStr})\n`;
+                                v.dispatch({ changes: { from: insertPos, insert: inserted } });
+                                v.dispatch({ selection: { anchor: insertPos + inserted.length } });
                                 v.focus();
                             });
                             setResizeModalOpen(true);
@@ -348,7 +399,6 @@ export default function MarkdownEditor({ content, onChange, onSave, figureName, 
 
     let resolvedContent = content || '';
 
-// Шаг 1: вырезаем размеры и сохраняем
     const sizeMap: Record<string, { w?: string; h?: string }> = {};
     resolvedContent = resolvedContent.replace(
         /!\[([^\]]*)\]\((\.\.?\/images\/[^)]+?)\s*=\s*(\d+)?x?(\d+)?\)/g,
@@ -358,11 +408,9 @@ export default function MarkdownEditor({ content, onChange, onSave, figureName, 
         }
     );
 
-// Шаг 2: заменяем ./images/ и ../images/ на HTTP
     resolvedContent = resolvedContent.replace(/\(\.\/images\//g, `(http://127.0.0.1:8765/figures-data/${safeSlug}/images/`);
     resolvedContent = resolvedContent.replace(/\(\.\.\/images\//g, `(http://127.0.0.1:8765/figures-data/${safeSlug}/images/`);
 
-// Шаг 3: применяем размеры — заменяем ![alt](url) на <img>
     resolvedContent = resolvedContent.replace(
         /!\[([^\]]*)\]\((http:\/\/127\.0\.0\.1:8765\/figures-data\/[^)]+?)\)/g,
         (match, alt, url) => {

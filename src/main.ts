@@ -93,6 +93,66 @@ if (savedFiguresPath) {
 
 try { fs.mkdirSync(figuresPath, { recursive: true }); } catch (e) {}
 
+// Cleanup неиспользуемых картинок при старте
+function cleanupUnusedImages() {
+    console.log('🧹 Running image cleanup...');
+    let totalRemoved = 0;
+
+    function scanDir(dirPath: string) {
+        if (!fs.existsSync(dirPath)) return;
+        const entries = fs.readdirSync(dirPath, { withFileTypes: true });
+        for (const entry of entries) {
+            const fullPath = path.join(dirPath, entry.name);
+            if (entry.isDirectory()) {
+                if (entry.name === 'images') {
+                    // Нашли папку images — ищем родительский .md файл
+                    const parentDir = path.dirname(fullPath);
+                    const mdFiles = fs.readdirSync(parentDir).filter(f => f.endsWith('.md'));
+
+                    if (mdFiles.length > 0 && fs.existsSync(fullPath)) {
+                        const imageFiles = fs.readdirSync(fullPath);
+                        const usedImages = new Set<string>();
+
+                        // Собираем использованные картинки из всех .md файлов
+                        for (const mdFile of mdFiles) {
+                            try {
+                                const content = fs.readFileSync(path.join(parentDir, mdFile), 'utf8');
+                                const imageRegex = /!\[.*?\]\(\.\.?\/images\/([^)\s]+?)(?:\s*=\s*\d+x?\d*)?\)/g;
+                                let match;
+                                while ((match = imageRegex.exec(content)) !== null) {
+                                    usedImages.add(match[1]);
+                                }
+                            } catch (e) {}
+                        }
+
+                        // Удаляем неиспользуемые
+                        for (const img of imageFiles) {
+                            if (!usedImages.has(img)) {
+                                try {
+                                    fs.unlinkSync(path.join(fullPath, img));
+                                    console.log(`🗑 Cleaned up unused image: ${img}`);
+                                    totalRemoved++;
+                                } catch (e) {}
+                            }
+                        }
+                    }
+                } else {
+                    scanDir(fullPath);
+                }
+            }
+        }
+    }
+
+    scanDir(figuresPath);
+    if (totalRemoved > 0) {
+        console.log(`🧹 Cleanup complete: ${totalRemoved} unused images removed`);
+    } else {
+        console.log('🧹 No unused images found');
+    }
+}
+
+cleanupUnusedImages();
+
 // ─── Handlers для управления путём статей ───
 ipcMain.handle('get-default-figures-path', () => figuresPath);
 
@@ -138,10 +198,6 @@ ipcMain.handle('set-figures-path', (_event, newPath: string) => {
     }
 });
 
-function slugify(name: string): string {
-    return name.toLowerCase().replace(/\s+/g, '_').replace(/[<>:"/\\|?*]/g, '').substring(0, 100);
-}
-
 function getFigureDir(folderPath: string, figureName: string): string {
     if (folderPath) {
         return path.join(figuresPath, folderPath, figureName);
@@ -164,30 +220,10 @@ ipcMain.handle('article:write', (_event, folderPath: string, figureName: string,
     if (!content || !content.trim()) return { success: false, error: 'Empty content' };
     const dir = getFigureDir(folderPath, figureName);
     const filePath = path.join(dir, `${figureName}.md`);
-    const imagesDir = path.join(dir, 'images');
 
     try {
         fs.mkdirSync(dir, { recursive: true });
         fs.writeFileSync(filePath, content, 'utf8');
-
-        if (fs.existsSync(imagesDir)) {
-            const imageRegex = /!\[.*?\]\(\.\.?\/images\/([^)\s]+?)(?:\s*=\s*\d+x?\d*)?\)/g;
-            const usedImages = new Set<string>();
-            let match;
-            while ((match = imageRegex.exec(content)) !== null) {
-                usedImages.add(match[1]);
-            }
-
-            const files = fs.readdirSync(imagesDir);
-            for (const file of files) {
-                if (!usedImages.has(file)) {
-                    const filePath = path.join(imagesDir, file);
-                    fs.unlinkSync(filePath);
-                    console.log(`🗑 Cleaned up unused image: ${file}`);
-                }
-            }
-        }
-
         return { success: true };
     } catch (e) {
         console.error('Write article error:', e);

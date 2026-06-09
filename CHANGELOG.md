@@ -1,3 +1,24 @@
+## 0.4.3
+
+### Added
+[+] EditorView pool — each figure article keeps its own editor state, history, and cursor position
+[+] Image selection highlight — outline appears when cursor is inside an image widget
+[+] Backspace/Delete removes entire image Markdown at once (not character by character)
+[+] Image cleanup runs at app startup instead of on every save
+
+### Changed
+[*] Switching between figures now saves current article immediately (no debounce)
+[*] Image insert now adds single line break after image (removed extra spacing)
+[*] Cursor moves below image after insertion
+
+### Fixed
+[-] Cmd+Z no longer transfers content between different articles (separate history per article)
+[-] Article content no longer mixes up when switching between figures
+[-] Images no longer deleted on accidental Markdown edits (cleanup moved to startup)
+
+### Removed
+[-] Autosave debounce — saving now happens on figure switch
+
 ## 0.4.2
 
 ### Added
