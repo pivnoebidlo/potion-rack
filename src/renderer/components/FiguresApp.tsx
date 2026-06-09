@@ -256,7 +256,6 @@ export default function FiguresApp() {
             );
 
             const htmlContent = marked(resolvedContent) as string;
-            console.log('PDF htmlContent:', htmlContent?.substring(0, 500));
             await (window as any).electronAPI?.exportPdf(figure.folder_path || '', figure.name, htmlContent);
         } catch (err) { console.error('Export PDF failed:', err); }
     };

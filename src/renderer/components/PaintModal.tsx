@@ -99,9 +99,9 @@ export default function PaintModal({ paint, brands, series, baseColors, onSave, 
                         </div>
                         <div className={styles.group}>
                             <label className={styles.label}>{$t.series}</label>
-                            <div style={{position:'relative'}}>
-                                <input className={styles.input} style={{width:'100%', paddingRight:24}} value={seriesVal} onChange={e => setSeriesVal(e.target.value)} placeholder={$t.series + '...'} list="series-list" />
-                                {seriesVal && <button onClick={() => setSeriesVal('')} style={{position:'absolute', right:6, top:'50%', transform:'translateY(-50%)', background:'none', border:'none', color:'var(--text-muted)', cursor:'pointer', fontSize:14, lineHeight:1}}>✕</button>}
+                            <div className={styles.inputWithClear}>
+                                <input className={styles.input} value={seriesVal} onChange={e => setSeriesVal(e.target.value)} placeholder={$t.series + '...'} list="series-list" />
+                                {seriesVal && <button onClick={() => setSeriesVal('')} className={styles.clearBtn}>✕</button>}
                             </div>
                             <datalist id="series-list">{series.map(s => <option key={s} value={s} />)}</datalist>
                         </div>
@@ -112,20 +112,20 @@ export default function PaintModal({ paint, brands, series, baseColors, onSave, 
                     </div>
                     <div className={styles.group}>
                         <label className={styles.label}>{$t.paintColor || 'Цвет краски'}</label>
-                        <div style={{display:'flex', gap:8, alignItems:'center'}}>
-                            <input type="color" value={colorHex || '#000000'} onChange={e => setColorHex(e.target.value)} style={{width:36, height:36, padding:0, border:'1px solid var(--border)', borderRadius:'var(--radius-sm)', cursor:'pointer', background:'none'}} />
-                            <div style={{position:'relative', flex:1}}>
-                                <input className={styles.input} value={colorHex} onChange={e => setColorHex(e.target.value)} placeholder="#RRGGBB" style={{width:'100%', paddingRight:24}} />
-                                {colorHex && <button onClick={() => setColorHex('')} style={{position:'absolute', right:6, top:'50%', transform:'translateY(-50%)', background:'none', border:'none', color:'var(--text-muted)', cursor:'pointer', fontSize:14, lineHeight:1}}>✕</button>}
+                        <div className={styles.colorRow}>
+                            <input type="color" value={colorHex || '#000000'} onChange={e => setColorHex(e.target.value)} className={styles.colorPicker} />
+                            <div className={styles.inputWithClear} style={{flex:1}}>
+                                <input className={styles.input} value={colorHex} onChange={e => setColorHex(e.target.value)} placeholder="#RRGGBB" />
+                                {colorHex && <button onClick={() => setColorHex('')} className={styles.clearBtn}>✕</button>}
                             </div>
                         </div>
                     </div>
                     <div className={styles.row}>
                         <div className={styles.group}>
                             <label className={styles.label}>{$t.article}</label>
-                            <div style={{position:'relative'}}>
-                                <input className={styles.input} style={{width:'100%', paddingRight:24}} value={article} onChange={e => setArticle(e.target.value)} placeholder="e.g. 22-03" />
-                                {article && <button onClick={() => setArticle('')} style={{position:'absolute', right:6, top:'50%', transform:'translateY(-50%)', background:'none', border:'none', color:'var(--text-muted)', cursor:'pointer', fontSize:14, lineHeight:1}}>✕</button>}
+                            <div className={styles.inputWithClear}>
+                                <input className={styles.input} value={article} onChange={e => setArticle(e.target.value)} placeholder="e.g. 22-03" />
+                                {article && <button onClick={() => setArticle('')} className={styles.clearBtn}>✕</button>}
                             </div>
                         </div>
                         <div className={styles.group}>
@@ -148,18 +148,18 @@ export default function PaintModal({ paint, brands, series, baseColors, onSave, 
                         </div>
                         <div className={styles.group}>
                             <label className={styles.label}>{$t.price}</label>
-                            <div style={{position:'relative'}}>
-                                <input className={styles.input} style={{width:'100%', paddingRight:24}} value={price} onChange={e => setPrice(e.target.value)} placeholder="0.00" />
-                                {price && <button onClick={() => setPrice('')} style={{position:'absolute', right:6, top:'50%', transform:'translateY(-50%)', background:'none', border:'none', color:'var(--text-muted)', cursor:'pointer', fontSize:14, lineHeight:1}}>✕</button>}
+                            <div className={styles.inputWithClear}>
+                                <input className={styles.input} value={price} onChange={e => setPrice(e.target.value)} placeholder="0.00" />
+                                {price && <button onClick={() => setPrice('')} className={styles.clearBtn}>✕</button>}
                             </div>
                         </div>
                     </div>
                     <div className={styles.row}>
                         <div className={styles.group}>
                             <label className={styles.label}>{$t.purchaseDate}</label>
-                            <div style={{position:'relative'}}>
-                                <input className={styles.input} style={{width:'100%', paddingRight:24}} type="date" value={purchaseDate} onChange={e => setPurchaseDate(e.target.value)} />
-                                {purchaseDate && <button onClick={() => setPurchaseDate('')} style={{position:'absolute', right:6, top:'50%', transform:'translateY(-50%)', background:'none', border:'none', color:'var(--text-muted)', cursor:'pointer', fontSize:14, lineHeight:1}}>✕</button>}
+                            <div className={styles.inputWithClear}>
+                                <input className={styles.input} type="date" value={purchaseDate} onChange={e => setPurchaseDate(e.target.value)} />
+                                {purchaseDate && <button onClick={() => setPurchaseDate('')} className={styles.clearBtn}>✕</button>}
                             </div>
                         </div>
                         <div className={styles.group}>

@@ -45,7 +45,6 @@ export default function FigureModal({ figure, onSave, onClose }: FigureModalProp
     const handleSave = async () => {
         if (!name.trim()) return;
         try {
-            console.log('Saving:', { purchase_date: purchaseDate, completed_date: completedDate });
             await onSave({
                 id: figure?.id,
                 name: name.trim(),
@@ -57,8 +56,6 @@ export default function FigureModal({ figure, onSave, onClose }: FigureModalProp
                 completed_date: completedDate || null,
                 shop_url: shopUrl.trim() || undefined,
             });
-            const updated = await fetch(`http://127.0.0.1:8765/api/figures/${figure?.id}`).then(r => r.json());
-            console.log('After save:', JSON.stringify({ purchase_date: updated.purchase_date, completed_date: updated.completed_date }));
             onClose();
         } catch (err) {
             console.error('Save failed:', err);
@@ -68,40 +65,62 @@ export default function FigureModal({ figure, onSave, onClose }: FigureModalProp
     return (
         <div id="figure-modal-overlay" className={styles.overlay} onClick={onClose}>
             <div className={styles.modal} onClick={e => e.stopPropagation()}>
-                <div className={styles.header}><div className={styles.title}>{isEdit ? $t.editFigure : $t.addFigure}</div><button className={styles.closeBtn} onClick={onClose}>✕</button></div>
+                <div className={styles.header}>
+                    <div className={styles.title}>{isEdit ? $t.editFigure : $t.addFigure}</div>
+                    <button className={styles.closeBtn} onClick={onClose}>✕</button>
+                </div>
                 <div className={styles.body}>
-                    <div className={styles.group}><label className={styles.label}>{$t.figureName} *</label><input className={styles.input} value={name} onChange={e => setName(e.target.value)} placeholder={$t.figureName} autoFocus /></div>
-                    <div className={styles.group}><label className={styles.label}>{$t.manufacturer}</label><input className={styles.input} value={manufacturer} onChange={e => setManufacturer(e.target.value)} placeholder="e.g. Games Workshop" /></div>
-                    <div className={styles.formRow}>
-                        <div className={styles.group} style={{flex:1}}><label className={styles.label}>{$t.scale}</label><input className={styles.input} value={scale} onChange={e => setScale(e.target.value)} placeholder="e.g. 28mm" /></div>
-                        <div className={styles.group} style={{flex: 1}}><label
-                            className={styles.label}>{$t.material}</label><select className={styles.select}
-                                                                                  value={material}
-                                                                                  onChange={e => setMaterial(e.target.value as Figure['material'])}>
-                            <option value="resin">{$t.resin}</option>
-                            <option value="plastic">{$t.plastic}</option>
-                            <option value="metal">{$t.metal}</option>
-                            <option value="other">{$t.other}</option>
-                        </select></div>
+                    <div className={styles.group}>
+                        <label className={styles.label}>{$t.figureName} *</label>
+                        <input className={styles.input} value={name} onChange={e => setName(e.target.value)} placeholder={$t.figureName} autoFocus />
                     </div>
-                    <div className={styles.group}><label className={styles.label}>{$t.status}</label><select className={styles.select} value={status} onChange={e => setStatus(e.target.value as Figure['status'])}><option value="draft">{$t.draft}</option><option value="in-progress">{$t.inProgress}</option><option value="completed">{$t.completed}</option></select></div>
+                    <div className={styles.group}>
+                        <label className={styles.label}>{$t.manufacturer}</label>
+                        <input className={styles.input} value={manufacturer} onChange={e => setManufacturer(e.target.value)} placeholder="e.g. Games Workshop" />
+                    </div>
                     <div className={styles.formRow}>
-                        <div className={styles.group} style={{flex:1}}>
+                        <div className={`${styles.group} ${styles.flex1}`}>
+                            <label className={styles.label}>{$t.scale}</label>
+                            <input className={styles.input} value={scale} onChange={e => setScale(e.target.value)} placeholder="e.g. 28mm" />
+                        </div>
+                        <div className={`${styles.group} ${styles.flex1}`}>
+                            <label className={styles.label}>{$t.material}</label>
+                            <select className={styles.select} value={material} onChange={e => setMaterial(e.target.value as Figure['material'])}>
+                                <option value="resin">{$t.resin}</option>
+                                <option value="plastic">{$t.plastic}</option>
+                                <option value="metal">{$t.metal}</option>
+                                <option value="other">{$t.other}</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div className={styles.group}>
+                        <label className={styles.label}>{$t.status}</label>
+                        <select className={styles.select} value={status} onChange={e => setStatus(e.target.value as Figure['status'])}>
+                            <option value="draft">{$t.draft}</option>
+                            <option value="in-progress">{$t.inProgress}</option>
+                            <option value="completed">{$t.completed}</option>
+                        </select>
+                    </div>
+                    <div className={styles.formRow}>
+                        <div className={`${styles.group} ${styles.flex1}`}>
                             <label className={styles.label}>{$t.purchaseDate}</label>
-                            <div style={{position:'relative'}}>
-                                <input className={styles.input} style={{width:'100%', paddingRight:24}} type="date" value={purchaseDate} onChange={e => setPurchaseDate(e.target.value)} />
-                                {purchaseDate && <button onClick={() => setPurchaseDate('')} style={{position:'absolute', right:6, top:'50%', transform:'translateY(-50%)', background:'none', border:'none', color:'var(--text-muted)', cursor:'pointer', fontSize:14, lineHeight:1}}>✕</button>}
+                            <div className={styles.inputWithClear}>
+                                <input className={styles.input} type="date" value={purchaseDate} onChange={e => setPurchaseDate(e.target.value)} />
+                                {purchaseDate && <button onClick={() => setPurchaseDate('')} className={styles.clearBtn}>✕</button>}
                             </div>
                         </div>
-                        <div className={styles.group} style={{flex:1}}>
+                        <div className={`${styles.group} ${styles.flex1}`}>
                             <label className={styles.label}>{$t.completedDate || 'Дата завершения'}</label>
-                            <div style={{position:'relative'}}>
-                                <input className={styles.input} style={{width:'100%', paddingRight:24}} type="date" value={completedDate} onChange={e => setCompletedDate(e.target.value)} />
-                                {completedDate && <button onClick={() => setCompletedDate('')} style={{position:'absolute', right:6, top:'50%', transform:'translateY(-50%)', background:'none', border:'none', color:'var(--text-muted)', cursor:'pointer', fontSize:14, lineHeight:1}}>✕</button>}
+                            <div className={styles.inputWithClear}>
+                                <input className={styles.input} type="date" value={completedDate} onChange={e => setCompletedDate(e.target.value)} />
+                                {completedDate && <button onClick={() => setCompletedDate('')} className={styles.clearBtn}>✕</button>}
                             </div>
                         </div>
                     </div>
-                    <div className={styles.group}><label className={styles.label}>{$t.shopUrl || 'Shop Link'}</label><input className={styles.input} value={shopUrl} onChange={e => setShopUrl(e.target.value)} placeholder="https://..." /></div>
+                    <div className={styles.group}>
+                        <label className={styles.label}>{$t.shopUrl || 'Shop Link'}</label>
+                        <input className={styles.input} value={shopUrl} onChange={e => setShopUrl(e.target.value)} placeholder="https://..." />
+                    </div>
                 </div>
                 <div className={styles.footer}>
                     <button className={`${styles.btn} ${styles.btnCancel}`} onClick={onClose}>{$t.cancel}</button>

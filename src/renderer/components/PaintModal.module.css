@@ -147,3 +147,43 @@
     opacity: 0.5;
     cursor: not-allowed;
 }
+
+/* Поле с кнопкой очистки */
+.inputWithClear {
+    position: relative;
+}
+
+.inputWithClear input {
+    width: 100%;
+    padding-right: 24px;
+}
+
+.clearBtn {
+    position: absolute;
+    right: 6px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1;
+}
+
+/* Color picker row */
+.colorRow {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.colorPicker {
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    background: none;
+}
