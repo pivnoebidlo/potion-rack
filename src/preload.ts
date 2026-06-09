@@ -39,5 +39,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     selectDbPath: () => ipcRenderer.invoke('dialog:selectDbPath'),
     setDbPath: (newPath: string) => ipcRenderer.invoke('set-db-path', newPath),
     reindexFigures: (targetPath: string) => ipcRenderer.invoke('figures:reindex', targetPath),
+    checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),
+    openExternal: (url: string) => ipcRenderer.invoke('open-external', url),
 });
 

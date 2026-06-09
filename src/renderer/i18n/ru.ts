@@ -171,4 +171,13 @@ export default {
     lockRatioOff: 'Пропорции не зафиксированы',
     sizeSavedAs: 'Размер сохранится как',
     insert: 'Вставить',
+    checkForUpdates: 'Проверить обновления',
+    checkForUpdatesDesc: 'Проверить наличие новых версий на GitHub Releases',
+    updateAvailable: 'Доступно обновление',
+    downloadUpdate: 'Скачать',
+    currentVersion: 'Текущая версия',
+    upToDate: 'У вас последняя версия',
+    updateCheckFailed: 'Не удалось проверить обновления',
+    later: 'Позже',
+    downloadFromGithub: 'Скачать с GitHub →',
 };

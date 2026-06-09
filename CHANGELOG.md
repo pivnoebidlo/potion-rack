@@ -1,3 +1,17 @@
+## 0.4.4
+
+### Added
+[+] Check for updates button in Settings → General (manual check with changelog modal)
+[+] Auto-update for Windows and Linux via electron-updater (downloads in background)
+[+] Ad-hoc code signing for macOS builds in CI
+
+### Changed
+[*] "Check for updates" fetches latest release from GitHub API and shows changelog
+[*] Download button opens GitHub Release in browser (macOS) or auto-installs (Windows/Linux)
+
+### Fixed
+[-] "is damaged" error on macOS reduced by ad-hoc signing in CI
+
 ## 0.4.3
 
 ### Added
