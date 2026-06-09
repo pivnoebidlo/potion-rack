@@ -101,19 +101,53 @@ export default function PaintsApp() {
     }, [selectedId]);
 
     useEffect(() => {
+        const getColumnsCount = (): number => {
+            const grid = document.querySelector('[data-grid-container]');
+            if (!grid) return 4;
+            const style = getComputedStyle(grid);
+            const cols = style.gridTemplateColumns.split(' ').length;
+            return cols || 4;
+        };
+
         const h = (e: KeyboardEvent) => {
             const tag = (e.target as HTMLElement).tagName;
             if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+
+            const idx = filtered.findIndex(p => p.id === selectedId);
+
+            // Стрелки вверх/вниз — работают в обоих режимах
             if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
                 e.preventDefault();
-                const idx = filtered.findIndex(p => p.id === selectedId);
-                if (e.key === 'ArrowUp' && idx > 0) setSelectedId(filtered[idx - 1].id);
-                else if (e.key === 'ArrowDown' && idx < filtered.length - 1) setSelectedId(filtered[idx + 1].id);
-                else if (e.key === 'ArrowDown' && idx === -1 && filtered.length > 0) setSelectedId(filtered[0].id);
+                if (viewMode === 'list') {
+                    if (e.key === 'ArrowUp' && idx > 0) setSelectedId(filtered[idx - 1].id);
+                    else if (e.key === 'ArrowDown' && idx < filtered.length - 1) setSelectedId(filtered[idx + 1].id);
+                    else if (e.key === 'ArrowDown' && idx === -1 && filtered.length > 0) setSelectedId(filtered[0].id);
+                } else {
+                    const cols = getColumnsCount();
+                    if (e.key === 'ArrowUp' && idx >= cols) setSelectedId(filtered[idx - cols].id);
+                    else if (e.key === 'ArrowDown' && idx < filtered.length - cols) setSelectedId(filtered[idx + cols].id);
+                    else if (e.key === 'ArrowDown' && idx === -1 && filtered.length > 0) setSelectedId(filtered[0].id);
+                }
+            }
+
+            // Left/Right только для grid
+            if (viewMode === 'grid' && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+                e.preventDefault();
+                if (e.key === 'ArrowLeft' && idx > 0) setSelectedId(filtered[idx - 1].id);
+                else if (e.key === 'ArrowRight' && idx < filtered.length - 1) setSelectedId(filtered[idx + 1].id);
+                else if (e.key === 'ArrowRight' && idx === -1 && filtered.length > 0) setSelectedId(filtered[0].id);
+            }
+
+            // Скролл к выбранной карточке в grid
+            if (viewMode === 'grid' && selectedId) {
+                setTimeout(() => {
+                    const card = document.querySelector(`[data-paint-id="${selectedId}"]`);
+                    if (card) card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }, 50);
             }
         };
         window.addEventListener('keydown', h); return () => window.removeEventListener('keydown', h);
-    }, [filtered, selectedId]);
+    }, [filtered, selectedId, viewMode]);
 
     useEffect(() => {
         fetch('http://127.0.0.1:8765/api/base-colors').then(r => r.json()).then(d => setBaseColors(d)).catch(e => console.error(e));
