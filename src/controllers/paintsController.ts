@@ -8,7 +8,7 @@ export class PaintsController {
             const paints = db.prepare(`
                 SELECT p.*, bc.name as base_color_name
                 FROM paints p
-                LEFT JOIN base_colors bc ON p.base_color_id = bc.id
+                         LEFT JOIN base_colors bc ON p.base_color_id = bc.id
                 ORDER BY p.brand, p.color_name
             `).all();
             res.json(paints);
@@ -24,7 +24,7 @@ export class PaintsController {
             const paint = db.prepare(`
                 SELECT p.*, bc.name as base_color_name
                 FROM paints p
-                LEFT JOIN base_colors bc ON p.base_color_id = bc.id
+                         LEFT JOIN base_colors bc ON p.base_color_id = bc.id
                 WHERE p.id = ?
             `).get(req.params.id);
 
@@ -43,23 +43,23 @@ export class PaintsController {
     async create(req: Request, res: Response): Promise<void> {
         try {
             const db = getDatabase();
-            const { brand, series, color_name, article, base_color_id, rating, status, price, purchase_place, purchase_date, comment, color_hex } = req.body;
+            const { brand, series, color_name, article, base_color_id, rating, status, price, purchase_place, purchase_date, comment, color_hex, is_mix } = req.body;
 
             if (!brand || !color_name) {
                 res.status(400).json({ error: 'Brand and color name are required' });
                 return;
             }
 
-            // Check for duplicates
-            const existing = db.prepare('SELECT id FROM paints WHERE brand = ? AND color_name = ?').get(brand, color_name);
+            // Проверка дубликатов через LOWER (COLLATE NOCASE не работает с кириллицей)
+            const existing = db.prepare('SELECT id FROM paints WHERE LOWER(brand) = ? AND LOWER(color_name) = ?').get(brand.toLowerCase(), color_name.toLowerCase());
             if (existing) {
                 res.status(409).json({ error: 'A paint with this brand and color name already exists', message: 'A paint with this brand and color name already exists!' });
                 return;
             }
 
             const result = db.prepare(`
-                INSERT INTO paints (brand, series, color_name, article, base_color_id, rating, status, price, purchase_place, purchase_date, comment, color_hex)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO paints (brand, series, color_name, article, base_color_id, rating, status, price, purchase_place, purchase_date, comment, color_hex, is_mix)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `).run(
                 brand,
                 series || null,
@@ -72,13 +72,14 @@ export class PaintsController {
                 purchase_place || null,
                 purchase_date || null,
                 comment || null,
-                color_hex || null
+                color_hex || null,
+                is_mix || 0
             );
 
             const paint = db.prepare(`
                 SELECT p.*, bc.name as base_color_name
                 FROM paints p
-                LEFT JOIN base_colors bc ON p.base_color_id = bc.id
+                         LEFT JOIN base_colors bc ON p.base_color_id = bc.id
                 WHERE p.id = ?
             `).get(result.lastInsertRowid);
             res.status(201).json(paint);
@@ -92,12 +93,23 @@ export class PaintsController {
         try {
             const db = getDatabase();
             const { id } = req.params;
-            const { brand, series, color_name, article, base_color_id, rating, status, price, purchase_place, purchase_date, comment, color_hex } = req.body;
+            const { brand, series, color_name, article, base_color_id, rating, status, price, purchase_place, purchase_date, comment, color_hex, is_mix } = req.body;
 
             const paint = db.prepare('SELECT * FROM paints WHERE id = ?').get(id) as any;
             if (!paint) {
                 res.status(404).json({ error: 'Paint not found' });
                 return;
+            }
+
+            // Проверка на дубликат при обновлении
+            if (brand !== undefined || color_name !== undefined) {
+                const checkBrand = (brand !== undefined ? brand : paint.brand).toLowerCase();
+                const checkName = (color_name !== undefined ? color_name : paint.color_name).toLowerCase();
+                const existing = db.prepare('SELECT id FROM paints WHERE LOWER(brand) = ? AND LOWER(color_name) = ? AND id != ?').get(checkBrand, checkName, id);
+                if (existing) {
+                    res.status(409).json({ error: 'A paint with this brand and color name already exists', message: 'A paint with this brand and color name already exists!' });
+                    return;
+                }
             }
 
             const fields: string[] = [];
@@ -115,6 +127,7 @@ export class PaintsController {
             if (purchase_date !== undefined) { fields.push('purchase_date = ?'); values.push(purchase_date || null); }
             if (comment !== undefined) { fields.push('comment = ?'); values.push(comment); }
             if (color_hex !== undefined) { fields.push('color_hex = ?'); values.push(color_hex || null); }
+            if (is_mix !== undefined) { fields.push('is_mix = ?'); values.push(is_mix); }
 
             if (fields.length > 0) {
                 values.push(id);
@@ -124,7 +137,7 @@ export class PaintsController {
             const updated = db.prepare(`
                 SELECT p.*, bc.name as base_color_name
                 FROM paints p
-                LEFT JOIN base_colors bc ON p.base_color_id = bc.id
+                         LEFT JOIN base_colors bc ON p.base_color_id = bc.id
                 WHERE p.id = ?
             `).get(id);
             res.json(updated);

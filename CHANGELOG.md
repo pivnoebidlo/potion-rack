@@ -1,3 +1,28 @@
+## 0.5.0 — Palette Update 🎨
+
+### Added
+[+] **Palette section** — mix paints by ratio with real-time color preview
+[+] Save mix as "Custom Mix" paint with computed hex color
+[+] Ratio sliders with auto-redistribution (sum always 100%)
+[+] Manual ratio input with "Apply" button for precise control
+[+] Duplicate mix detection (case-insensitive, cross-language)
+[+] Color mixing utility (weighted average RGB)
+[+] Palette icon 🖌️ in sidebar navigation (Paints, Figures, Palette)
+[+] Vite entry point for palette.html
+
+### Changed
+[*] Duplicate paint check now uses LOWER() for cross-language case-insensitivity
+
+### Fixed
+[-] prompt() replaced with custom modal for mix name (Electron compatibility)
+[-] Ratio input no longer concatenates digits (local state + blur sync)
+[-] Collate NOCASE replaced with LOWER() for Cyrillic duplicate detection
+[-] Removed alert() after paint deletion
+
+### Refactored
+[*] PaletteApp with CSS module (no inline styles)
+[*] Added is_mix field to paints API (create/update)
+
 ## 0.4.5
 
 ### Refactored

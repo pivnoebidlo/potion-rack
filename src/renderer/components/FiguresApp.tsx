@@ -73,9 +73,7 @@ export default function FiguresApp() {
 
     useEffect(() => {
         if (selected) {
-            // Сразу показываем контент из БД
             setEditorContent(selected.content || '');
-            // Асинхронно подгружаем свежий с диска
             if ((window as any).electronAPI?.readArticle) {
                 (window as any).electronAPI.readArticle(selected.folder_path || '', selected.name).then((content: string) => {
                     const cleaned = content.replace(/!\[([^\]]*)\]\(data:image\/[^;]+;base64,[^)]+\)/g, '[$1 - old image]');
@@ -107,18 +105,15 @@ export default function FiguresApp() {
     };
 
     const handleSelectFigure = async (id: number) => {
-        // Сохраняем текущую статью перед переключением
         if (selected && editorContent !== selected.content) {
             if (editorContent.trim()) {
                 if ((window as any).electronAPI?.writeArticle) {
                     await (window as any).electronAPI.writeArticle(selected.folder_path || '', selected.name, editorContent);
                 }
                 await updateFigureAPI(selected.id, { content: editorContent });
-                // Обновляем figures в памяти сразу
                 setFigures(prev => prev.map(f => f.id === selected.id ? { ...f, content: editorContent } : f));
             }
         }
-        // Синхронно устанавливаем контент новой статьи
         const newFigure = figures.find(f => f.id === id);
         if (newFigure) {
             setEditorContent(newFigure.content || '');
@@ -126,7 +121,7 @@ export default function FiguresApp() {
         setSelectedId(id);
     };
 
-    const navigateTo = (page: string) => { if (page === 'paints') window.location.href = 'paints.html'; else if (page === 'settings') window.location.href = 'settings.html'; else window.location.href = 'figures.html'; };
+    const navigateTo = (page: string) => { if (page === 'paints') window.location.href = 'paints.html'; else if (page === 'settings') window.location.href = 'settings.html'; else if (page === 'palette') window.location.href = 'palette.html'; else window.location.href = 'figures.html'; };
 
     const handleDeleteFigure = (id: number) => {
         setConfirmTitle($t.deleteFigure); setConfirmMessage($t.deleteFigureConfirm);
@@ -227,7 +222,6 @@ export default function FiguresApp() {
             const safeSlug = encodeURIComponent(slug);
             let resolvedContent = content || '';
 
-            // Шаг 1: вырезаем размеры
             const sizeMap: Record<string, { w?: string; h?: string }> = {};
             resolvedContent = resolvedContent.replace(
                 /!\[([^\]]*)\]\((\.\.?\/images\/[^)]+?)\s*=\s*(\d+)?x?(\d+)?\)/g,
@@ -237,11 +231,9 @@ export default function FiguresApp() {
                 }
             );
 
-            // Шаг 2: заменяем пути на HTTP
             resolvedContent = resolvedContent.replace(/\(\.\/images\//g, `(http://127.0.0.1:8765/figures-data/${safeSlug}/images/`);
             resolvedContent = resolvedContent.replace(/\(\.\.\/images\//g, `(http://127.0.0.1:8765/figures-data/${safeSlug}/images/`);
 
-            // Шаг 3: применяем размеры
             resolvedContent = resolvedContent.replace(
                 /!\[([^\]]*)\]\((http:\/\/127\.0\.0\.1:8765\/figures-data\/[^)]+?)\)/g,
                 (match, alt, url) => {
@@ -297,6 +289,7 @@ export default function FiguresApp() {
             <div className={styles.sidebar}>
                 <div className={styles.sidebarItem} onClick={() => navigateTo('paints')}>🎨</div>
                 <div className={`${styles.sidebarItem} ${styles.sidebarItemActive}`}>🧩</div>
+                <div className={styles.sidebarItem} onClick={() => navigateTo('palette')}>🖌️</div>
                 <div className={styles.sidebarItem} onClick={() => navigateTo('settings')}>⚙️</div>
             </div>
             <div className={styles.main}>

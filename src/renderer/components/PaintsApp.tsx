@@ -115,7 +115,6 @@ export default function PaintsApp() {
 
             const idx = filtered.findIndex(p => p.id === selectedId);
 
-            // Стрелки вверх/вниз — работают в обоих режимах
             if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
                 e.preventDefault();
                 if (viewMode === 'list') {
@@ -130,7 +129,6 @@ export default function PaintsApp() {
                 }
             }
 
-            // Left/Right только для grid
             if (viewMode === 'grid' && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
                 e.preventDefault();
                 if (e.key === 'ArrowLeft' && idx > 0) setSelectedId(filtered[idx - 1].id);
@@ -138,7 +136,6 @@ export default function PaintsApp() {
                 else if (e.key === 'ArrowRight' && idx === -1 && filtered.length > 0) setSelectedId(filtered[0].id);
             }
 
-            // Скролл к выбранной карточке в grid
             if (viewMode === 'grid' && selectedId) {
                 setTimeout(() => {
                     const card = document.querySelector(`[data-paint-id="${selectedId}"]`);
@@ -198,7 +195,7 @@ export default function PaintsApp() {
 
     const handleSort = (col: string) => { if (sortColumn === col) setSortDirection(d => d === 'asc' ? 'desc' : 'asc'); else { setSortColumn(col); setSortDirection('asc'); } };
     const resetFilters = () => { setBrandFilter(''); setSeriesFilter(''); setBaseColorFilter(''); setStatusFilter(''); setSearchFilter(''); };
-    const navigateTo = (page: string) => { if (page === 'figures') window.location.href = 'figures.html'; else if (page === 'settings') window.location.href = 'settings.html'; else window.location.href = 'paints.html'; };
+    const navigateTo = (page: string) => { if (page === 'figures') window.location.href = 'figures.html'; else if (page === 'settings') window.location.href = 'settings.html'; else if (page === 'palette') window.location.href = 'palette.html'; else window.location.href = 'paints.html'; };
 
     const handleSavePaint = async (data: Partial<Paint>) => {
         const url = data.id ? `http://127.0.0.1:8765/api/paints/${data.id}` : 'http://127.0.0.1:8765/api/paints';
@@ -233,7 +230,7 @@ export default function PaintsApp() {
         setConfirmTitle($t.deletePaint); setConfirmMessage($t.deleteConfirm);
         setConfirmAction(() => async () => {
             await fetch(`http://127.0.0.1:8765/api/paints/${id}`, { method: 'DELETE' });
-            setSelectedId(null); await loadPaints(); alert($t.deletePaint + ' — OK'); setConfirmOpen(false);
+            setSelectedId(null); await loadPaints(); setConfirmOpen(false);
         });
         setConfirmOpen(true);
     };
@@ -278,6 +275,7 @@ export default function PaintsApp() {
             <div style={{ width: 48, minWidth: 48, background: 'var(--bg-tertiary)', borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 8 }}>
                 <div onClick={() => navigateTo('paints')} style={{ width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 'var(--radius-sm)', cursor: 'pointer', marginBottom: 4, color: 'var(--accent)', background: 'var(--accent-light)' }}>🎨</div>
                 <div onClick={() => navigateTo('figures')} style={{ width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 'var(--radius-sm)', cursor: 'pointer', marginBottom: 4, color: 'var(--text-secondary)' }} onMouseEnter={e => (e.target as HTMLElement).style.background = 'var(--bg-hover)'} onMouseLeave={e => (e.target as HTMLElement).style.background = 'none'}>🧩</div>
+                <div onClick={() => navigateTo('palette')} style={{ width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 'var(--radius-sm)', cursor: 'pointer', marginBottom: 4, color: 'var(--text-secondary)' }} onMouseEnter={e => (e.target as HTMLElement).style.background = 'var(--bg-hover)'} onMouseLeave={e => (e.target as HTMLElement).style.background = 'none'}>🖌️</div>
                 <div onClick={() => navigateTo('settings')} style={{ width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 'var(--radius-sm)', cursor: 'pointer', marginBottom: 4, color: 'var(--text-secondary)' }} onMouseEnter={e => (e.target as HTMLElement).style.background = 'var(--bg-hover)'} onMouseLeave={e => (e.target as HTMLElement).style.background = 'none'}>⚙️</div>
             </div>
             <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
