@@ -180,4 +180,12 @@ export default {
     updateCheckFailed: 'Не удалось проверить обновления',
     later: 'Позже',
     downloadFromGithub: 'Скачать с GitHub →',
+    mixPalette: 'Палитра смешивания',
+    resultColor: 'Результирующий цвет',
+    searchPaints: 'Поиск красок...',
+    clearAll: 'Очистить всё',
+    saveMix: 'Сохранить смесь',
+    mixName: 'Название смеси',
+    applyRatios: 'Применить',
+    duplicateMix: 'Смесь с таким названием уже существует',
 };

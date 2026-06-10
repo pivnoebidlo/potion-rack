@@ -187,4 +187,12 @@ export default {
     updateCheckFailed: 'Failed to check for updates',
     later: 'Later',
     downloadFromGithub: 'Download from GitHub →',
+    mixPalette: 'Mix Palette',
+    resultColor: 'Result Color',
+    searchPaints: 'Search paints...',
+    clearAll: 'Clear All',
+    saveMix: 'Save Mix',
+    mixName: 'Mix name',
+    applyRatios: 'Apply',
+    duplicateMix: 'A mix with this name already exists',
 };

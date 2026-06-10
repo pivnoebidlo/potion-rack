@@ -18,6 +18,7 @@ export default defineConfig({
                 figures: path.resolve(__dirname, 'src/renderer/figures.html'),
                 paints: path.resolve(__dirname, 'src/renderer/paints.html'),
                 settings: path.resolve(__dirname, 'src/renderer/settings.html'),
+                palette: path.resolve(__dirname, 'src/renderer/palette.html'),
             },
             output: {
                 format: 'es',

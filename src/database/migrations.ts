@@ -155,6 +155,25 @@ export function initDatabase(db: Database.Database): void {
             ALTER TABLE paints ADD COLUMN color_hex TEXT;
         `);
             }
+        },
+        {
+            version: 9,
+            name: 'Add is_mix to paints',
+            up: (db: Database.Database) => {
+                db.exec(`
+            ALTER TABLE paints ADD COLUMN is_mix BOOLEAN DEFAULT 0;
+        `);
+            }
+        },
+        {
+            version: 10,
+            name: 'Rebuild unique index on paints (case-insensitive)',
+            up: (db: Database.Database) => {
+                db.exec(`
+                    DROP INDEX IF EXISTS idx_unique_brand_color;
+                    CREATE UNIQUE INDEX IF NOT EXISTS idx_unique_brand_color ON paints(brand, color_name);
+                `);
+            }
         }
     ];
 
