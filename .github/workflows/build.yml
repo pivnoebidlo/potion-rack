@@ -178,6 +178,7 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
+          token: ${{ secrets.GH_TOKEN }}
           files: |
             release-artifacts/potion-rack-windows/*
             release-artifacts/potion-rack-macos/*
@@ -185,5 +186,3 @@ jobs:
           draft: false
           prerelease: false
           generate_release_notes: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
