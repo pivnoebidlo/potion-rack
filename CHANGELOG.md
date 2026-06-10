@@ -1,3 +1,15 @@
+## 0.5.2
+
+### Added
+[+] Figure paints section in info panel — link paints to figures
+[+] Paint picker modal — select multiple paints at once
+[+] "Insert paint list" button in editor toolbar — inserts formatted table
+[+] API endpoints for figure_paints (GET/POST/DELETE)
+
+### Changed
+[*] FigureInfoPanel now includes linked paints with color dots
+[*] MarkdownEditor accepts optional figureId prop
+
 ## 0.5.1
 
 ### Added

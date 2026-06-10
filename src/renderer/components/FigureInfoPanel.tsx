@@ -3,6 +3,7 @@ import { Figure } from '../types/figure';
 import { statusTag, statusLabel, materialLabel } from '../utils/figures';
 import { formatDate } from '../utils/dateFormat';
 import { t } from '../i18n';
+import FigurePaintsSection from './FigurePaintsSection';
 
 interface FigureInfoPanelProps {
     selected: Figure;
@@ -67,6 +68,12 @@ export default function FigureInfoPanel({ selected }: FigureInfoPanelProps) {
                     <div className={styles.detailValue}>{selected.folder_path}</div>
                 </div>
             )}
+            <div className={styles.detailItem}>
+                <div className={styles.detailLabel}>{$t.figurePaints || 'Paints'}</div>
+                <div className={styles.detailValue}>
+                    <FigurePaintsSection figureId={selected.id} />
+                </div>
+            </div>
         </div>
     );
 }

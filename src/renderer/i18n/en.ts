@@ -195,4 +195,9 @@ export default {
     mixName: 'Mix name',
     applyRatios: 'Apply',
     duplicateMix: 'A mix with this name already exists',
+    figurePaints: 'Paints',
+    noPaintsLinked: 'No paints linked',
+    addPaintToFigure: 'Add Paints',
+    selectPaints: 'Select one or more paints',
+    addPaints: 'Add',
 };
