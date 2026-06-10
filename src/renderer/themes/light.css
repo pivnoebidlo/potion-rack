@@ -1,0 +1,38 @@
+[data-theme="light"] {
+    --bg-primary: #f5f5f5;
+    --bg-secondary: #ffffff;
+    --bg-tertiary: #e8e8e8;
+    --bg-input: #ffffff;
+    --bg-hover: #e0e0e0;
+    --text-primary: #1a1a1a;
+    --text-secondary: #666;
+    --text-muted: #999;
+    --border: #ddd;
+    --border-light: #ccc;
+    --accent: #3b82f6;
+    --accent-hover: #2563eb;
+    --accent-light: rgba(59, 130, 246, 0.1);
+    --danger: #dc2626;
+    --danger-hover: #b91c1c;
+    --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+    --font-size-xs: 11px;
+    --font-size-sm: 13px;
+    --font-size-md: 14px;
+    --font-size-lg: 16px;
+    --font-size-xl: 18px;
+    --radius-sm: 4px;
+    --radius-md: 6px;
+    --radius-lg: 8px;
+    --radius-xl: 12px;
+    --star-active: #f59e0b;
+    --star-inactive: #ccc;
+    --warning: #f59e0b;
+    --warning-hover: #d97706;
+    --success: #4ade80;
+    --success-hover: #22c55e;
+    --link-color: #a78bfa;
+    --link-hover-color: #c4b5fd;
+    --quote-border: #7c5cfc;
+    --list-marker: #7c5cfc;
+}

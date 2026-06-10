@@ -17,6 +17,10 @@ export interface Paint {
 
 export type SortColumn = 'brand' | 'series' | 'color_name' | 'article' | 'base_color_id' | 'purchase_date' | 'rating' | 'status';
 export type SortDirection = 'asc' | 'desc';
+export * from './common';
+export * from './paint';
+export * from './settings';
+export * from './theme';
 
 export interface PaintImage {
     id: number;

@@ -1,0 +1,436 @@
+.root {
+    display: flex;
+    height: 100vh;
+    width: 100%;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+}
+
+.sidebar {
+    width: 48px; min-width: 48px;
+    background: var(--bg-tertiary);
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column; align-items: center;
+    padding-top: 8px;
+}
+.sidebarItem {
+    width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;
+    border-radius: var(--radius-sm); cursor: pointer; color: var(--text-secondary);
+    margin-bottom: 4px; font-size: 16px; transition: all 0.2s;
+}
+.sidebarItem:hover { background: var(--bg-hover); color: var(--text-primary); }
+.sidebarItemActive { background: var(--accent-light); color: var(--accent); }
+
+.main { flex: 1; display: flex; overflow: hidden; }
+
+/* Левая панель */
+.leftPanel {
+    width: 280px; min-width: 280px;
+    background: var(--bg-secondary);
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    position: relative; overflow-y: auto; overflow-x: hidden;
+    transition: width 0.3s ease, min-width 0.3s ease;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+}
+.leftPanel::-webkit-scrollbar { width: 4px; }
+.leftPanel::-webkit-scrollbar-track { background: transparent; }
+.leftPanel::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+.leftPanel::-webkit-scrollbar-thumb:hover { background: var(--border-light); }
+
+.leftPanelExpanded { width: 280px; min-width: 280px; }
+.leftPanelCollapsed { width: 32px; min-width: 32px; }
+
+.leftToggle {
+    position: absolute; top: 8px; left: 4px; z-index: 10;
+    width: 24px; height: 24px; background: var(--bg-hover); color: var(--text-primary);
+    border: none; border-radius: var(--radius-sm); cursor: pointer; font-size: 12px;
+    display: flex; align-items: center; justify-content: center; transition: background 0.2s;
+}
+.leftToggle:hover { background: var(--border); }
+
+.panelHeader { padding: 10px 12px; border-bottom: 1px solid var(--border); margin-top: 32px; }
+
+.searchInput {
+    width: 100%; padding: 5px 8px; background: var(--bg-input); border: 1px solid var(--border-light);
+    border-radius: var(--radius-sm); color: var(--text-primary); font-size: 12px;
+    outline: none; box-sizing: border-box;
+}
+.searchInput:focus { border-color: var(--accent); }
+
+/* Центральная панель */
+.centerPanel { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+.centerHeader { padding: 8px 14px; background: var(--bg-secondary); border-bottom: 1px solid var(--border); }
+.centerTitle { font-size: 16px; font-weight: 600; color: var(--text-primary); }
+.centerEmpty { flex: 1; display: flex; align-items: center; justify-content: center; color: var(--text-muted); }
+
+/* Правая панель */
+.rightPanel {
+    width: 300px; min-width: 300px;
+    background: var(--bg-secondary);
+    border-left: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    position: relative; overflow: hidden;
+    transition: width 0.3s ease, min-width 0.3s ease;
+}
+.rightPanelExpanded { width: 300px; min-width: 300px; }
+.rightPanelCollapsed { width: 32px; min-width: 32px; }
+
+.rightToggle {
+    position: absolute; top: 8px; right: 4px; z-index: 10;
+    width: 24px; height: 24px; background: var(--bg-hover); color: var(--text-primary);
+    border: none; border-radius: var(--radius-sm); cursor: pointer; font-size: 12px;
+    display: flex; align-items: center; justify-content: center; transition: background 0.2s;
+}
+.rightToggle:hover { background: var(--border); }
+
+.resizeHandle { width: 4px; background: var(--border); cursor: col-resize; flex-shrink: 0; transition: background 0.2s; }
+.resizeHandle:hover { background: var(--accent); }
+
+/* Карточки фигурок (центр) */
+.figureGrid {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 10px;
+    align-content: start;
+}
+
+.figureCard {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 14px;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    position: relative;
+}
+.figureCard:hover { border-color: var(--accent); background: var(--bg-hover); }
+.figureCardSelected { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+
+.cardHeader { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+.cardTitle { font-weight: 600; font-size: var(--font-size-md); color: var(--text-primary); }
+.cardBadge { font-size: var(--font-size-xs); padding: 2px 8px; border-radius: 10px; font-weight: 500; white-space: nowrap; flex-shrink: 0; }
+.cardMeta { font-size: var(--font-size-xs); color: var(--text-muted); display: flex; flex-wrap: wrap; gap: 4px 12px; }
+.cardMeta span { white-space: nowrap; }
+
+.cardActions { display: flex; gap: 6px; margin-top: 4px; opacity: 0; transition: opacity 0.15s; }
+.figureCard:hover .cardActions { opacity: 1; }
+
+.cardBtn {
+    background: var(--bg-hover); border: 1px solid var(--border);
+    color: var(--text-secondary); border-radius: var(--radius-sm);
+    padding: 3px 8px; cursor: pointer; font-size: var(--font-size-xs); font-family: inherit;
+}
+.cardBtn:hover { background: var(--border); color: var(--text-primary); }
+.cardBtnDanger { border-color: var(--danger); color: var(--danger); }
+.cardBtnDanger:hover { background: rgba(220, 38, 38, 0.1); }
+
+/* Статусы */
+.tag { display: inline-block; padding: 2px 7px; border-radius: 10px; font-size: 10px; font-weight: 600; }
+.tagNew { background: rgba(243,156,18,0.2); color: #f39c12; }
+.tagProgress { background: rgba(124,138,255,0.2); color: #7c8aff; }
+.tagDone { background: rgba(46,204,113,0.2); color: #2ecc71; }
+
+/* Правая панель — статистика папки */
+.folderStatsPanel {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.folderStatsHeader {
+    padding: 14px 16px 10px;
+    text-align: center;
+    border-bottom: 1px solid var(--border);
+}
+
+.folderStatsName {
+    font-size: var(--font-size-lg);
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.folderStatsPath {
+    font-size: var(--font-size-xs);
+    color: var(--text-muted);
+    margin-top: 2px;
+    font-family: var(--font-mono);
+    word-break: break-all;
+}
+
+.statsRow {
+    display: flex;
+    gap: 6px;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+}
+
+.statMini {
+    flex: 1;
+    text-align: center;
+    background: var(--bg-secondary);
+    border-radius: var(--radius-md);
+    padding: 8px 4px;
+}
+
+.statMiniValue {
+    font-size: var(--font-size-lg);
+    font-weight: 700;
+    color: var(--accent);
+}
+
+.statMiniLabel {
+    font-size: 10px;
+    color: var(--text-muted);
+    margin-top: 1px;
+}
+
+.statWarning { color: var(--warning); }
+.statSuccess { color: var(--success); }
+.statMuted { color: var(--text-muted); }
+
+.figureList {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px;
+}
+
+.figureCardSmall {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 10px 12px;
+    margin-bottom: 6px;
+    cursor: pointer;
+    transition: all 0.1s;
+}
+
+.figureCardSmall:hover { border-color: var(--accent); }
+.figureCardSmallSelected {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px var(--accent);
+}
+
+.figureCardSmallHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+
+.figureCardSmallName {
+    font-weight: 600;
+    font-size: var(--font-size-sm);
+    color: var(--text-primary);
+}
+
+.figureCardSmallBadge {
+    font-size: 10px;
+    padding: 1px 7px;
+    border-radius: 8px;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.figureCardSmallMeta {
+    font-size: 10px;
+    color: var(--text-muted);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 3px 10px;
+}
+
+.figureCardSmallActions {
+    display: flex;
+    gap: 4px;
+    margin-top: 6px;
+    opacity: 0;
+    transition: opacity 0.15s;
+}
+.figureCardSmall:hover .figureCardSmallActions { opacity: 1; }
+
+.cardActionBtn {
+    background: var(--bg-hover);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    border-radius: var(--radius-sm);
+    padding: 2px 8px;
+    cursor: pointer;
+    font-size: 10px;
+    font-family: var(--font-sans);
+}
+.cardActionBtn:hover { background: var(--border); color: var(--text-primary); }
+.cardActionBtnDanger { border-color: var(--danger); color: var(--danger); }
+.cardActionBtnDanger:hover { background: rgba(220,38,38,0.1); }
+
+/* Справка */
+.helpPanel {
+    padding: 4px 0;
+}
+
+.helpHeader {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--text-muted);
+}
+
+.helpSection {
+    padding: 8px 16px;
+}
+
+.helpSectionTitle {
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 6px;
+}
+
+.helpKey {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 3px 0;
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+}
+
+.helpKey kbd {
+    background: var(--bg-hover);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 1px 6px;
+    font-size: var(--font-size-xs);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+}
+
+.emptyState {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    font-size: var(--font-size-md);
+}
+
+/* Сворачиваемые секции в правой панели */
+.rightSections {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow-y: auto;
+}
+
+.collapsibleSection {
+    border-bottom: 1px solid var(--border);
+}
+
+.collapsibleHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    cursor: pointer;
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--text-muted);
+    user-select: none;
+}
+.collapsibleHeader:hover {
+    color: var(--text-primary);
+}
+
+.collapsibleArrow {
+    font-size: 10px;
+}
+
+.collapsibleBody {
+    padding: 0;
+}
+
+.detailsGrid {
+    padding: 8px 16px;
+}
+
+.detailItem {
+    margin-bottom: 10px;
+}
+
+.detailLabel {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 2px;
+}
+
+.detailValue {
+    font-size: var(--font-size-sm);
+    color: var(--text-primary);
+}
+
+.figurePaintsList {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 4px;
+}
+
+.figurePaintChip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 8px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 11px;
+    cursor: default;
+}
+
+.figurePaintDot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: 1px dashed var(--text-muted);
+    flex-shrink: 0;
+}
+
+.figurePaintName {
+    font-weight: 600;
+}
+
+.figurePaintMeta {
+    color: var(--text-muted);
+    flex: 1;
+}
+
+.figurePaintRemove {
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 12px;
+    opacity: 0;
+    transition: opacity 0.15s;
+}
+
+.figurePaintChip:hover .figurePaintRemove {
+    opacity: 1;
+}

@@ -1,0 +1,135 @@
+.tree {
+    padding: 6px 0;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.treeRow {
+    display: flex;
+    align-items: center;
+    padding: 3px 10px;
+    cursor: pointer;
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    gap: 4px;
+    user-select: none;
+    border-left: 3px solid transparent;
+    min-height: 28px;
+    transition: all 0.1s;
+}
+.treeRow:hover {
+    background: var(--bg-hover);
+}
+
+.folder {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.figure {
+    font-weight: 400;
+}
+
+.selected {
+    background: var(--accent-light);
+    color: var(--accent);
+    border-left-color: var(--accent);
+}
+
+.name {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.count {
+    font-size: var(--font-size-xs);
+    color: var(--text-muted);
+    margin-left: 4px;
+    flex-shrink: 0;
+}
+
+.empty {
+    padding: 20px;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: var(--font-size-sm);
+}
+
+.dragOver {
+    background: var(--accent-light) !important;
+    outline: 2px dashed var(--accent);
+    outline-offset: -2px;
+    border-radius: var(--radius-sm);
+}
+
+/* Иконки папок */
+.folderIcon {
+    width: 16px;
+    height: 14px;
+    flex-shrink: 0;
+    border-radius: 2px;
+    position: relative;
+}
+
+.folderIconCollapsed {
+    background: var(--folder-icon-color, var(--accent));
+    opacity: 0.7;
+}
+.folderIconCollapsed::before {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: 2px;
+    width: 8px;
+    height: 3px;
+    background: var(--folder-icon-color, var(--accent));
+    border-radius: 2px 2px 0 0;
+}
+
+.folderIconOpen {
+    background: var(--folder-icon-open-color, var(--accent));
+    transform: skewY(-2deg);
+}
+.folderIconOpen::before {
+    content: '';
+    position: absolute;
+    top: -3px;
+    left: 0;
+    width: 10px;
+    height: 3px;
+    background: var(--folder-icon-open-color, var(--accent));
+    border-radius: 2px 2px 0 0;
+}
+
+/* Стрелки сворачивания */
+.arrow {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+
+.arrowCollapsed::after {
+    content: '';
+    display: block;
+    width: 0;
+    height: 0;
+    border-top: 5px solid transparent;
+    border-bottom: 5px solid transparent;
+    border-left: 6px solid var(--text-muted);
+}
+
+.arrowExpanded::after {
+    content: '';
+    display: block;
+    width: 0;
+    height: 0;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-top: 6px solid var(--text-muted);
+}

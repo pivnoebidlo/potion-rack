@@ -1,0 +1,47 @@
+.menu {
+    position: fixed;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 4px 0;
+    min-width: 200px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+    z-index: 300;
+    font-size: var(--font-size-sm);
+    user-select: none;
+}
+
+.item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 14px;
+    cursor: pointer;
+    color: var(--text-secondary);
+    transition: all 0.1s;
+}
+.item:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+.itemIcon {
+    width: 18px;
+    text-align: center;
+    flex-shrink: 0;
+    font-size: 13px;
+}
+
+.danger {
+    color: var(--danger);
+}
+.danger:hover {
+    background: rgba(220, 38, 38, 0.1);
+    color: var(--danger);
+}
+
+.divider {
+    height: 1px;
+    background: var(--border);
+    margin: 4px 0;
+}
