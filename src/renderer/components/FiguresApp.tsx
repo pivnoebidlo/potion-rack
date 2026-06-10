@@ -9,6 +9,7 @@ import { t } from '../i18n';
 import { fetchFigures, updateFigureAPI, deleteFigureAPI } from '../services/apiFigures';
 import { Figure } from '../types/figure';
 import FiguresModals from './FiguresModals';
+import AppSidebar from './AppSidebar';
 
 export default function FiguresApp() {
     const $t = t();
@@ -120,8 +121,6 @@ export default function FiguresApp() {
         }
         setSelectedId(id);
     };
-
-    const navigateTo = (page: string) => { if (page === 'paints') window.location.href = 'paints.html'; else if (page === 'settings') window.location.href = 'settings.html'; else if (page === 'palette') window.location.href = 'palette.html'; else window.location.href = 'figures.html'; };
 
     const handleDeleteFigure = (id: number) => {
         setConfirmTitle($t.deleteFigure); setConfirmMessage($t.deleteFigureConfirm);
@@ -286,12 +285,7 @@ export default function FiguresApp() {
 
     return (
         <div className={styles.root}>
-            <div className={styles.sidebar}>
-                <div className={styles.sidebarItem} onClick={() => navigateTo('paints')}>🎨</div>
-                <div className={`${styles.sidebarItem} ${styles.sidebarItemActive}`}>🧩</div>
-                <div className={styles.sidebarItem} onClick={() => navigateTo('palette')}>🖌️</div>
-                <div className={styles.sidebarItem} onClick={() => navigateTo('settings')}>⚙️</div>
-            </div>
+            <AppSidebar active="figures" />
             <div className={styles.main}>
                 <div className={`${styles.leftPanel} ${leftPanelCollapsed ? styles.leftPanelCollapsed : styles.leftPanelExpanded}`}>
                     <button className={styles.leftToggle} onClick={() => setLeftPanelCollapsed(!leftPanelCollapsed)}>{leftPanelCollapsed ? '▶' : '◀'}</button>

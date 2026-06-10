@@ -1,3 +1,20 @@
+## 0.5.1
+
+### Added
+[+] Common AppSidebar component — single navigation sidebar for all sections
+
+### Changed
+[*] PaintsApp, FiguresApp, PaletteApp, SettingsApp now use shared AppSidebar
+[*] base.css now includes body reset (margin: 0, background, font)
+
+### Removed
+[-] Duplicated sidebar code from 4 components
+[-] navigateTo functions from individual apps (handled by AppSidebar)
+
+### Fixed
+[-] White border around Palette section (body margin reset)
+
+
 ## 0.5.0 — Palette Update 🎨
 
 ### Added

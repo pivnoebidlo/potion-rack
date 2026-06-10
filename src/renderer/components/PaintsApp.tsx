@@ -8,6 +8,7 @@ import { Paint } from '../types/paint';
 import PaintFilterPanel from './PaintFilterPanel';
 import PaintListView from './PaintListView';
 import PaintGridView from './PaintGridView';
+import AppSidebar from './AppSidebar';
 
 export default function PaintsApp() {
     const $t = t();
@@ -195,7 +196,6 @@ export default function PaintsApp() {
 
     const handleSort = (col: string) => { if (sortColumn === col) setSortDirection(d => d === 'asc' ? 'desc' : 'asc'); else { setSortColumn(col); setSortDirection('asc'); } };
     const resetFilters = () => { setBrandFilter(''); setSeriesFilter(''); setBaseColorFilter(''); setStatusFilter(''); setSearchFilter(''); };
-    const navigateTo = (page: string) => { if (page === 'figures') window.location.href = 'figures.html'; else if (page === 'settings') window.location.href = 'settings.html'; else if (page === 'palette') window.location.href = 'palette.html'; else window.location.href = 'paints.html'; };
 
     const handleSavePaint = async (data: Partial<Paint>) => {
         const url = data.id ? `http://127.0.0.1:8765/api/paints/${data.id}` : 'http://127.0.0.1:8765/api/paints';
@@ -272,12 +272,7 @@ export default function PaintsApp() {
 
     return (
         <div style={{ display: 'flex', height: '100vh', width: '100%', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
-            <div style={{ width: 48, minWidth: 48, background: 'var(--bg-tertiary)', borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 8 }}>
-                <div onClick={() => navigateTo('paints')} style={{ width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 'var(--radius-sm)', cursor: 'pointer', marginBottom: 4, color: 'var(--accent)', background: 'var(--accent-light)' }}>🎨</div>
-                <div onClick={() => navigateTo('figures')} style={{ width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 'var(--radius-sm)', cursor: 'pointer', marginBottom: 4, color: 'var(--text-secondary)' }} onMouseEnter={e => (e.target as HTMLElement).style.background = 'var(--bg-hover)'} onMouseLeave={e => (e.target as HTMLElement).style.background = 'none'}>🧩</div>
-                <div onClick={() => navigateTo('palette')} style={{ width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 'var(--radius-sm)', cursor: 'pointer', marginBottom: 4, color: 'var(--text-secondary)' }} onMouseEnter={e => (e.target as HTMLElement).style.background = 'var(--bg-hover)'} onMouseLeave={e => (e.target as HTMLElement).style.background = 'none'}>🖌️</div>
-                <div onClick={() => navigateTo('settings')} style={{ width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 'var(--radius-sm)', cursor: 'pointer', marginBottom: 4, color: 'var(--text-secondary)' }} onMouseEnter={e => (e.target as HTMLElement).style.background = 'var(--bg-hover)'} onMouseLeave={e => (e.target as HTMLElement).style.background = 'none'}>⚙️</div>
-            </div>
+            <AppSidebar active="paints" />
             <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
                 <PaintFilterPanel
                     collapsed={filterPanelCollapsed}

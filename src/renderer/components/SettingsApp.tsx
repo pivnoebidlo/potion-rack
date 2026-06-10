@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import styles from './SettingsApp.module.css';
 import { t, setLanguage, getLanguage } from '../i18n';
+import AppSidebar from './AppSidebar';
 
 type SettingsTab = 'general' | 'appearance' | 'data';
 
@@ -103,12 +104,6 @@ export default function SettingsApp() {
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [tab]);
-
-    const navigateTo = (page: string) => {
-        if (page === 'paints') window.location.href = 'paints.html';
-        else if (page === 'figures') window.location.href = 'figures.html';
-        else window.location.href = 'settings.html';
-    };
 
     const handleSelectFolder = async () => {
         const api = (window as any).electronAPI;
@@ -256,11 +251,7 @@ export default function SettingsApp() {
 
     return (
         <div className={styles.root}>
-            <div className={styles.sidebar}>
-                <div className={styles.sidebarItem} onClick={() => navigateTo('paints')}>🎨</div>
-                <div className={styles.sidebarItem} onClick={() => navigateTo('figures')}>🧩</div>
-                <div className={`${styles.sidebarItem} ${styles.sidebarItemActive}`}>⚙️</div>
-            </div>
+            <AppSidebar active="settings" />
 
             <div className={styles.main}>
                 <div className={styles.nav}>
@@ -274,7 +265,6 @@ export default function SettingsApp() {
                         <div className={styles.section}>
                             <div className={styles.sectionTitle}>{$t.general}</div>
 
-                            {/* Проверка обновлений */}
                             <div className={styles.setting}>
                                 <div className={styles.settingInfo}>
                                     <div className={styles.settingLabel}>{$t.version} {version}</div>

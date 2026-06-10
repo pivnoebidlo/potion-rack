@@ -25,6 +25,14 @@ input, textarea, select, [contenteditable] {
     background: var(--warning);
 }
 
+body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: var(--font-sans, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif);
+}
+
 .folderTree-statusDone {
     background: var(--success);
 }
