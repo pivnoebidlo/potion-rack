@@ -188,4 +188,9 @@ export default {
     mixName: 'Название смеси',
     applyRatios: 'Применить',
     duplicateMix: 'Смесь с таким названием уже существует',
+    figurePaints: 'Краски',
+    noPaintsLinked: 'Краски не привязаны',
+    addPaintToFigure: 'Добавить краски',
+    selectPaints: 'Выберите одну или несколько красок',
+    addPaints: 'Добавить',
 };

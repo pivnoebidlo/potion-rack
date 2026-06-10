@@ -308,7 +308,8 @@ export default function FiguresApp() {
                         <>
                             <div className={styles.centerHeader}><div className={styles.centerTitle}>{selected.name}</div></div>
                             <MarkdownEditor content={editorContent} onChange={setEditorContent} onSave={handleSave}
-                                            figureName={selected?.name} folderPath={selected?.folder_path || ''} editorViewRef={editorViewRef} />
+                                            figureName={selected?.name} folderPath={selected?.folder_path || ''}
+                                            figureId={selected?.id} editorViewRef={editorViewRef} />
                         </>
                     ) : (
                         <div className={styles.centerEmpty}>{$t.selectFigure}</div>

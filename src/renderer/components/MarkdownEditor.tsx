@@ -48,6 +48,7 @@ interface MarkdownEditorProps {
     onSave: () => void;
     figureName?: string;
     folderPath?: string;
+    figureId?: number;
     editorViewRef?: React.MutableRefObject<EditorView | null>;
 }
 
@@ -103,7 +104,7 @@ function createEditorView(
     return view;
 }
 
-export default function MarkdownEditor({ content, onChange, onSave, figureName, folderPath, editorViewRef }: MarkdownEditorProps) {
+export default function MarkdownEditor({ content, onChange, onSave, figureName, folderPath, figureId, editorViewRef }: MarkdownEditorProps) {
     const $t = t();
     const [preview, setPreview] = useState(false);
     const [tableDialogOpen, setTableDialogOpen] = useState(false);
@@ -365,6 +366,26 @@ export default function MarkdownEditor({ content, onChange, onSave, figureName, 
         v.focus();
     }, []);
 
+    const handleInsertPaintList = useCallback(async () => {
+        if (!figureId) return;
+        try {
+            const res = await fetch(`http://127.0.0.1:8765/api/figures/${figureId}/paints`);
+            const paints = await res.json();
+            if (!paints.length) return;
+
+            let table = '\n## 🎨 Paints Used\n\n| Paint | Brand | Series |\n|-------|-------|--------|\n';
+            paints.forEach((p: any) => {
+                table += `| ${p.color_name} | ${p.brand} | ${p.series || '—'} |\n`;
+            });
+
+            const v = editorViewRefInternal.current;
+            if (v) {
+                v.dispatch({ changes: { from: v.state.selection.main.from, insert: table + '\n' } });
+                v.focus();
+            }
+        } catch (err) { console.error('Failed to insert paint list:', err); }
+    }, [figureId]);
+
     useEffect(() => {
         const el = editorRef.current; if (!el) return;
         const h = async (e: ClipboardEvent) => {
@@ -447,6 +468,7 @@ export default function MarkdownEditor({ content, onChange, onSave, figureName, 
                 <div className={styles.toolbarGroup}>
                     <button className={styles.tbBtn} title="Link (Cmd+U)" onClick={handleInsertLink}>🔗</button>
                     <button className={styles.tbBtn} title="Image (Cmd+Shift+I)" onClick={handleInsertImage}>🖼</button>
+                    <button className={styles.tbBtn} title="Insert paint list" onClick={handleInsertPaintList}>📋</button>
                     <button className={styles.tbBtn} title="Table" onClick={() => setTableDialogOpen(true)}>⊞</button>
                 </div>
                 <div className={`${styles.toolbarGroup} ${styles.toolbarRight}`}>
