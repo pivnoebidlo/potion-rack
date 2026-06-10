@@ -3,6 +3,7 @@ import styles from './PaletteApp.module.css';
 import { t } from '../i18n';
 import { Paint } from '../types/paint';
 import { mixColors } from '../utils/colorUtils';
+import AppSidebar from './AppSidebar';
 
 interface MixPaint extends Paint {
     ratio: number;
@@ -150,7 +151,7 @@ export default function PaletteApp() {
         } finally {
             setSaveModalOpen(false);
         }
-    }, [resultColor, mixName, mixPaints, savedMixes]);
+    }, [resultColor, mixName, mixPaints, savedMixes, $t]);
 
     const filteredPaints = paints.filter(p =>
         !searchQuery ||
@@ -158,20 +159,9 @@ export default function PaletteApp() {
         p.brand.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
-    const navigateTo = (page: string) => {
-        if (page === 'paints') window.location.href = 'paints.html';
-        else if (page === 'figures') window.location.href = 'figures.html';
-        else if (page === 'settings') window.location.href = 'settings.html';
-    };
-
     return (
         <div className={styles.root}>
-            <div className={styles.sidebar}>
-                <div className={styles.sidebarItem} onClick={() => navigateTo('paints')}>🎨</div>
-                <div className={styles.sidebarItem} onClick={() => navigateTo('figures')}>🧩</div>
-                <div className={`${styles.sidebarItem} ${styles.sidebarItemActive}`}>🖌️</div>
-                <div className={styles.sidebarItem} onClick={() => navigateTo('settings')}>⚙️</div>
-            </div>
+            <AppSidebar active="palette" />
 
             <div className={styles.main}>
                 <div className={styles.colorSection}>
