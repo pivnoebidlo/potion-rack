@@ -200,4 +200,13 @@ export default {
     addPaintToFigure: 'Add Paints',
     selectPaints: 'Select one or more paints',
     addPaints: 'Add',
+    editTable: 'Редактировать таблицу',
+    editTableDesc: 'Редактируйте ячейки напрямую. Tab — следующая ячейка.',
+    rowAbove: 'Строку сверху',
+    rowBelow: 'Строку снизу',
+    colLeft: 'Колонку слева',
+    colRight: 'Колонку справа',
+    deleteRow: 'Удалить строку',
+    deleteCol: 'Удалить колонку',
+    apply: 'Применить',
 };

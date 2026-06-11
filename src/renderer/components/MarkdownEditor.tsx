@@ -14,6 +14,7 @@ import { t } from '../i18n';
 import { wysiwymPlugin, setSlug, slugField, setResizeCallback, resizeCallbackField } from '../editor-plugins/wysiwymPlugin';
 import { tableNavPlugin } from '../editor-plugins/tableNavPlugin';
 import ImageResizeModal from './ImageResizeModal';
+import TableEditorModal from './TableEditorModal';
 
 function safeEncode(str: string): string {
     return str.replace(/&/g, '%26').replace(/ /g, '%20').replace(/#/g, '%23');
@@ -111,6 +112,10 @@ export default function MarkdownEditor({ content, onChange, onSave, figureName, 
     const [resizeModalOpen, setResizeModalOpen] = useState(false);
     const [resizeImagePath, setResizeImagePath] = useState('');
     const [resizeInsertCallback, setResizeInsertCallback] = useState<(width: number | null, height: number | null) => void>(() => {});
+    const [tableEditorOpen, setTableEditorOpen] = useState(false);
+    const [tableEditorMarkdown, setTableEditorMarkdown] = useState('');
+    const [tableEditorFrom, setTableEditorFrom] = useState(0);
+    const [tableEditorTo, setTableEditorTo] = useState(0);
     const editorRef = useRef<HTMLDivElement>(null);
     const editorViewRefInternal = useRef<EditorView | null>(null);
     const slug = folderPath ? `${folderPath}/${figureName || ''}` : (figureName || '');
@@ -140,7 +145,6 @@ export default function MarkdownEditor({ content, onChange, onSave, figureName, 
 
         const container = editorRef.current;
 
-        // Отмонтируем предыдущий view из DOM (но сохраняем в пуле)
         const currentView = editorViewRefInternal.current;
         if (currentView) {
             const currentSlug = [...viewPool.entries()].find(([, v]) => v.view === currentView)?.[0];
@@ -152,7 +156,6 @@ export default function MarkdownEditor({ content, onChange, onSave, figureName, 
             }
         }
 
-        // Достаём или создаём view для нового slug
         let pooled = viewPool.get(slug);
         if (!pooled) {
             const viewContainer = document.createElement('div');
@@ -185,9 +188,43 @@ export default function MarkdownEditor({ content, onChange, onSave, figureName, 
         return () => document.removeEventListener('click', h, true);
     }, []);
 
+    // Двойной клик по таблице — открыть редактор
+    useEffect(() => {
+        const el = editorRef.current;
+        if (!el) return;
+        const dbl = (e: MouseEvent) => {
+            const v = editorViewRefInternal.current;
+            if (!v?.hasFocus) return;
+            const pos = v.posAtCoords({ x: e.clientX, y: e.clientY });
+            if (pos == null) return;
+            const line = v.state.doc.lineAt(pos);
+            const text = line.text;
+            if (/^\|(.+)\|$/.test(text)) {
+                e.preventDefault();
+                let start = line.from;
+                let end = line.to;
+                const doc = v.state.doc;
+                for (let i = line.number - 1; i >= 1; i--) {
+                    if (/^\|(.+)\|$/.test(doc.line(i).text)) start = doc.line(i).from;
+                    else break;
+                }
+                for (let i = line.number + 1; i <= doc.lines; i++) {
+                    if (/^\|(.+)\|$/.test(doc.line(i).text)) end = doc.line(i).to;
+                    else break;
+                }
+                const tableMarkdown = v.state.sliceDoc(start, end);
+                setTableEditorMarkdown(tableMarkdown);
+                setTableEditorFrom(start);
+                setTableEditorTo(end);
+                setTableEditorOpen(true);
+            }
+        };
+        el.addEventListener('dblclick', dbl);
+        return () => el.removeEventListener('dblclick', dbl);
+    }, []);
+
     useEffect(() => {
         const h = (e: KeyboardEvent) => {
-            // Удаление картинки целиком по Backspace/Delete (до проверки mod)
             if (e.key === 'Backspace' || e.key === 'Delete') {
                 const v = editorViewRefInternal.current;
                 if (v?.hasFocus) {
@@ -327,7 +364,7 @@ export default function MarkdownEditor({ content, onChange, onSave, figureName, 
     const handleInsertTable = useCallback((rows: number, cols: number) => {
         const v = editorViewRefInternal.current; if (!v) return;
         const header = '|' + ' Заголовок |'.repeat(cols) + '\n';
-        const separator = '|' + ' --- |'.repeat(cols) + '\n';
+        const separator = '|' + '-----|'.repeat(cols) + '\n';
         const row = '|' + ' Ячейка |'.repeat(cols) + '\n';
         let table = header + separator;
         for (let i = 0; i < rows; i++) table += row;
@@ -489,6 +526,20 @@ export default function MarkdownEditor({ content, onChange, onSave, figureName, 
                         setResizeModalOpen(false);
                     }}
                     onCancel={() => setResizeModalOpen(false)}
+                />
+            )}
+            {tableEditorOpen && (
+                <TableEditorModal
+                    initialMarkdown={tableEditorMarkdown}
+                    onApply={(newMd) => {
+                        const v = editorViewRefInternal.current;
+                        if (v) {
+                            v.dispatch({ changes: { from: tableEditorFrom, to: tableEditorTo, insert: newMd } });
+                            v.focus();
+                        }
+                        setTableEditorOpen(false);
+                    }}
+                    onCancel={() => setTableEditorOpen(false)}
                 />
             )}
         </div>

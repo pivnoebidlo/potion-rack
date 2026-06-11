@@ -44,7 +44,6 @@ export class ImagePreviewWidget extends WidgetType {
             img.style.borderRadius = '4px';
         }
 
-        // Кнопка удаления
         const deleteBtn = document.createElement('button');
         deleteBtn.textContent = '✕';
         deleteBtn.style.position = 'absolute';
@@ -66,7 +65,6 @@ export class ImagePreviewWidget extends WidgetType {
             this.view.dispatch({ changes: { from: this.from, to: this.to } });
         });
 
-        // Кнопка ресайза
         const resizeBtn = document.createElement('button');
         resizeBtn.textContent = '✂️';
         resizeBtn.style.position = 'absolute';
@@ -162,24 +160,9 @@ export const wysiwymPlugin = ViewPlugin.fromClass(class {
             const line = doc.line(i);
             const text = line.text;
 
-            // Строка данных таблицы — рендерим как <tr>
-            if (/^\|(.+)\|$/.test(text) && !/^\|[-:\s|]+\|$/.test(text)) {
-                const cells = text.split('|').filter(c => c.trim() !== '');
-                const tr = document.createElement('tr');
-                for (const cell of cells) {
-                    const td = document.createElement('td');
-                    td.textContent = cell.trim();
-                    td.style.border = '1px solid var(--border)';
-                    td.style.padding = '4px 8px';
-                    td.style.fontSize = 'var(--font-size-sm)';
-                    tr.appendChild(td);
-                }
-                items.push({ from: line.from, to: line.to, decoration: Decoration.replace({ widget: new class extends WidgetType { toDOM() { return tr; } } }) });
-                continue;
-            }
-            // Разделитель таблицы — скрываем
-            if (/^\|[-:\s|]+\|$/.test(text)) {
-                items.push({ from: line.from, to: line.to, decoration: Decoration.mark({ attributes: { style: 'font-size: 0; line-height: 0;' } }) });
+            // Скрываем разделитель таблицы
+            if (/^\|[-:\s|]+\|$/.test(text) && !/^\|(.+)\|$/.test(text)) {
+                items.push({ from: line.from, to: line.to, decoration: Decoration.mark({ attributes: { style: 'font-size: 0; line-height: 0; height: 2px; display: block;' } }) });
                 continue;
             }
 

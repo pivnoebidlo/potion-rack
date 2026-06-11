@@ -1,3 +1,15 @@
+## 0.5.3
+
+### Added
+[+] Table Editor Modal — double-click any table to edit cells visually
+[+] Table toolbar: add/delete rows and columns, Tab navigation between cells
+
+### Changed
+[*] Table separator (|---|) hidden in editor for cleaner look
+
+### Fixed
+[-] Removed all broken table rendering approaches, replaced with stable modal editor
+
 ## 0.5.2
 
 ### Added
