@@ -120,16 +120,100 @@
     margin-right: 8px;
 }
 
+.editorWrapper :global(.cm-strikethrough) {
+    text-decoration: line-through !important;
+}
+
+/* Таблицы в редакторе */
+.tableWrapper {
+    position: relative;
+}
+
+.tableWrapper:hover .tableToolbar {
+    opacity: 1;
+}
+
+.tableToolbar {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 6px;
+    opacity: 0;
+    transition: opacity 0.15s;
+}
+
+.tableToolbar button {
+    padding: 3px 8px;
+    font-size: 10px;
+    background: var(--bg-input);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-sm);
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-family: var(--font-sans);
+}
+
+.tableToolbar button:hover {
+    border-color: var(--accent);
+    color: var(--text-primary);
+}
+
+.tableDelete {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    font-size: 11px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    color: var(--text-muted);
+    cursor: pointer;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 2;
+}
+
+.tableWrapper:hover .tableDelete {
+    display: flex;
+}
+
+/* Стили для preview таблиц */
 .preview table {
     border-collapse: collapse;
     width: 100%;
-    margin: 8px 0;
-}
-.preview td, .preview th {
+    margin: 12px 0;
+    font-size: 13px;
+    background: var(--bg-secondary);
     border: 1px solid var(--border);
-    padding: 4px 8px;
+    border-radius: var(--radius-md);
+    overflow: hidden;
 }
 
-.editorWrapper :global(.cm-strikethrough) {
-    text-decoration: line-through !important;
+.preview th {
+    background: var(--bg-tertiary);
+    padding: 10px 14px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 11px;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid var(--border);
+}
+
+.preview td {
+    padding: 9px 14px;
+    border-bottom: 1px solid var(--bg-hover);
+    color: var(--text-primary);
+}
+
+.preview tr:nth-child(even) td {
+    background: rgba(255,255,255,0.015);
+}
+
+.preview tr:last-child td {
+    border-bottom: none;
 }
