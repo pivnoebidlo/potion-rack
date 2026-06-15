@@ -162,7 +162,7 @@ export const wysiwymPlugin = ViewPlugin.fromClass(class {
 
             // Скрываем разделитель таблицы
             if (/^\|[-:\s|]+\|$/.test(text) && !/^\|(.+)\|$/.test(text)) {
-                items.push({ from: line.from, to: line.to, decoration: Decoration.mark({ attributes: { style: 'font-size: 0; line-height: 0; height: 2px; display: block;' } }) });
+                items.push({ from: line.from, to: line.to, decoration: Decoration.mark({ attributes: { style: 'font-size: 0; line-height: 0; height: 0; display: block;' } }) });
                 continue;
             }
 

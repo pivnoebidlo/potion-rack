@@ -1,3 +1,30 @@
+## 0.5.4
+
+### Added
+[+] SVG icons for all navigation and toolbar buttons (Paints, Figures, Palette, Settings, collapse/expand, reset, grid/list, add)
+[+] SVG icons via vite-plugin-svgr — icons as React components with currentColor support
+[+] Table Editor Modal v2 — visual table editor with inline add/delete row/column buttons
+[+] Enter navigates to cell below, Arrow keys for cell navigation, Tab for next cell
+[+] Shift+Enter for newline in table cells, Cmd+S to save, Esc to cancel
+[+] Delete Table confirmation dialog
+[+] Autosave with 2-second debounce in MarkdownEditor
+
+### Changed
+[*] Table button in toolbar now opens editor modal directly (removed TableDialog)
+[*] Table separator (|---|) hidden in editor for cleaner look
+[*] Icons use currentColor — adapt to theme without invert filter
+[*] Filter panel collapse button fixed to left edge
+
+### Fixed
+[-] Table editor modal closes on Cmd+S (fixed key code for non-English layouts)
+[-] Empty cells in tables no longer disappear on edit
+[-] Extra blank line after table Apply removed
+[-] Duplicate paint detection now case-insensitive for all languages (LOWER)
+
+### Removed
+[-] TableDialog component and module CSS
+[-] Emoji icons replaced with SVG everywhere
+
 ## 0.5.3
 
 ### Added

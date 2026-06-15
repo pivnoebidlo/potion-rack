@@ -1,3 +1,7 @@
+// @ts-ignore
+import CollapseIcon from '../assets/icons/collapse.svg?react';
+// @ts-ignore
+import ExpandIcon from '../assets/icons/expand.svg?react';
 import { marked } from 'marked';
 import { EditorView } from '@codemirror/view';
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -288,7 +292,9 @@ export default function FiguresApp() {
             <AppSidebar active="figures" />
             <div className={styles.main}>
                 <div className={`${styles.leftPanel} ${leftPanelCollapsed ? styles.leftPanelCollapsed : styles.leftPanelExpanded}`}>
-                    <button className={styles.leftToggle} onClick={() => setLeftPanelCollapsed(!leftPanelCollapsed)}>{leftPanelCollapsed ? '▶' : '◀'}</button>
+                    <button className={styles.leftToggle} onClick={() => setLeftPanelCollapsed(!leftPanelCollapsed)}>
+                        {leftPanelCollapsed ? <ExpandIcon style={{ width: 14, height: 14, color: 'var(--text-secondary)' }} /> : <CollapseIcon style={{ width: 14, height: 14, color: 'var(--text-secondary)' }} />}
+                    </button>
                     {!leftPanelCollapsed && (<>
                         <div className={styles.panelHeader}>
                             <input className={styles.searchInput} placeholder={$t.search + '...'} value={search} onChange={e => setSearch(e.target.value)} />

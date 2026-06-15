@@ -1,3 +1,7 @@
+// @ts-ignore
+import CollapseIcon from '../assets/icons/collapse.svg?react';
+// @ts-ignore
+import ExpandIcon from '../assets/icons/expand.svg?react';
 import styles from './FiguresApp.module.css';
 import TocPanel from './TocPanel';
 import { t } from '../i18n';
@@ -37,7 +41,9 @@ export default function RightPanel({
 
     return (
         <div className={`${styles.rightPanel} ${collapsed ? styles.rightPanelCollapsed : styles.rightPanelExpanded}`}>
-            <button className={styles.rightToggle} onClick={onToggleCollapse}>{collapsed ? '◀' : '▶'}</button>
+            <button className={styles.rightToggle} onClick={onToggleCollapse}>
+                {collapsed ? <ExpandIcon style={{ width: 14, height: 14, color: 'var(--text-secondary)' }} /> : <CollapseIcon style={{ width: 14, height: 14, color: 'var(--text-secondary)' }} />}
+            </button>
             {!collapsed && (
                 selected ? (
                     <div className={styles.rightSections}>

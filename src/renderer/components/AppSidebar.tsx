@@ -1,13 +1,22 @@
+// @ts-ignore
+import PaintsIcon from '../assets/icons/paints.svg?react';
+// @ts-ignore
+import FiguresIcon from '../assets/icons/figures.svg?react';
+// @ts-ignore
+import PaletteIcon from '../assets/icons/palette.svg?react';
+// @ts-ignore
+import SettingsIcon from '../assets/icons/settings.svg?react';
+
 interface AppSidebarProps {
     active: 'paints' | 'figures' | 'palette' | 'settings';
 }
 
 export default function AppSidebar({ active }: AppSidebarProps) {
     const items = [
-        { id: 'paints', icon: '🎨', page: 'paints.html' },
-        { id: 'figures', icon: '🧩', page: 'figures.html' },
-        { id: 'palette', icon: '🖌️', page: 'palette.html' },
-        { id: 'settings', icon: '⚙️', page: 'settings.html' },
+        { id: 'paints', icon: <PaintsIcon style={{ width: 20, height: 20, color: active === 'paints' ? 'var(--accent)' : 'var(--text-secondary)' }} />, page: 'paints.html' },
+        { id: 'figures', icon: <FiguresIcon style={{ width: 20, height: 20, color: active === 'figures' ? 'var(--accent)' : 'var(--text-secondary)' }} />, page: 'figures.html' },
+        { id: 'palette', icon: <PaletteIcon style={{ width: 20, height: 20, color: active === 'palette' ? 'var(--accent)' : 'var(--text-secondary)' }} />, page: 'palette.html' },
+        { id: 'settings', icon: <SettingsIcon style={{ width: 20, height: 20, color: active === 'settings' ? 'var(--accent)' : 'var(--text-secondary)' }} />, page: 'settings.html' },
     ];
 
     return (

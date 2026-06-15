@@ -1,3 +1,7 @@
+// @ts-ignore
+import CollapseIcon from '../assets/icons/collapse.svg?react';
+// @ts-ignore
+import ExpandIcon from '../assets/icons/expand.svg?react';
 import { useState } from 'react';
 import styles from './PaintsApp.module.css';
 import placeholderImg from '../images/placeholder.png';
@@ -72,7 +76,7 @@ export default function PaintDetailPanel({
                 }}
             >
                 <button className={styles.collapseBtn} onClick={onCollapse}>
-                    {rightPanelCollapsed ? '◀' : '▶'}
+                    {rightPanelCollapsed ? <ExpandIcon style={{ width: 14, height: 14, color: 'var(--text-secondary)' }} /> : <CollapseIcon style={{ width: 14, height: 14, color: 'var(--text-secondary)' }} />}
                 </button>
                 {!rightPanelCollapsed && (
                     <div className={styles.panelContent}>
