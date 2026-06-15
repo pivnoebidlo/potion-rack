@@ -1,3 +1,15 @@
+// @ts-ignore
+import ResetIcon from '../assets/icons/reset.svg?react';
+// @ts-ignore
+import GridIcon from '../assets/icons/grid.svg?react';
+// @ts-ignore
+import ListIcon from '../assets/icons/list.svg?react';
+// @ts-ignore
+import AddIcon from '../assets/icons/add.svg?react';
+// @ts-ignore
+import CollapseIcon from '../assets/icons/collapse.svg?react';
+// @ts-ignore
+import ExpandIcon from '../assets/icons/expand.svg?react';
 import styles from './PaintsApp.module.css';
 import { t } from '../i18n';
 
@@ -49,7 +61,7 @@ export default function PaintFilterPanel({
     return (
         <div className={`${styles.filterPanel} ${collapsed ? styles.filterPanelCollapsed : ''}`}>
             <button className={styles.filterToggle} onClick={onToggle}>
-                {collapsed ? '▶' : '◀'}
+                {collapsed ? <ExpandIcon style={{ width: 12, height: 12, color: 'var(--text-secondary)' }} /> : <CollapseIcon style={{ width: 12, height: 12, color: 'var(--text-secondary)' }} />}
             </button>
             <div className={styles.filterContent}>
                 <div className={styles.filterGroup}>
@@ -89,9 +101,9 @@ export default function PaintFilterPanel({
                 </div>
                 <hr className={styles.panelDivider} />
                 <div className={styles.filterActions}>
-                    <button className={styles.iconBtn} onClick={onReset}>🔄</button>
-                    <button className={styles.iconBtn} onClick={onViewModeToggle}>{viewMode === 'list' ? '⊞' : '☰'}</button>
-                    <button className={styles.iconBtn} onClick={onAddPaint}>➕</button>
+                    <button className={styles.iconBtn} onClick={onReset}><ResetIcon style={{ width: 16, height: 16, color: 'var(--text-secondary)' }} /></button>
+                    <button className={styles.iconBtn} onClick={onViewModeToggle}>{viewMode === 'list' ? <GridIcon style={{ width: 16, height: 16, color: 'var(--text-secondary)' }} /> : <ListIcon style={{ width: 16, height: 16, color: 'var(--text-secondary)' }} />}</button>
+                    <button className={styles.iconBtn} onClick={onAddPaint}><AddIcon style={{ width: 16, height: 16, color: 'var(--text-secondary)' }} /></button>
                 </div>
             </div>
         </div>

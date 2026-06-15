@@ -9,7 +9,6 @@ import { autocompletion, closeBrackets } from '@codemirror/autocomplete';
 import { bracketMatching } from '@codemirror/language';
 import { marked } from 'marked';
 import styles from './MarkdownEditor.module.css';
-import TableDialog from './TableDialog';
 import { t } from '../i18n';
 import { wysiwymPlugin, setSlug, slugField, setResizeCallback, resizeCallbackField } from '../editor-plugins/wysiwymPlugin';
 import { tableNavPlugin } from '../editor-plugins/tableNavPlugin';
@@ -75,6 +74,7 @@ function createEditorView(
         '.cm-heading': { textDecoration: 'none !important', borderBottom: 'none !important' },
         '.cm-headingMark': { textDecoration: 'none !important' },
         '.cm-strikethrough': { textDecoration: 'line-through' },
+        '.cm-line': { paddingTop: '0', paddingBottom: '0' },
     });
     const updateListener = EditorView.updateListener.of((update) => {
         if (update.docChanged) onChange(update.state.doc.toString());
@@ -108,7 +108,6 @@ function createEditorView(
 export default function MarkdownEditor({ content, onChange, onSave, figureName, folderPath, figureId, editorViewRef }: MarkdownEditorProps) {
     const $t = t();
     const [preview, setPreview] = useState(false);
-    const [tableDialogOpen, setTableDialogOpen] = useState(false);
     const [resizeModalOpen, setResizeModalOpen] = useState(false);
     const [resizeImagePath, setResizeImagePath] = useState('');
     const [resizeInsertCallback, setResizeInsertCallback] = useState<(width: number | null, height: number | null) => void>(() => {});
@@ -118,6 +117,7 @@ export default function MarkdownEditor({ content, onChange, onSave, figureName, 
     const [tableEditorTo, setTableEditorTo] = useState(0);
     const editorRef = useRef<HTMLDivElement>(null);
     const editorViewRefInternal = useRef<EditorView | null>(null);
+    const lastSavedContent = useRef(content);
     const slug = folderPath ? `${folderPath}/${figureName || ''}` : (figureName || '');
     const safeSlug = safeEncode(slug);
 
@@ -188,6 +188,17 @@ export default function MarkdownEditor({ content, onChange, onSave, figureName, 
         return () => document.removeEventListener('click', h, true);
     }, []);
 
+    // Автосохранение с debounce 2 секунды
+    useEffect(() => {
+        if (content === lastSavedContent.current) return;
+        if (content.trim() === '') return;
+        const timer = setTimeout(() => {
+            lastSavedContent.current = content;
+            onSave();
+        }, 2000);
+        return () => clearTimeout(timer);
+    }, [content, onSave]);
+
     // Двойной клик по таблице — открыть редактор
     useEffect(() => {
         const el = editorRef.current;
@@ -211,6 +222,10 @@ export default function MarkdownEditor({ content, onChange, onSave, figureName, 
                 for (let i = line.number + 1; i <= doc.lines; i++) {
                     if (/^\|(.+)\|$/.test(doc.line(i).text)) end = doc.line(i).to;
                     else break;
+                }
+// Включаем завершающий \n если он есть
+                if (end < doc.length && doc.sliceString(end, end) === '\n') {
+                    end = end + 1;
                 }
                 const tableMarkdown = v.state.sliceDoc(start, end);
                 setTableEditorMarkdown(tableMarkdown);
@@ -370,7 +385,6 @@ export default function MarkdownEditor({ content, onChange, onSave, figureName, 
         for (let i = 0; i < rows; i++) table += row;
         v.dispatch({ changes: { from: v.state.selection.main.from, insert: table } });
         v.focus();
-        setTableDialogOpen(false);
     }, []);
     const handleInsertImage = useCallback(async () => {
         const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*';
@@ -506,7 +520,16 @@ export default function MarkdownEditor({ content, onChange, onSave, figureName, 
                     <button className={styles.tbBtn} title="Link (Cmd+U)" onClick={handleInsertLink}>🔗</button>
                     <button className={styles.tbBtn} title="Image (Cmd+Shift+I)" onClick={handleInsertImage}>🖼</button>
                     <button className={styles.tbBtn} title="Insert paint list" onClick={handleInsertPaintList}>📋</button>
-                    <button className={styles.tbBtn} title="Table" onClick={() => setTableDialogOpen(true)}>⊞</button>
+                    <button className={styles.tbBtn} title="Table" onClick={() => {
+                        const v = editorViewRefInternal.current;
+                        if (v) {
+                            v.focus();
+                            setTableEditorMarkdown('|  |  |  |\n|---|---|---|\n|  |  |  |\n|  |  |  |');
+                            setTableEditorFrom(v.state.selection.main.from);
+                            setTableEditorTo(v.state.selection.main.from);
+                            setTableEditorOpen(true);
+                        }
+                    }}>⊞</button>
                 </div>
                 <div className={`${styles.toolbarGroup} ${styles.toolbarRight}`}>
                     <button className={styles.tbBtn} onClick={() => setPreview(!preview)} title={preview ? $t.edit : $t.preview}>{preview ? '✏️' : '👁'}</button>
@@ -514,9 +537,6 @@ export default function MarkdownEditor({ content, onChange, onSave, figureName, 
             </div>
             <div className={styles.preview} style={{ display: preview ? 'block' : 'none' }} dangerouslySetInnerHTML={{ __html: marked(resolvedContent, { breaks: true }) as string }} />
             <div className={styles.editorWrapper} ref={editorRef} style={{ display: preview ? 'none' : 'block', height: '100%' }} />
-            {tableDialogOpen && (
-                <TableDialog onInsert={handleInsertTable} onClose={() => setTableDialogOpen(false)} />
-            )}
             {resizeModalOpen && (
                 <ImageResizeModal
                     imagePath={resizeImagePath}
@@ -532,6 +552,7 @@ export default function MarkdownEditor({ content, onChange, onSave, figureName, 
                 <TableEditorModal
                     initialMarkdown={tableEditorMarkdown}
                     onApply={(newMd) => {
+                        console.log('onApply called, newMd:', JSON.stringify(newMd));
                         const v = editorViewRefInternal.current;
                         if (v) {
                             v.dispatch({ changes: { from: tableEditorFrom, to: tableEditorTo, insert: newMd } });

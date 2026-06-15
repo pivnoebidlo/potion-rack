@@ -1,6 +1,6 @@
 {
   "name": "potion-rack",
-  "version": "0.5.3",
+  "version": "0.5.4",
   "type": "commonjs",
   "description": "Paint Manager for Miniatures",
   "author": {
@@ -43,7 +43,10 @@
     },
     "mac": {
       "icon": "build/icon.icns",
-      "target": ["dmg", "zip"],
+      "target": [
+        "dmg",
+        "zip"
+      ],
       "category": "public.app-category.productivity",
       "hardenedRuntime": false,
       "gatekeeperAssess": false,
@@ -51,11 +54,17 @@
     },
     "win": {
       "icon": "build/icon.ico",
-      "target": ["nsis", "portable"]
+      "target": [
+        "nsis",
+        "portable"
+      ]
     },
     "linux": {
       "icon": "build/icon.png",
-      "target": ["AppImage", "deb"],
+      "target": [
+        "AppImage",
+        "deb"
+      ],
       "category": "Graphics"
     }
   },
@@ -74,7 +83,8 @@
     "purgecss": "^8.0.0",
     "tailwindcss": "^4.3.0",
     "typescript": "^5.5.0",
-    "vite": "^8.0.14"
+    "vite": "^8.0.14",
+    "vite-plugin-svgr": "^5.2.0"
   },
   "dependencies": {
     "@codemirror/autocomplete": "^6.18.6",
