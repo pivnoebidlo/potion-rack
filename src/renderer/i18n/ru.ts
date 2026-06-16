@@ -199,4 +199,6 @@ export default {
     deleteTableConfirm: 'Вы уверены?',
     yes: 'Да',
     no: 'Нет',
+    showLineNumbers: 'Нумерация строк',
+    showLineNumbersDesc: 'Показывать номера строк в редакторе статей',
 };

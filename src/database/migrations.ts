@@ -174,6 +174,20 @@ export function initDatabase(db: Database.Database): void {
                     CREATE UNIQUE INDEX IF NOT EXISTS idx_unique_brand_color ON paints(brand, color_name);
                 `);
             }
+        },
+        {
+            version: 11,
+            name: 'Add unique index on figure_paints',
+            up: (db: Database.Database) => {
+                db.exec(`
+            DELETE FROM figure_paints WHERE id NOT IN (
+                SELECT MIN(id) FROM figure_paints GROUP BY figure_id, paint_id
+            );
+        `);
+                db.exec(`
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_figure_paints_unique ON figure_paints(figure_id, paint_id);
+        `);
+            }
         }
     ];
 

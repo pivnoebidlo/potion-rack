@@ -434,3 +434,12 @@
 .figurePaintChip:hover .figurePaintRemove {
     opacity: 1;
 }
+
+.helpKey kbd {
+    font-family: var(--font-mono, monospace);
+    font-size: 10px;
+    padding: 1px 5px;
+    background: var(--bg-input);
+    border: 1px solid var(--border-light);
+    border-radius: 3px;
+}

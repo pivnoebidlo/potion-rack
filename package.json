@@ -1,6 +1,6 @@
 {
   "name": "potion-rack",
-  "version": "0.5.4",
+  "version": "0.5.5",
   "type": "commonjs",
   "description": "Paint Manager for Miniatures",
   "author": {
@@ -90,7 +90,7 @@
     "@codemirror/autocomplete": "^6.18.6",
     "@codemirror/commands": "^6.10.3",
     "@codemirror/lang-markdown": "^6.5.0",
-    "@codemirror/language": "^6.11.0",
+    "@codemirror/language": "^6.12.3",
     "@codemirror/language-data": "^6.5.2",
     "@codemirror/search": "^6.7.0",
     "@codemirror/state": "^6.6.0",

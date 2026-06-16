@@ -206,4 +206,6 @@ export default {
     deleteTableConfirm: 'Are you sure?',
     yes: 'Yes',
     no: 'No',
+    showLineNumbers: 'Line numbers',
+    showLineNumbersDesc: 'Show line numbers in the editor'
 };

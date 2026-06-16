@@ -15,20 +15,13 @@ interface PaintGridViewProps {
     onSortColumnChange: (col: string) => void;
     onSortDirectionToggle: () => void;
     onUpdateRating: (id: number, rating: number) => void;
+    onDelete: (id: number) => void;
 }
 
 export default function PaintGridView({
-                                          filtered,
-                                          selectedId,
-                                          showGridSortBar,
-                                          sortColumn,
-                                          sortDirection,
-                                          baseColors,
-                                          onSelect,
-                                          onDoubleClick,
-                                          onSortColumnChange,
-                                          onSortDirectionToggle,
-                                          onUpdateRating,
+                                          filtered, selectedId, showGridSortBar, sortColumn, sortDirection,
+                                          baseColors, onSelect, onDoubleClick, onSortColumnChange,
+                                          onSortDirectionToggle, onUpdateRating, onDelete,
                                       }: PaintGridViewProps) {
     const $t = t();
 
@@ -62,7 +55,7 @@ export default function PaintGridView({
                 </div>
             )}
             <div className={styles.grid} data-grid-container>
-            {filtered.map(paint => (
+                {filtered.map(paint => (
                     <div
                         key={paint.id}
                         data-paint-id={paint.id}
@@ -70,6 +63,11 @@ export default function PaintGridView({
                         onClick={() => onSelect(paint.id)}
                         onDoubleClick={() => onDoubleClick(paint)}
                     >
+                        <button
+                            onClick={e => { e.stopPropagation(); onDelete(paint.id); }}
+                            title={$t.deletePaint || 'Delete'}
+                            className={styles.cardDeleteBtn}
+                        >🗑</button>
                         <div
                             className={styles.cardSwatch}
                             style={{

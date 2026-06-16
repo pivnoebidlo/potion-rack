@@ -1,3 +1,18 @@
+## 0.5.5
+
+### Added
+[+] Line numbers in editor (optional, off by default) — Settings → Appearance
+[+] Code folding for headings in editor
+[+] Search (Cmd+F) in editor
+[+] Delete button in paints grid view
+
+### Changed
+[*] Insert paint list now uses localized column names, removed "Paints Used" heading
+
+### Fixed
+[-] Duplicate paints in figure paint picker (already linked paints now hidden)
+[-] Case-insensitive duplicate paint detection for all languages (LOWER)
+
 ## 0.5.4
 
 ### Added

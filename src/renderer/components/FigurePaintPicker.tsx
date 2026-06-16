@@ -16,11 +16,14 @@ export default function FigurePaintPicker({ figureId, onClose, onAdded }: { figu
     const [selected, setSelected] = useState<Set<number>>(new Set());
 
     useEffect(() => {
-        fetch('http://127.0.0.1:8765/api/paints')
-            .then(r => r.json())
-            .then(data => setPaints(data))
-            .catch(console.error);
-    }, []);
+        Promise.all([
+            fetch('http://127.0.0.1:8765/api/paints').then(r => r.json()),
+            fetch(`http://127.0.0.1:8765/api/figures/${figureId}/paints`).then(r => r.json())
+        ]).then(([allPaints, linkedPaints]) => {
+            const linkedIds = new Set((linkedPaints as any[]).map((p: any) => p.paint_id));
+            setPaints((allPaints as any[]).filter((p: any) => !linkedIds.has(p.id)));
+        }).catch(console.error);
+    }, [figureId]);
 
     const filtered = paints.filter(p =>
         !search ||
