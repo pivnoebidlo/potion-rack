@@ -326,6 +326,7 @@ export default function PaintsApp() {
                                 onSortColumnChange={setSortColumn}
                                 onSortDirectionToggle={() => setSortDirection(d => d === 'asc' ? 'desc' : 'asc')}
                                 onUpdateRating={handleUpdateRating}
+                                onDelete={handleDeletePaint}
                             />
                         )}
                         {filtered.length === 0 && !loading && <div className={styles.emptyState}>{$t.noPaints}</div>}

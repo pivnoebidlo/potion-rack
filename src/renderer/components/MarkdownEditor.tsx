@@ -1,12 +1,13 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { EditorView, keymap } from '@codemirror/view';
+import { EditorView, keymap, lineNumbers } from '@codemirror/view';
 import { EditorState } from '@codemirror/state';
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
 import { languages } from '@codemirror/language-data';
-import { syntaxHighlighting, defaultHighlightStyle } from '@codemirror/language';
+import { syntaxHighlighting, defaultHighlightStyle, foldGutter, foldKeymap, foldService } from '@codemirror/language';
 import { autocompletion, closeBrackets } from '@codemirror/autocomplete';
 import { bracketMatching } from '@codemirror/language';
+import { search, searchKeymap } from '@codemirror/search';
 import { marked } from 'marked';
 import styles from './MarkdownEditor.module.css';
 import { t } from '../i18n';
@@ -52,7 +53,6 @@ interface MarkdownEditorProps {
     editorViewRef?: React.MutableRefObject<EditorView | null>;
 }
 
-// Пул EditorView по slug — глобальный кеш
 const viewPool = new Map<string, { view: EditorView; container: HTMLDivElement }>();
 
 function createEditorView(
@@ -60,13 +60,16 @@ function createEditorView(
     slug: string,
     parent: HTMLElement,
     onChange: (v: string) => void,
-    handleResizeExisting: (from: number, to: number, w?: number, h?: number) => void
+    handleResizeExisting: (from: number, to: number, w?: number, h?: number) => void,
+    showLineNumbers: boolean
 ): EditorView {
     const editorTheme = EditorView.theme({
         '&': { background: 'var(--bg-primary)', color: 'var(--text-primary)', height: '100%' },
         '.cm-scroller': { background: 'var(--bg-primary)', overflow: 'auto', height: '100%' },
         '.cm-content': { background: 'var(--bg-primary)', color: 'var(--text-primary)', caretColor: 'var(--text-primary)', padding: '24px 32px', fontSize: 'var(--font-size-md)', lineHeight: '1.8' },
-        '.cm-gutters': { display: 'none' },
+        '.cm-gutters': { background: 'var(--bg-primary)', borderRight: '1px solid var(--border)', color: 'var(--text-muted)', fontSize: 'var(--font-size-md)', lineHeight: '1.8' },
+        '.cm-foldGutter': { width: '20px' },
+        '.cm-foldGutter .cm-gutterElement': { padding: '0 4px', cursor: 'pointer', color: 'var(--text-muted)' },
         '.cm-activeLine': { background: 'transparent' },
         '.cm-cursor': { borderLeftColor: 'var(--text-primary)' },
         '.cm-selectionBackground': { background: 'var(--accent-light) !important', borderRadius: '2px' },
@@ -74,7 +77,17 @@ function createEditorView(
         '.cm-heading': { textDecoration: 'none !important', borderBottom: 'none !important' },
         '.cm-headingMark': { textDecoration: 'none !important' },
         '.cm-strikethrough': { textDecoration: 'line-through' },
-        '.cm-line': { paddingTop: '0', paddingBottom: '0' },
+        '.cm-line': { },
+        '& .cm-panels': { backgroundColor: 'transparent !important', color: 'inherit !important' },
+        '& .cm-panels-bottom': { borderTop: '1px solid var(--search-border) !important' },
+        '& .cm-panel.cm-search': { background: 'var(--bg-primary) !important', padding: '8px 16px !important' },
+        '.cm-search .cm-textfield': { background: 'var(--bg-input) !important', border: '1px solid var(--border-light) !important', color: 'var(--text-primary) !important', padding: '6px 10px !important', fontSize: '13px', width: '220px' },
+        '.cm-search .cm-textfield::placeholder': { color: 'var(--text-muted) !important' },
+        '.cm-search .cm-button': { background: 'transparent !important', border: 'none !important', color: 'var(--text-muted) !important', cursor: 'pointer', padding: '4px 8px', fontSize: '12px' },
+        '.cm-search .cm-button:hover': { color: 'var(--text-primary) !important' },
+        '.cm-search .cm-button[name="close"]': { display: 'none' },
+        '.cm-search label': { color: 'var(--text-secondary) !important', fontSize: '11px' },
+        '.cm-search input[type="checkbox"]': { accentColor: 'var(--accent)', margin: '0 4px' },
     });
     const updateListener = EditorView.updateListener.of((update) => {
         if (update.docChanged) onChange(update.state.doc.toString());
@@ -85,7 +98,29 @@ function createEditorView(
             extensions: [
                 slugField.init(() => slug),
                 resizeCallbackField,
-                keymap.of([...defaultKeymap, ...historyKeymap]),
+                ...(showLineNumbers ? [lineNumbers()] : []),
+                search({ top: false }),
+                foldGutter(),
+                foldService.of((state, lineStart, lineEnd) => {
+                    const line = state.doc.lineAt(lineStart);
+                    const match = line.text.match(/^(#{1,6})\s/);
+                    if (!match) return null;
+
+                    const level = match[1].length;
+                    let end = lineEnd;
+                    for (let i = line.number + 1; i <= state.doc.lines; i++) {
+                        const nextLine = state.doc.line(i);
+                        const nextMatch = nextLine.text.match(/^(#{1,6})\s/);
+                        if (nextMatch && nextMatch[1].length <= level) {
+                            end = nextLine.from;
+                            break;
+                        }
+                        end = nextLine.to;
+                    }
+
+                    return { from: line.from, to: end };
+                }),
+                keymap.of([...defaultKeymap, ...historyKeymap, ...searchKeymap, ...foldKeymap]),
                 history(),
                 markdown({ base: markdownLanguage, codeLanguages: languages }),
                 syntaxHighlighting(defaultHighlightStyle),
@@ -121,6 +156,10 @@ export default function MarkdownEditor({ content, onChange, onSave, figureName, 
     const slug = folderPath ? `${folderPath}/${figureName || ''}` : (figureName || '');
     const safeSlug = safeEncode(slug);
 
+    const [showLineNumbers] = useState(() => {
+        return localStorage.getItem('potion-rack-show-line-numbers') === 'true';
+    });
+
     const handleResizeExisting = useCallback((from: number, to: number, currentWidth?: number, currentHeight?: number) => {
         const v = editorViewRefInternal.current; if (!v) return;
         const text = v.state.sliceDoc(from, to);
@@ -138,7 +177,6 @@ export default function MarkdownEditor({ content, onChange, onSave, figureName, 
         }
     }, []);
 
-    // Монтирование/переключение EditorView
     useEffect(() => {
         if (!editorRef.current) return;
         if (!slug) return;
@@ -161,7 +199,7 @@ export default function MarkdownEditor({ content, onChange, onSave, figureName, 
             const viewContainer = document.createElement('div');
             viewContainer.style.display = 'none';
             document.body.appendChild(viewContainer);
-            const view = createEditorView(content, slug, viewContainer, onChange, handleResizeExisting);
+            const view = createEditorView(content, slug, viewContainer, onChange, handleResizeExisting, showLineNumbers);
             pooled = { view, container: viewContainer };
             viewPool.set(slug, pooled);
         } else {
@@ -188,7 +226,6 @@ export default function MarkdownEditor({ content, onChange, onSave, figureName, 
         return () => document.removeEventListener('click', h, true);
     }, []);
 
-    // Автосохранение с debounce 2 секунды
     useEffect(() => {
         if (content === lastSavedContent.current) return;
         if (content.trim() === '') return;
@@ -199,7 +236,6 @@ export default function MarkdownEditor({ content, onChange, onSave, figureName, 
         return () => clearTimeout(timer);
     }, [content, onSave]);
 
-    // Двойной клик по таблице — открыть редактор
     useEffect(() => {
         const el = editorRef.current;
         if (!el) return;
@@ -223,7 +259,6 @@ export default function MarkdownEditor({ content, onChange, onSave, figureName, 
                     if (/^\|(.+)\|$/.test(doc.line(i).text)) end = doc.line(i).to;
                     else break;
                 }
-// Включаем завершающий \n если он есть
                 if (end < doc.length && doc.sliceString(end, end) === '\n') {
                     end = end + 1;
                 }
@@ -424,7 +459,7 @@ export default function MarkdownEditor({ content, onChange, onSave, figureName, 
             const paints = await res.json();
             if (!paints.length) return;
 
-            let table = '\n## 🎨 Paints Used\n\n| Paint | Brand | Series |\n|-------|-------|--------|\n';
+            let table = `\n| ${$t.colorName} | ${$t.brand} | ${$t.series || 'Series'} |\n|-------|-------|--------|\n`;
             paints.forEach((p: any) => {
                 table += `| ${p.color_name} | ${p.brand} | ${p.series || '—'} |\n`;
             });
@@ -435,7 +470,7 @@ export default function MarkdownEditor({ content, onChange, onSave, figureName, 
                 v.focus();
             }
         } catch (err) { console.error('Failed to insert paint list:', err); }
-    }, [figureId]);
+    }, [figureId, $t]);
 
     useEffect(() => {
         const el = editorRef.current; if (!el) return;
@@ -552,7 +587,6 @@ export default function MarkdownEditor({ content, onChange, onSave, figureName, 
                 <TableEditorModal
                     initialMarkdown={tableEditorMarkdown}
                     onApply={(newMd) => {
-                        console.log('onApply called, newMd:', JSON.stringify(newMd));
                         const v = editorViewRefInternal.current;
                         if (v) {
                             v.dispatch({ changes: { from: tableEditorFrom, to: tableEditorTo, insert: newMd } });

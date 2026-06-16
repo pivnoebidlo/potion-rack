@@ -19,6 +19,9 @@ export default function SettingsApp() {
     const [showCounters, setShowCounters] = useState(true);
     const [showPaintColorDots, setShowPaintColorDots] = useState(true);
     const [showGridSortBar, setShowGridSortBar] = useState(true);
+    const [showLineNumbers, setShowLineNumbers] = useState(() => {
+        return localStorage.getItem('potion-rack-show-line-numbers') !== 'false';
+    });
     const [dateFormat, setDateFormat] = useState('auto');
     const [reindexResult, setReindexResult] = useState<{ figuresIndexed: number; imagesReferenced: number; brokenLinks: number; brokenLinksList: string[] } | null>(null);
     const [reindexing, setReindexing] = useState(false);
@@ -82,6 +85,11 @@ export default function SettingsApp() {
     useEffect(() => {
         const saved = localStorage.getItem('potion-rack-show-grid-sort-bar');
         if (saved !== null) setShowGridSortBar(saved === 'true');
+    }, []);
+
+    useEffect(() => {
+        const saved = localStorage.getItem('potion-rack-show-line-numbers');
+        if (saved !== null) setShowLineNumbers(saved === 'true');
     }, []);
 
     useEffect(() => {
@@ -332,6 +340,18 @@ export default function SettingsApp() {
                                         <option value="light">Light</option>
                                         <option value="retro">Retro</option>
                                     </select>
+                                </div>
+                            </div>
+                            <div className={styles.setting}>
+                                <div className={styles.settingInfo}>
+                                    <div className={styles.settingLabel}>{$t.showLineNumbers || 'Нумерация строк'}</div>
+                                    <div className={styles.settingDesc}>{$t.showLineNumbersDesc || 'Показывать номера строк в редакторе'}</div>
+                                </div>
+                                <div className={styles.settingControl}>
+                                    <label className={styles.toggle}>
+                                        <input type="checkbox" checked={showLineNumbers} onChange={e => { setShowLineNumbers(e.target.checked); localStorage.setItem('potion-rack-show-line-numbers', e.target.checked.toString()); }} />
+                                        <span className={styles.slider}></span>
+                                    </label>
                                 </div>
                             </div>
                             <div className={styles.setting}>
