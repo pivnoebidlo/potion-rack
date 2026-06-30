@@ -207,5 +207,7 @@ export default {
     yes: 'Yes',
     no: 'No',
     showLineNumbers: 'Line numbers',
-    showLineNumbersDesc: 'Show line numbers in the editor'
+    showLineNumbersDesc: 'Show line numbers in the editor',
+    imageBorder: 'Image frame',
+    imageBorderDesc: 'Show a frame for images in the editor',
 };

@@ -34,10 +34,14 @@ export class ImagePreviewWidget extends WidgetType {
             img.style.maxWidth = '100%';
             img.style.maxHeight = '600px';
         }
+        const imageBorder = localStorage.getItem('potion-rack-image-border') !== 'false';
         img.style.borderRadius = '6px';
         img.style.display = 'block';
         img.style.objectFit = 'contain';
         img.style.margin = '0 auto';
+        if (imageBorder) {
+            img.style.border = '1px solid var(--border)';
+        }
         if (this.isSelected) {
             img.style.outline = '2px solid var(--accent)';
             img.style.outlineOffset = '2px';

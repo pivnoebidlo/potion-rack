@@ -19,6 +19,9 @@ export default function SettingsApp() {
     const [showCounters, setShowCounters] = useState(true);
     const [showPaintColorDots, setShowPaintColorDots] = useState(true);
     const [showGridSortBar, setShowGridSortBar] = useState(true);
+    const [imageBorder, setImageBorder] = useState(() => {
+        return localStorage.getItem('potion-rack-image-border') !== 'false';
+    });
     const [showLineNumbers, setShowLineNumbers] = useState(() => {
         return localStorage.getItem('potion-rack-show-line-numbers') !== 'false';
     });
@@ -112,6 +115,11 @@ export default function SettingsApp() {
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [tab]);
+
+    useEffect(() => {
+        const saved = localStorage.getItem('potion-rack-image-border');
+        if (saved !== null) setImageBorder(saved === 'true');
+    }, []);
 
     const handleSelectFolder = async () => {
         const api = (window as any).electronAPI;
@@ -398,6 +406,19 @@ export default function SettingsApp() {
                                 <div className={styles.settingControl}>
                                     <label className={styles.toggle}>
                                         <input type="checkbox" checked={showGridSortBar} onChange={e => { setShowGridSortBar(e.target.checked); localStorage.setItem('potion-rack-show-grid-sort-bar', e.target.checked.toString()); }} />
+                                        <span className={styles.slider}></span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div className={styles.setting}>
+                                <div className={styles.settingInfo}>
+                                    <div className={styles.settingLabel}>{$t.imageBorder}</div>
+                                    <div className={styles.settingDesc}>{$t.imageBorderDesc}</div>
+                                </div>
+                                <div className={styles.settingControl}>
+                                    <label className={styles.toggle}>
+                                        <input type="checkbox" checked={imageBorder} onChange={e => { setImageBorder(e.target.checked); localStorage.setItem('potion-rack-image-border', e.target.checked.toString()); }} />
                                         <span className={styles.slider}></span>
                                     </label>
                                 </div>

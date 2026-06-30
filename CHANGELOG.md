@@ -1,3 +1,13 @@
+## 0.5.6
+
+### Added
+[+] Image border in editor, preview and PDF export — toggle in Settings → Appearance
+[+] Drag-and-drop paints from right panel into editor (inserts bold paint name at cursor)
+[+] Paint chips show drag hint on hover
+
+### Changed
+[*] PDF export now uses save dialog directly — no more hidden preview window
+
 ## 0.5.5
 
 ### Added

@@ -269,8 +269,27 @@ export default function MarkdownEditor({ content, onChange, onSave, figureName, 
                 setTableEditorOpen(true);
             }
         };
+
+        const drop = (e: DragEvent) => {
+            const v = editorViewRefInternal.current;
+            if (!v) return;
+            const text = e.dataTransfer?.getData('text/plain');
+            if (!text) return;
+            e.preventDefault();
+            const pos = v.posAtCoords({ x: e.clientX, y: e.clientY });
+            if (pos == null) return;
+            v.dispatch({ changes: { from: pos, insert: text + ' ' } });
+            v.focus();
+        };
+
         el.addEventListener('dblclick', dbl);
-        return () => el.removeEventListener('dblclick', dbl);
+        el.addEventListener('drop', drop, true);
+        el.addEventListener('dragover', (e) => e.preventDefault(), true);
+        return () => {
+            el.removeEventListener('dblclick', dbl);
+            el.removeEventListener('drop', drop, true);
+            el.removeEventListener('dragover', () => {}, true);
+        };
     }, []);
 
     useEffect(() => {
@@ -526,7 +545,10 @@ export default function MarkdownEditor({ content, onChange, onSave, figureName, 
             let attrs = `src="${url}" alt="${alt}"`;
             if (size?.w) attrs += ` width="${size.w}"`;
             if (size?.h) attrs += ` height="${size.h}"`;
-            if (!size?.w && !size?.h) attrs += ' style="max-width:100%;max-height:500px;display:block;margin:12px auto;border-radius:6px;"';
+            const imageBorder = localStorage.getItem('potion-rack-image-border') !== 'false';
+            const borderStyle = imageBorder ? ' border: 1px solid var(--border);' : '';
+            if (!size?.w && !size?.h) attrs += ` style="max-width:100%;max-height:500px;display:block;margin:12px auto;border-radius:6px;${borderStyle}"`;
+            else attrs += ` style="${borderStyle}"`;
             return `<img ${attrs} />`;
         }
     );
