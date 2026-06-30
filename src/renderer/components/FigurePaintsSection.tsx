@@ -46,16 +46,32 @@ export default function FigurePaintsSection({ figureId }: { figureId: number }) 
                 <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>{$t.noPaintsLinked || 'No paints linked'}</span>
             ) : (
                 paints.map(p => (
-                    <div key={p.id} className={styles.figurePaintChip}>
-                        <span
-                            className={styles.figurePaintDot}
-                            style={{ background: p.color_hex || 'var(--text-muted)' }}
-                        />
+                    <div
+                        key={p.id}
+                        className={styles.figurePaintChip}
+                        draggable
+                        onDragStart={(e) => {
+                            e.dataTransfer.setData('text/plain', `**${p.brand} ${p.color_name}**`);
+                            e.dataTransfer.effectAllowed = 'copy';
+                            (e.currentTarget as HTMLElement).style.opacity = '0.5';
+                        }}
+                        onDragEnd={(e) => {
+                            (e.currentTarget as HTMLElement).style.opacity = '1';
+                        }}
+                        title={$t.dragToEditor || 'Перетащите в редактор'}
+                    >
+        <span
+            className={styles.figurePaintDot}
+            style={{ background: p.color_hex || 'var(--text-muted)' }}
+        />
                         <span className={styles.figurePaintName}>{p.color_name}</span>
                         <span className={styles.figurePaintMeta}>{p.brand}</span>
                         <span
                             className={styles.figurePaintRemove}
-                            onClick={() => handleRemove(p.paint_id)}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                handleRemove(p.paint_id);
+                            }}
                         >✕</span>
                     </div>
                 ))

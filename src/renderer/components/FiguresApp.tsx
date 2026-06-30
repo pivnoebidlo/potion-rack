@@ -245,7 +245,10 @@ export default function FiguresApp() {
                     let attrs = `src="${url}" alt="${alt}"`;
                     if (size?.w) attrs += ` width="${size.w}"`;
                     if (size?.h) attrs += ` height="${size.h}"`;
-                    if (!size?.w && !size?.h) attrs += ' style="max-width:100%;max-height:500px;display:block;margin:12px auto;border-radius:6px;"';
+                    const imageBorder = localStorage.getItem('potion-rack-image-border') !== 'false';
+                    const borderStyle = imageBorder ? ' border: 1px solid #ddd;' : '';
+                    if (!size?.w && !size?.h) attrs += ` style="max-width:100%;max-height:500px;display:block;margin:12px auto;border-radius:6px;${borderStyle}"`;
+                    else attrs += ` style="${borderStyle}"`;
                     return `<img ${attrs} />`;
                 }
             );

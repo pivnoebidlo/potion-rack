@@ -201,4 +201,6 @@ export default {
     no: 'Нет',
     showLineNumbers: 'Нумерация строк',
     showLineNumbersDesc: 'Показывать номера строк в редакторе статей',
+    imageBorder: 'Рамка для изображений',
+    imageBorderDesc: 'Показывать рамку для изображений в редакторе статей',
 };

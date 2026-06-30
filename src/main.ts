@@ -531,7 +531,17 @@ ipcMain.handle('folder:move', (_event, oldPath: string, newPath: string) => {
     }
 });
 
-ipcMain.handle('article:exportPdf', (_event, folderPath: string, figureName: string, htmlContent: string) => {
+ipcMain.handle('article:exportPdf', async (_event, folderPath: string, figureName: string, htmlContent: string) => {
+    // Сначала спросим путь для сохранения
+    const result = await dialog.showSaveDialog(mainWindow!, {
+        title: 'Сохранить как PDF',
+        defaultPath: `${figureName}.pdf`,
+        filters: [{ name: 'PDF', extensions: ['pdf'] }]
+    });
+
+    if (result.canceled || !result.filePath) return { success: false };
+
+    // Создаём скрытое окно только для рендеринга
     const printWindow = new BrowserWindow({
         width: 800,
         height: 600,
@@ -560,7 +570,7 @@ ipcMain.handle('article:exportPdf', (_event, folderPath: string, figureName: str
         h1 { font-size: 24px; margin-top: 24px; }
         h2 { font-size: 20px; margin-top: 20px; }
         h3 { font-size: 16px; margin-top: 16px; }
-        img { max-width: 100%; max-height: 500px; display: block; margin: 12px auto; border-radius: 6px; }
+        img { max-width: 100%; max-height: 500px; display: block; margin: 12px auto; border-radius: 6px; border: 1px solid #ddd; }
         blockquote { border-left: 3px solid #7c5cfc; padding-left: 12px; color: #555; font-style: italic; margin: 12px 0; }
         code { background: #f0f0f0; padding: 2px 6px; border-radius: 3px; font-family: 'JetBrains Mono', monospace; font-size: 13px; }
         pre { background: #f5f5f5; padding: 12px; border-radius: 6px; overflow-x: auto; }
@@ -578,35 +588,28 @@ ipcMain.handle('article:exportPdf', (_event, folderPath: string, figureName: str
 
     printWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(styledHtml)}`);
 
-    printWindow.webContents.on('did-finish-load', async () => {
-        await printWindow.webContents.executeJavaScript(`
-            new Promise((resolve) => {
-                const imgs = document.querySelectorAll('img');
-                if (imgs.length === 0) return resolve();
-                let loaded = 0;
-                imgs.forEach(img => {
-                    if (img.complete) { loaded++; if (loaded === imgs.length) resolve(); }
-                    else { img.onload = img.onerror = () => { loaded++; if (loaded === imgs.length) resolve(); }; }
-                });
-                if (loaded === imgs.length) resolve();
-                setTimeout(resolve, 5000);
-            })
-        `);
-        setTimeout(async () => {
-            const { dialog } = require('electron');
-            const result = await dialog.showSaveDialog(printWindow, {
-                title: 'Сохранить как PDF',
-                defaultPath: `${figureName}.pdf`,
-                filters: [{ name: 'PDF', extensions: ['pdf'] }]
-            });
+    await new Promise<void>((resolve) => {
+        printWindow.webContents.on('did-finish-load', async () => {
+            // Ждём загрузки картинок
+            await printWindow.webContents.executeJavaScript(`
+                new Promise((r) => {
+                    const imgs = document.querySelectorAll('img');
+                    if (imgs.length === 0) return r();
+                    let loaded = 0;
+                    imgs.forEach(img => {
+                        if (img.complete) { loaded++; if (loaded === imgs.length) r(); }
+                        else { img.onload = img.onerror = () => { loaded++; if (loaded === imgs.length) r(); }; }
+                    });
+                    if (loaded === imgs.length) r();
+                    setTimeout(r, 5000);
+                })
+            `);
 
-            if (!result.canceled && result.filePath) {
-                const pdfData = await printWindow.webContents.printToPDF({ printBackground: true });
-                require('fs').writeFileSync(result.filePath, pdfData);
-            }
-
+            const pdfData = await printWindow.webContents.printToPDF({ printBackground: true });
+            fs.writeFileSync(result.filePath!, pdfData);
             printWindow.close();
-        }, 500);
+            resolve();
+        });
     });
 
     return { success: true };
