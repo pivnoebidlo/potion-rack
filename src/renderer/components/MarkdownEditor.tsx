@@ -193,7 +193,16 @@ export default function MarkdownEditor({ content, onChange, onSave, figureName, 
             if (e.code === 'KeyE' && !e.shiftKey) {
                 e.preventDefault();
                 e.stopPropagation();
-                setPreview(p => { if (p) setTimeout(() => editorViewRefInternal.current?.focus(), 50); return !p; });
+                setPreview(p => {
+                    if (p) {
+                        setTimeout(() => editorViewRefInternal.current?.focus(), 50);
+                    } else {
+                        if (editorViewRefInternal.current?.hasFocus) {
+                            (editorViewRefInternal.current.dom as HTMLElement).blur();
+                        }
+                    }
+                    return !p;
+                });
                 return;
             }
 
@@ -357,6 +366,45 @@ export default function MarkdownEditor({ content, onChange, onSave, figureName, 
         } catch (err) { console.error('Failed to insert paint list:', err); }
     }, [figureId, $t]);
 
+    const handleInsertToc = useCallback(() => {
+        const v = editorViewRefInternal.current;
+        if (!v) return;
+        const doc = v.state.doc.toString();
+        const lines = doc.split('\n');
+        const headings: { level: number; text: string; slug: string }[] = [];
+
+        for (const line of lines) {
+            const match = line.match(/^(#{1,6})\s+(.+)$/);
+            if (match) {
+                const level = match[1].length;
+                const text = match[2].trim();
+                const slug = text
+                    .toLowerCase()
+                    .replace(/[^\w\s-]/g, '')
+                    .replace(/\s+/g, '-')
+                    .replace(/-+/g, '-')
+                    .trim();
+                headings.push({ level, text, slug });
+            }
+        }
+
+        if (headings.length === 0) return;
+
+        let toc = '\n';
+        for (const h of headings) {
+            const indent = '  '.repeat(h.level - 1);
+            toc += `${indent}- [${h.text}](#${h.slug})\n`;
+        }
+        toc += '\n';
+
+        const insertPos = v.state.selection.main.from;
+        v.dispatch({
+            changes: { from: insertPos, insert: toc },
+            selection: { anchor: insertPos + toc.length }
+        });
+        v.focus();
+    }, []);
+
     useEffect(() => {
         const el = editorRef.current; if (!el) return;
         const h = async (e: ClipboardEvent) => {
@@ -422,40 +470,54 @@ export default function MarkdownEditor({ content, onChange, onSave, figureName, 
     return (
         <div className={styles.root}>
             <div className={styles.toolbar}>
-                <div className={styles.toolbarGroup}>
-                    <button className={styles.tbBtn} title="Bold (Cmd+B)" onClick={() => toggleWrap('**')}><strong>B</strong></button>
-                    <button className={styles.tbBtn} title="Italic (Cmd+I)" onClick={() => toggleWrap('*')}><em>I</em></button>
-                    <button className={styles.tbBtn} title="Strikethrough (Shift+Cmd+X)" onClick={() => toggleWrap('~~')}><s>S</s></button>
-                    <button className={styles.tbBtn} title="Horizontal line (Cmd+L)" onClick={() => insertBlock('---', '')}>—</button>
-                </div>
-                <div className={styles.toolbarGroup}>
-                    <button className={styles.tbBtn} title="Heading 1 (Cmd+1)" onClick={() => insertLine('#')}>H1</button>
-                    <button className={styles.tbBtn} title="Heading 2 (Cmd+2)" onClick={() => insertLine('##')}>H2</button>
-                    <button className={styles.tbBtn} title="Heading 3 (Cmd+3)" onClick={() => insertLine('###')}>H3</button>
-                </div>
-                <div className={styles.toolbarGroup}>
-                    <button className={styles.tbBtn} title="Bullet list" onClick={() => insertLine('-')}>•</button>
-                    <button className={styles.tbBtn} title="Numbered list" onClick={() => insertLine('1.')}>1.</button>
-                    <button className={styles.tbBtn} title="Quote (Cmd+Q)" onClick={() => insertLine('>')}>❝</button>
-                    <button className={styles.tbBtn} title="Code (Cmd+K)" onClick={() => toggleWrap('`')}>&lt;/&gt;</button>
-                </div>
-                <div className={styles.toolbarGroup}>
-                    <button className={styles.tbBtn} title="Link (Cmd+U)" onClick={handleInsertLink}>🔗</button>
-                    <button className={styles.tbBtn} title="Image (Cmd+Shift+I)" onClick={handleInsertImage}>🖼</button>
-                    <button className={styles.tbBtn} title="Insert paint list" onClick={handleInsertPaintList}>📋</button>
-                    <button className={styles.tbBtn} title="Table" onClick={() => {
-                        const v = editorViewRefInternal.current;
-                        if (v) {
-                            v.focus();
-                            setTableEditorMarkdown('|  |  |  |\n|---|---|---|\n|  |  |  |\n|  |  |  |');
-                            setTableEditorFrom(v.state.selection.main.from);
-                            setTableEditorTo(v.state.selection.main.from);
-                            setTableEditorOpen(true);
-                        }
-                    }}>⊞</button>
+                <div style={{ display: preview ? 'none' : 'flex', gap: 4, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <div className={styles.toolbarGroup}>
+                        <button className={styles.tbBtn} title="Bold (Cmd+B)" onClick={() => toggleWrap('**')}><strong>B</strong></button>
+                        <button className={styles.tbBtn} title="Italic (Cmd+I)" onClick={() => toggleWrap('*')}><em>I</em></button>
+                        <button className={styles.tbBtn} title="Strikethrough (Shift+Cmd+X)" onClick={() => toggleWrap('~~')}><s>S</s></button>
+                        <button className={styles.tbBtn} title="Horizontal line (Cmd+L)" onClick={() => insertBlock('---', '')}>—</button>
+                    </div>
+                    <div className={styles.toolbarGroup}>
+                        <button className={styles.tbBtn} title="Heading 1 (Cmd+1)" onClick={() => insertLine('#')}>H1</button>
+                        <button className={styles.tbBtn} title="Heading 2 (Cmd+2)" onClick={() => insertLine('##')}>H2</button>
+                        <button className={styles.tbBtn} title="Heading 3 (Cmd+3)" onClick={() => insertLine('###')}>H3</button>
+                    </div>
+                    <div className={styles.toolbarGroup}>
+                        <button className={styles.tbBtn} title="Bullet list" onClick={() => insertLine('-')}>•</button>
+                        <button className={styles.tbBtn} title="Numbered list" onClick={() => insertLine('1.')}>1.</button>
+                        <button className={styles.tbBtn} title="Quote (Cmd+Q)" onClick={() => insertLine('>')}>❝</button>
+                        <button className={styles.tbBtn} title="Code (Cmd+K)" onClick={() => toggleWrap('`')}>&lt;/&gt;</button>
+                    </div>
+                    <div className={styles.toolbarGroup}>
+                        <button className={styles.tbBtn} title="Link (Cmd+U)" onClick={handleInsertLink}>🔗</button>
+                        <button className={styles.tbBtn} title="Image (Cmd+Shift+I)" onClick={handleInsertImage}>🖼</button>
+                        <button className={styles.tbBtn} title="Insert paint list" onClick={handleInsertPaintList}>📋</button>
+                        <button className={styles.tbBtn} title="Table" onClick={() => {
+                            const v = editorViewRefInternal.current;
+                            if (v) {
+                                v.focus();
+                                setTableEditorMarkdown('|  |  |  |\n|---|---|---|\n|  |  |  |\n|  |  |  |');
+                                setTableEditorFrom(v.state.selection.main.from);
+                                setTableEditorTo(v.state.selection.main.from);
+                                setTableEditorOpen(true);
+                            }
+                        }}>⊞</button>
+                        <button className={styles.tbBtn} title="Insert table of contents" onClick={handleInsertToc}>≡</button>
+                    </div>
                 </div>
                 <div className={`${styles.toolbarGroup} ${styles.toolbarRight}`}>
-                    <button className={styles.tbBtn} onClick={() => setPreview(!preview)} title={preview ? $t.edit : $t.preview}>{preview ? '✏️' : '👁'}</button>
+                    <button className={styles.tbBtn} onClick={() => {
+                        setPreview(p => {
+                            if (p) {
+                                setTimeout(() => editorViewRefInternal.current?.focus(), 50);
+                            } else {
+                                if (editorViewRefInternal.current?.hasFocus) {
+                                    (editorViewRefInternal.current.dom as HTMLElement).blur();
+                                }
+                            }
+                            return !p;
+                        });
+                    }} title={preview ? $t.edit : $t.preview}>{preview ? '✏️' : '👁'}</button>
                 </div>
             </div>
             <div className={styles.preview} style={{ display: preview ? 'block' : 'none' }} dangerouslySetInnerHTML={{ __html: marked(resolvedContent, { breaks: true, gfm: true }) as string }} />

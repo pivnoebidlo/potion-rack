@@ -1,3 +1,18 @@
+## 0.6.2
+
+### Added
+[+] Export article to .prarticle file (context menu → Export article)
+[+] Import article from .prarticle file (context menu → Import article)
+[+] Insert table of contents button in editor toolbar (≡)
+
+### Changed
+[*] Toolbar hidden in preview mode (👁 button remains to switch back)
+[*] Safe encoding of parentheses in image URLs for figures with brackets in name
+
+### Fixed
+[-] Duplicate figure names on import now get numbered suffix (1), (2) instead of overwriting
+[-] PromptModal input no longer overflows modal boundaries
+
 ## 0.6.1
 
 ### Fixed

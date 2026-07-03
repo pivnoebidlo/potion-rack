@@ -216,4 +216,6 @@ export default {
     figureDuplicateMove: 'A figure with this name already exists in the target folder',
     cannotMoveFolderIntoItself: 'Cannot move a folder into itself',
     cannotMoveFolderDuplicates: 'Cannot move folder, duplicate figures:',
+    exportArticle: 'Export article',
+    importArticle: 'Import article',
 };
