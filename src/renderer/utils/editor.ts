@@ -1,5 +1,5 @@
 export function safeEncode(str: string): string {
-    return str.replace(/&/g, '%26').replace(/ /g, '%20').replace(/#/g, '%23');
+    return str.replace(/&/g, '%26').replace(/ /g, '%20').replace(/#/g, '%23').replace(/\(/g, '%28').replace(/\)/g, '%29');
 }
 
 export function compressImage(file: File, maxWidth: number, maxHeight: number, quality: number): Promise<string> {

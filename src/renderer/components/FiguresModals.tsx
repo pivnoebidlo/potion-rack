@@ -29,6 +29,8 @@ interface FiguresModalsProps {
     onNewFolder: (parentPath: string) => void;
     onRename: (target: FolderTarget) => void;
     onExportPdf: (target: FolderTarget) => void;
+    onExportArticle: (target: FolderTarget) => void;
+    onImportArticle: (folderPath: string) => void;
     onDeleteTarget: (target: FolderTarget) => void;
 }
 
@@ -55,6 +57,8 @@ export default function FiguresModals({
                                           onNewFolder,
                                           onRename,
                                           onExportPdf,
+                                          onExportArticle,
+                                          onImportArticle,
                                           onDeleteTarget,
                                       }: FiguresModalsProps) {
     return (
@@ -91,6 +95,8 @@ export default function FiguresModals({
                     onNewFolder={onNewFolder}
                     onRename={onRename}
                     onExportPdf={onExportPdf}
+                    onExportArticle={onExportArticle}
+                    onImportArticle={onImportArticle}
                     onDelete={onDeleteTarget}
                 />
             )}

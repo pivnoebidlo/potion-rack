@@ -221,6 +221,29 @@ export default function FiguresApp() {
         } catch (err) { console.error('Export PDF failed:', err); }
     };
 
+    const handleExportArticle = async (target: FolderTarget) => {
+        if (target.type !== 'figure' || !target.figureId) return;
+        const figure = figures.find(f => f.id === target.figureId);
+        if (!figure) return;
+        try {
+            await (window as any).electronAPI?.exportArticle(figure.folder_path || '', figure.name);
+        } catch (err) { console.error('Export article failed:', err); }
+    };
+
+    const handleImportArticle = async (folderPath: string) => {
+        try {
+            const result = await (window as any).electronAPI?.importArticle(folderPath);
+            if (result?.success) {
+                await loadDiskFolders();
+                const figuresPath = localStorage.getItem('potion-rack-figures-path');
+                if (figuresPath && (window as any).electronAPI?.reindexFigures) {
+                    await (window as any).electronAPI.reindexFigures(figuresPath);
+                }
+                await loadFigures();
+            }
+        } catch (err) { console.error('Import article failed:', err); }
+    };
+
     const handleScrollToLine = (line: number) => {
         const view = editorViewRef.current;
         if (!view) return;
@@ -316,6 +339,8 @@ export default function FiguresApp() {
                 onNewFolder={handleNewFolder}
                 onRename={handleRename}
                 onExportPdf={handleExportPdf}
+                onExportArticle={handleExportArticle}
+                onImportArticle={handleImportArticle}
                 onDeleteTarget={handleDeleteTarget}
             />
         </div>

@@ -209,4 +209,6 @@ export default {
     figureDuplicateMove: 'Фигура с таким именем уже есть в целевой папке.',
     cannotMoveFolderIntoItself: 'Нельзя переместить папку в саму себя.',
     cannotMoveFolderDuplicates: 'Нельзя переместить папку, дубликаты фигур:',
+    exportArticle: 'Экспорт статьи',
+    importArticle: 'Импорт статьи',
 };

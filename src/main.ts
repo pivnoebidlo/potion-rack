@@ -615,6 +615,96 @@ ipcMain.handle('article:exportPdf', async (_event, folderPath: string, figureNam
     return { success: true };
 });
 
+// ─── Экспорт / Импорт статей ───
+ipcMain.handle('article:exportArticle', async (_event, folderPath: string, figureName: string) => {
+    const dir = getFigureDir(folderPath, figureName);
+    const mdPath = path.join(dir, `${figureName}.md`);
+    const imagesDir = path.join(dir, 'images');
+
+    if (!fs.existsSync(mdPath)) return { success: false, error: 'Article not found' };
+
+    const result = await dialog.showSaveDialog(mainWindow!, {
+        title: 'Экспорт статьи',
+        defaultPath: `${figureName}.prarticle`,
+        filters: [{ name: 'Potion Rack Article', extensions: ['prarticle'] }]
+    });
+
+    if (result.canceled || !result.filePath) return { success: false };
+
+    // Создаём zip вручную (без зависимостей)
+    const AdmZip = require('adm-zip');
+    const zip = new AdmZip();
+
+    zip.addLocalFile(mdPath);
+
+    if (fs.existsSync(imagesDir)) {
+        const images = fs.readdirSync(imagesDir);
+        for (const img of images) {
+            zip.addLocalFile(path.join(imagesDir, img), 'images');
+        }
+    }
+
+    zip.writeZip(result.filePath);
+    return { success: true };
+});
+
+ipcMain.handle('article:importArticle', async (_event, targetFolderPath: string) => {
+    const result = await dialog.showOpenDialog(mainWindow!, {
+        title: 'Импорт статьи',
+        filters: [{ name: 'Potion Rack Article', extensions: ['prarticle'] }],
+        properties: ['openFile']
+    });
+
+    if (result.canceled || result.filePaths.length === 0) return { success: false, error: 'Cancelled' };
+
+    const zipPath = result.filePaths[0];
+    const AdmZip = require('adm-zip');
+    const zip = new AdmZip(zipPath);
+
+    // Найти .md файл в архиве
+    const mdEntry = zip.getEntries().find((e: any) => e.entryName.endsWith('.md'));
+    if (!mdEntry) return { success: false, error: 'No .md file found in archive' };
+
+    let figureName = mdEntry.entryName.replace(/\.md$/, '').split('/').pop() || 'imported';
+
+    // Проверка на дубликат в целевой папке
+    const targetDir = targetFolderPath ? path.join(figuresPath, targetFolderPath) : figuresPath;
+    const existing = fs.readdirSync(targetDir, { withFileTypes: true })
+        .filter(e => e.isDirectory())
+        .map(e => e.name);
+
+    let counter = 1;
+    let baseName = figureName;
+    while (existing.includes(figureName)) {
+        figureName = `${baseName} (${counter})`;
+        counter++;
+    }
+
+    const newDir = path.join(targetDir, figureName);
+    fs.mkdirSync(newDir, { recursive: true });
+
+    // Извлекаем всё
+    zip.extractAllTo(newDir, true);
+
+    // Если .md файл был в подпапке архива, переносим его в корень фигуры
+    const extractedMd = path.join(newDir, mdEntry.entryName);
+    const targetMd = path.join(newDir, `${figureName}.md`);
+    if (extractedMd !== targetMd) {
+        if (fs.existsSync(targetMd)) fs.unlinkSync(targetMd);
+        fs.renameSync(extractedMd, targetMd);
+    }
+
+    // Читаем контент для БД
+    const content = fs.readFileSync(targetMd, 'utf8');
+
+// Добавляем в БД
+    const db = getDatabase();
+    db.prepare(`
+    INSERT INTO figures (name, folder_path, content, status)
+    VALUES (?, ?, ?, 'draft')
+`).run(figureName, targetFolderPath || null, content);
+    return { success: true, figureName, folderPath: targetFolderPath };
+});
 ipcMain.on('window-minimize', () => { if (mainWindow) mainWindow.minimize(); });
 ipcMain.on('window-maximize', () => { if (mainWindow) { if (mainWindow.isMaximized()) mainWindow.unmaximize(); else mainWindow.maximize(); } });
 ipcMain.on('window-close', () => { if (mainWindow) mainWindow.close(); });

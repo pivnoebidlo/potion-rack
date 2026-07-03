@@ -12,10 +12,12 @@ interface ContextMenuProps {
     onNewFolder: (parentPath: string) => void;
     onRename: (target: FolderTarget) => void;
     onExportPdf?: (target: FolderTarget) => void;
+    onExportArticle?: (target: FolderTarget) => void;
+    onImportArticle?: (folderPath: string) => void;
     onDelete: (target: FolderTarget) => void;
 }
 
-export default function ContextMenu({ x, y, target, onClose, onNewFigure, onNewFolder, onRename, onExportPdf, onDelete }: ContextMenuProps) {
+export default function ContextMenu({ x, y, target, onClose, onNewFigure, onNewFolder, onRename, onExportPdf, onExportArticle, onImportArticle, onDelete }: ContextMenuProps) {
     const $t = t();
     const menuRef = useRef<HTMLDivElement>(null);
 
@@ -41,7 +43,7 @@ export default function ContextMenu({ x, y, target, onClose, onNewFigure, onNewF
     const isRoot = target.type === 'root';
 
     const menuWidth = 200;
-    const menuHeight = isRoot ? 80 : isFigure ? 165 : 130;
+    const menuHeight = isRoot ? 120 : isFigure ? 210 : 170;
     const adjustedX = Math.min(x, window.innerWidth - menuWidth - 8);
     const adjustedY = Math.min(y, window.innerHeight - menuHeight - 8);
 
@@ -59,6 +61,10 @@ export default function ContextMenu({ x, y, target, onClose, onNewFigure, onNewF
                     <div className={styles.item} onClick={() => { onNewFolder(target.path); onClose(); }}>
                         {$t.newFolder}
                     </div>
+                    <div className={styles.divider} />
+                    <div className={styles.item} onClick={() => { onImportArticle?.(target.path); onClose(); }}>
+                        {$t.importArticle || 'Import article'}
+                    </div>
                 </>
             )}
 
@@ -66,8 +72,11 @@ export default function ContextMenu({ x, y, target, onClose, onNewFigure, onNewF
 
             {isFigure && (
                 <>
-                    <div className={styles.item} onClick={() => { console.log('Export PDF clicked', target); onExportPdf?.(target); onClose(); }}>
-                        📄 {$t.exportPdf || 'Export to PDF'}
+                    <div className={styles.item} onClick={() => { onExportArticle?.(target); onClose(); }}>
+                        {$t.exportArticle || 'Export article'}
+                    </div>
+                    <div className={styles.item} onClick={() => { onExportPdf?.(target); onClose(); }}>
+                        {$t.exportPdf || 'Export to PDF'}
                     </div>
                     <div className={styles.divider} />
                 </>
