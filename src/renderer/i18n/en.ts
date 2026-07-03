@@ -210,4 +210,7 @@ export default {
     showLineNumbersDesc: 'Show line numbers in the editor',
     imageBorder: 'Image frame',
     imageBorderDesc: 'Show a frame for images in the editor',
+    table: 'Table',
+    clickToEdit: 'Click to edit',
+    open: 'Open',
 };

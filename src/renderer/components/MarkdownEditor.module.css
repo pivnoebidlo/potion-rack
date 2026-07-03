@@ -217,3 +217,49 @@
 .preview tr:last-child td {
     border-bottom: none;
 }
+
+/* Плашка таблицы в предпросмотре */
+.tablePlaceholder {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    margin: 12px 0;
+    background: var(--bg-primary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+    user-select: none;
+}
+.tablePlaceholder:hover {
+    background: var(--bg-hover);
+    border-color: var(--accent);
+}
+.tablePlaceholderIcon {
+    font-size: 18px;
+}
+.tablePlaceholderInfo {
+    flex: 1;
+}
+.tablePlaceholderLabel {
+    font-size: 13px;
+    color: var(--text-primary);
+}
+.tablePlaceholderDims {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+.tablePlaceholderAction {
+    font-size: 12px;
+    color: var(--accent);
+    border: 1px solid var(--accent);
+    border-radius: var(--radius-sm);
+    padding: 3px 10px;
+    transition: background 0.15s, color 0.15s;
+}
+.tablePlaceholder:hover .tablePlaceholderAction {
+    background: var(--accent);
+    color: #fff;
+}
+

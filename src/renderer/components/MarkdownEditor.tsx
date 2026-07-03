@@ -11,7 +11,7 @@ import { search, searchKeymap } from '@codemirror/search';
 import { marked } from 'marked';
 import styles from './MarkdownEditor.module.css';
 import { t } from '../i18n';
-import { wysiwymPlugin, setSlug, slugField, setResizeCallback, resizeCallbackField } from '../editor-plugins/wysiwymPlugin';
+import { wysiwymPlugin, setSlug, slugField, setResizeCallback, resizeCallbackField, setTableLabel, tableLabelField } from '../editor-plugins/wysiwymPlugin';
 import { tableNavPlugin } from '../editor-plugins/tableNavPlugin';
 import ImageResizeModal from './ImageResizeModal';
 import TableEditorModal from './TableEditorModal';
@@ -98,6 +98,7 @@ function createEditorView(
             extensions: [
                 slugField.init(() => slug),
                 resizeCallbackField,
+                tableLabelField,
                 ...(showLineNumbers ? [lineNumbers()] : []),
                 search({ top: false }),
                 foldGutter(),
@@ -215,13 +216,17 @@ export default function MarkdownEditor({ content, onChange, onSave, figureName, 
         editorViewRefInternal.current = pooled.view;
         if (editorViewRef) editorViewRef.current = pooled.view;
         pooled.view.dispatch({ effects: setSlug.of(slug) });
+        pooled.view.dispatch({ effects: setTableLabel.of($t.table || 'Таблица') });
         pooled.view.dispatch({ effects: setResizeCallback.of(handleResizeExisting) });
 
         setPreview(false);
     }, [slug]);
 
     useEffect(() => {
-        const h = (e: MouseEvent) => { const a = (e.target as HTMLElement).closest('a'); if (a?.getAttribute('href')) { e.preventDefault(); window.open(a.getAttribute('href')!, '_blank'); } };
+        const h = (e: MouseEvent) => {
+            const a = (e.target as HTMLElement).closest('a');
+            if (a?.getAttribute('href')) { e.preventDefault(); window.open(a.getAttribute('href')!, '_blank'); return; }
+        };
         document.addEventListener('click', h, true);
         return () => document.removeEventListener('click', h, true);
     }, []);
@@ -278,17 +283,37 @@ export default function MarkdownEditor({ content, onChange, onSave, figureName, 
             e.preventDefault();
             const pos = v.posAtCoords({ x: e.clientX, y: e.clientY });
             if (pos == null) return;
-            v.dispatch({ changes: { from: pos, insert: text + ' ' } });
+            const insertPos = pos;
+            v.dispatch({
+                changes: { from: insertPos, insert: text + ' ' },
+                selection: { anchor: insertPos + text.length + 1 }
+            });
             v.focus();
+        };
+
+        const tableClick = (e: Event) => {
+            const detail = (e as CustomEvent).detail;
+            if (detail?.from != null && detail?.to != null) {
+                const v = editorViewRefInternal.current;
+                if (v) {
+                    const md = v.state.sliceDoc(detail.from, detail.to);
+                    setTableEditorMarkdown(md);
+                    setTableEditorFrom(detail.from);
+                    setTableEditorTo(detail.to);
+                    setTableEditorOpen(true);
+                }
+            }
         };
 
         el.addEventListener('dblclick', dbl);
         el.addEventListener('drop', drop, true);
         el.addEventListener('dragover', (e) => e.preventDefault(), true);
+        el.addEventListener('table-placeholder-click', tableClick);
         return () => {
             el.removeEventListener('dblclick', dbl);
             el.removeEventListener('drop', drop, true);
             el.removeEventListener('dragover', () => {}, true);
+            el.removeEventListener('table-placeholder-click', tableClick);
         };
     }, []);
 
