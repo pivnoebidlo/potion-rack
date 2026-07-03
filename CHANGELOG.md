@@ -1,3 +1,12 @@
+## 0.5.7
+### Added
+[+] Table placeholders in editor — tables shown as compact "Таблица N×M" badges, click to edit
+[+] Copy image button in editor (📋) — copies image to clipboard on hover
+[+] Cursor now moves after inserted paint name on drag-and-drop
+
+### Changed
+[*] Single click on table placeholder opens table editor
+
 ## 0.5.6
 
 ### Added

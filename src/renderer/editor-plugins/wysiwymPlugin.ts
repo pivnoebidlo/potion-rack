@@ -48,25 +48,34 @@ export class ImagePreviewWidget extends WidgetType {
             img.style.borderRadius = '4px';
         }
 
-        const deleteBtn = document.createElement('button');
-        deleteBtn.textContent = '✕';
-        deleteBtn.style.position = 'absolute';
-        deleteBtn.style.top = '4px';
-        deleteBtn.style.right = '4px';
-        deleteBtn.style.background = 'var(--bg-primary)';
-        deleteBtn.style.color = 'var(--text-primary)';
-        deleteBtn.style.border = 'none';
-        deleteBtn.style.borderRadius = '50%';
-        deleteBtn.style.width = '24px';
-        deleteBtn.style.height = '24px';
-        deleteBtn.style.fontSize = '14px';
-        deleteBtn.style.cursor = 'pointer';
-        deleteBtn.style.display = 'none';
-        deleteBtn.style.alignItems = 'center';
-        deleteBtn.style.justifyContent = 'center';
-        deleteBtn.addEventListener('click', (e) => {
+        const copyBtn = document.createElement('button');
+        copyBtn.textContent = '📋';
+        copyBtn.style.position = 'absolute';
+        copyBtn.style.top = '4px';
+        copyBtn.style.right = '60px';
+        copyBtn.style.background = 'var(--bg-primary)';
+        copyBtn.style.color = 'var(--text-primary)';
+        copyBtn.style.border = 'none';
+        copyBtn.style.borderRadius = '50%';
+        copyBtn.style.width = '24px';
+        copyBtn.style.height = '24px';
+        copyBtn.style.fontSize = '12px';
+        copyBtn.style.cursor = 'pointer';
+        copyBtn.style.display = 'none';
+        copyBtn.style.alignItems = 'center';
+        copyBtn.style.justifyContent = 'center';
+        copyBtn.title = 'Copy image';
+        copyBtn.addEventListener('click', async (e) => {
             e.stopPropagation();
-            this.view.dispatch({ changes: { from: this.from, to: this.to } });
+            try {
+                const response = await fetch(this.src);
+                const blob = await response.blob();
+                await navigator.clipboard.write([
+                    new ClipboardItem({ [blob.type]: blob })
+                ]);
+            } catch (err) {
+                console.error('Copy failed:', err);
+            }
         });
 
         const resizeBtn = document.createElement('button');
@@ -92,18 +101,42 @@ export class ImagePreviewWidget extends WidgetType {
             if (cb) cb(this.from, this.to, this.displayWidth, this.displayHeight);
         });
 
+        const deleteBtn = document.createElement('button');
+        deleteBtn.textContent = '✕';
+        deleteBtn.style.position = 'absolute';
+        deleteBtn.style.top = '4px';
+        deleteBtn.style.right = '4px';
+        deleteBtn.style.background = 'var(--bg-primary)';
+        deleteBtn.style.color = 'var(--text-primary)';
+        deleteBtn.style.border = 'none';
+        deleteBtn.style.borderRadius = '50%';
+        deleteBtn.style.width = '24px';
+        deleteBtn.style.height = '24px';
+        deleteBtn.style.fontSize = '14px';
+        deleteBtn.style.cursor = 'pointer';
+        deleteBtn.style.display = 'none';
+        deleteBtn.style.alignItems = 'center';
+        deleteBtn.style.justifyContent = 'center';
+        deleteBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.view.dispatch({ changes: { from: this.from, to: this.to } });
+        });
+
         container.addEventListener('mouseenter', () => {
             deleteBtn.style.display = 'flex';
             resizeBtn.style.display = 'flex';
+            copyBtn.style.display = 'flex';
         });
         container.addEventListener('mouseleave', () => {
             deleteBtn.style.display = 'none';
             resizeBtn.style.display = 'none';
+            copyBtn.style.display = 'none';
         });
 
         container.appendChild(img);
-        container.appendChild(deleteBtn);
+        container.appendChild(copyBtn);
         container.appendChild(resizeBtn);
+        container.appendChild(deleteBtn);
         return container;
     }
 
@@ -112,6 +145,59 @@ export class ImagePreviewWidget extends WidgetType {
             this.img.src = '';
             this.img = null;
         }
+    }
+}
+
+// ============ Table Placeholder Widget ============
+export class TablePlaceholderWidget extends WidgetType {
+    constructor(
+        readonly from: number,
+        readonly to: number,
+        readonly rows: number,
+        readonly cols: number,
+        readonly view: EditorView
+    ) { super(); }
+
+    toDOM() {
+        const container = document.createElement('div');
+        container.className = 'cm-table-placeholder';
+        container.setAttribute('data-table-from', String(this.from));
+        container.setAttribute('data-table-to', String(this.to));
+        container.style.display = 'flex';
+        container.style.alignItems = 'center';
+        container.style.gap = '10px';
+        container.style.padding = '10px 14px';
+        container.style.margin = '12px 0';
+        container.style.background = 'var(--bg-primary)';
+        container.style.border = '1px solid var(--border)';
+        container.style.borderRadius = '6px';
+        container.style.cursor = 'pointer';
+        container.style.userSelect = 'none';
+
+        container.addEventListener('mouseenter', () => {
+            container.style.background = 'var(--bg-hover)';
+            container.style.borderColor = 'var(--accent)';
+        });
+        container.addEventListener('mouseleave', () => {
+            container.style.background = 'var(--bg-primary)';
+            container.style.borderColor = 'var(--border)';
+        });
+        container.addEventListener('click', (e) => {
+            e.stopPropagation();
+            container.dispatchEvent(new CustomEvent('table-placeholder-click', {
+                bubbles: true,
+                detail: { from: this.from, to: this.to }
+            }));
+        });
+
+        const tableLabel = this.view.state.field(tableLabelField, false) || 'Таблица';
+        const label = document.createElement('span');
+        label.textContent = `${tableLabel} ${this.rows}×${this.cols}`;
+        label.style.fontSize = '13px';
+        label.style.color = 'var(--text-primary)';
+
+        container.appendChild(label);
+        return container;
     }
 }
 
@@ -135,6 +221,16 @@ export const resizeCallbackField = StateField.define<((from: number, to: number,
     create: () => null,
     update: (value, tr) => {
         for (const e of tr.effects) if (e.is(setResizeCallback)) return e.value;
+        return value;
+    }
+});
+
+// ============ Table Label State ============
+export const setTableLabel = StateEffect.define<string>();
+export const tableLabelField = StateField.define<string>({
+    create: () => 'Таблица',
+    update: (value, tr) => {
+        for (const e of tr.effects) if (e.is(setTableLabel)) return e.value;
         return value;
     }
 });
@@ -164,9 +260,38 @@ export const wysiwymPlugin = ViewPlugin.fromClass(class {
             const line = doc.line(i);
             const text = line.text;
 
-            // Скрываем разделитель таблицы
-            if (/^\|[-:\s|]+\|$/.test(text) && !/^\|(.+)\|$/.test(text)) {
-                items.push({ from: line.from, to: line.to, decoration: Decoration.mark({ attributes: { style: 'font-size: 0; line-height: 0; height: 0; display: block;' } }) });
+            // Находим таблицы и добавляем плашки
+            if (/^\|(.+)\|$/.test(text)) {
+                let insideTable = false;
+                if (line.number > 1) {
+                    const prevLine = doc.line(line.number - 1);
+                    if (/^\|(.+)\|$/.test(prevLine.text)) insideTable = true;
+                }
+                if (insideTable) continue;
+
+                let start = line.from;
+                let end = line.to;
+                const doc2 = view.state.doc;
+
+                for (let j = line.number + 1; j <= doc2.lines; j++) {
+                    if (/^\|(.+)\|$/.test(doc2.line(j).text)) end = doc2.line(j).to;
+                    else break;
+                }
+
+                const tableText = doc2.sliceString(start, end).trim();
+                const tableLines = tableText.split('\n').filter(l => /^\|.+/.test(l));
+                const dataRows = tableLines.length > 2 ? tableLines.length - 2 : Math.max(0, tableLines.length - 1);
+                const colCount = tableLines[0] ? (tableLines[0].match(/\|/g) || []).length - 1 : 0;
+
+                items.push({
+                    from: start,
+                    to: start,
+                    decoration: Decoration.widget({
+                        widget: new TablePlaceholderWidget(start, end, dataRows, colCount, view),
+                        side: 1
+                    })
+                });
+
                 continue;
             }
 
