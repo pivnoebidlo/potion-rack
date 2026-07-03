@@ -1,3 +1,12 @@
+## 0.6.0
+
+### Changed
+[*] Refactored MarkdownEditor — extracted useEditorPool hook, editor utilities
+[*] Refactored FiguresApp — extracted useFigures, useFolderOperations hooks, PDF export utility
+[*] CI: updated Node.js from 20 to 24
+[*] Updated @types/node to 26.x
+[*] Updated TypeScript to 6.0
+
 ## 0.5.7
 ### Added
 [+] Table placeholders in editor — tables shown as compact "Таблица N×M" badges, click to edit
