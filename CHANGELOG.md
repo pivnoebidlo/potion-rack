@@ -1,3 +1,11 @@
+## 0.6.1
+
+### Fixed
+[-] Table cells now support multiline text (Enter in cell → <br> → line break in preview and PDF)
+[-] Preventing duplicate figures when moving between folders
+[-] Preventing folder move into itself or into folder with same-named figures
+[-] PromptModal input no longer overflows modal boundaries
+
 ## 0.6.0
 
 ### Changed

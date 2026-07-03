@@ -206,4 +206,7 @@ export default {
     table: 'Таблица',
     clickToEdit: 'Нажмите для редактирования',
     open: 'Открыть',
+    figureDuplicateMove: 'Фигура с таким именем уже есть в целевой папке.',
+    cannotMoveFolderIntoItself: 'Нельзя переместить папку в саму себя.',
+    cannotMoveFolderDuplicates: 'Нельзя переместить папку, дубликаты фигур:',
 };

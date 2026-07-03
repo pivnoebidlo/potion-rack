@@ -35,6 +35,7 @@
     font-family: inherit;
     outline: none;
     margin-bottom: 16px;
+    box-sizing: border-box;
 }
 .input:focus {
     border-color: var(--accent);

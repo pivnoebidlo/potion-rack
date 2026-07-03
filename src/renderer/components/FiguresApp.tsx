@@ -57,7 +57,8 @@ export default function FiguresApp() {
     const { handleMoveFigure, handleMoveFolder } = useFolderOperations({
         figures, selectedFolder, selectedId,
         loadDiskFolders, loadFigures, updateFigure,
-        setSelectedFolder, setSelectedId
+        setSelectedFolder, setSelectedId,
+        t: (key: string) => ($t as any)[key] || key
     });
 
     useEffect(() => {
