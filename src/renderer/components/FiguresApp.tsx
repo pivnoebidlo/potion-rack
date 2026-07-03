@@ -2,22 +2,23 @@
 import CollapseIcon from '../assets/icons/collapse.svg?react';
 // @ts-ignore
 import ExpandIcon from '../assets/icons/expand.svg?react';
-import { marked } from 'marked';
 import { EditorView } from '@codemirror/view';
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import styles from './FiguresApp.module.css';
 import FolderTree, { FolderTarget } from './FolderTree';
 import MarkdownEditor from './MarkdownEditor';
 import RightPanel from './RightPanel';
 import { t } from '../i18n';
-import { fetchFigures, updateFigureAPI, deleteFigureAPI } from '../services/apiFigures';
 import { Figure } from '../types/figure';
+import { useFigures } from '../hooks/useFigures';
+import { useFolderOperations } from '../hooks/useFolderOperations';
+import { exportFigureToPdf } from '../utils/pdf';
 import FiguresModals from './FiguresModals';
 import AppSidebar from './AppSidebar';
 
 export default function FiguresApp() {
     const $t = t();
-    const [figures, setFigures] = useState<Figure[]>([]);
+    const { figures, setFigures, loadFigures, updateFigure, deleteFigure } = useFigures();
     const [selectedId, setSelectedId] = useState<number | null>(null);
     const [search, setSearch] = useState('');
     const [selectedFolder, setSelectedFolder] = useState<string>('');
@@ -45,9 +46,6 @@ export default function FiguresApp() {
 
     const editorViewRef = useRef<EditorView | null>(null);
 
-    const loadFigures = useCallback(async () => { try { setFigures(await fetchFigures()); } catch (err) { console.error(err); } }, []);
-    useEffect(() => { loadFigures(); }, [loadFigures]);
-
     const loadDiskFolders = async () => {
         try {
             const api = (window as any).electronAPI;
@@ -55,6 +53,12 @@ export default function FiguresApp() {
         } catch (err) { console.error('Failed to load folders:', err); }
     };
     useEffect(() => { loadDiskFolders(); }, []);
+
+    const { handleMoveFigure, handleMoveFolder } = useFolderOperations({
+        figures, selectedFolder, selectedId,
+        loadDiskFolders, loadFigures, updateFigure,
+        setSelectedFolder, setSelectedId
+    });
 
     useEffect(() => {
         const saved = localStorage.getItem('potion-rack-show-indicators');
@@ -105,8 +109,7 @@ export default function FiguresApp() {
         if (!selected) return;
         if (!editorContent.trim()) return;
         if ((window as any).electronAPI?.writeArticle) await (window as any).electronAPI.writeArticle(selected.folder_path || '', selected.name, editorContent);
-        await updateFigureAPI(selected.id, { content: editorContent });
-        await loadFigures();
+        await updateFigure(selected.id, { content: editorContent });
     };
 
     const handleSelectFigure = async (id: number) => {
@@ -115,7 +118,7 @@ export default function FiguresApp() {
                 if ((window as any).electronAPI?.writeArticle) {
                     await (window as any).electronAPI.writeArticle(selected.folder_path || '', selected.name, editorContent);
                 }
-                await updateFigureAPI(selected.id, { content: editorContent });
+                await updateFigure(selected.id, { content: editorContent });
                 setFigures(prev => prev.map(f => f.id === selected.id ? { ...f, content: editorContent } : f));
             }
         }
@@ -131,7 +134,9 @@ export default function FiguresApp() {
         setConfirmAction(() => async () => {
             const figure = figures.find(f => f.id === id);
             if (figure && (window as any).electronAPI?.deleteArticle) await (window as any).electronAPI.deleteArticle(figure.folder_path || '', figure.name);
-            await deleteFigureAPI(id); setSelectedId(null); await loadFigures(); setConfirmOpen(false);
+            await deleteFigure(id);
+            setSelectedId(null);
+            setConfirmOpen(false);
         });
         setConfirmOpen(true);
     };
@@ -163,7 +168,7 @@ export default function FiguresApp() {
                     const figsToUpdate = figures.filter(f => f.folder_path === target.path || f.folder_path?.startsWith(target.path + '/'));
                     for (const fig of figsToUpdate) {
                         const updatedPath = fig.folder_path === target.path ? newPath : newPath + fig.folder_path!.substring(target.path.length);
-                        await updateFigureAPI(fig.id, { folder_path: updatedPath });
+                        await updateFigure(fig.id, { folder_path: updatedPath });
                     }
                     if (selectedFolder === target.path || selectedFolder?.startsWith(target.path + '/')) {
                         const updatedSelected = selectedFolder === target.path ? newPath : newPath + selectedFolder.substring(target.path.length);
@@ -181,7 +186,7 @@ export default function FiguresApp() {
                 if (!newName || newName === figure.name) return;
                 try {
                     await (window as any).electronAPI?.renameFigureFolder(figure.folder_path || '', figure.name, newName);
-                    await updateFigureAPI(figure.id, { name: newName });
+                    await updateFigure(figure.id, { name: newName });
                     await loadFigures();
                 } catch (err) { console.error('Failed to rename figure:', err); }
             });
@@ -196,7 +201,7 @@ export default function FiguresApp() {
                 const figsInFolder = figures.filter(f => f.folder_path === target.path || f.folder_path?.startsWith(target.path + '/'));
                 for (const fig of figsInFolder) {
                     if ((window as any).electronAPI?.deleteArticle) await (window as any).electronAPI.deleteArticle(fig.folder_path || '', fig.name);
-                    await deleteFigureAPI(fig.id);
+                    await deleteFigure(fig.id);
                 }
                 await (window as any).electronAPI?.deleteFolder?.(target.path);
                 setConfirmOpen(false); setSelectedId(null); setSelectedFolder('');
@@ -206,72 +211,13 @@ export default function FiguresApp() {
         } else if (target.type === 'figure' && target.figureId) handleDeleteFigure(target.figureId);
     };
 
-    const handleMoveFigure = async (figureId: number, figureName: string, oldFolderPath: string, newFolderPath: string) => {
-        try {
-            await (window as any).electronAPI?.moveFigure(oldFolderPath, figureName, newFolderPath);
-            await updateFigureAPI(figureId, { folder_path: newFolderPath || null });
-            if (selectedId === figureId) setSelectedId(null);
-            await loadDiskFolders(); await loadFigures();
-        } catch (err) { console.error('Failed to move figure:', err); }
-    };
-
     const handleExportPdf = async (target: FolderTarget) => {
         if (target.type !== 'figure' || !target.figureId) return;
         const figure = figures.find(f => f.id === target.figureId);
         if (!figure) return;
         try {
-            const content = await (window as any).electronAPI?.readArticle(figure.folder_path || '', figure.name);
-            const slug = (figure.folder_path ? `${figure.folder_path}/` : '') + (figure.name || '');
-            const safeSlug = encodeURIComponent(slug);
-            let resolvedContent = content || '';
-
-            const sizeMap: Record<string, { w?: string; h?: string }> = {};
-            resolvedContent = resolvedContent.replace(
-                /!\[([^\]]*)\]\((\.\.?\/images\/[^)]+?)\s*=\s*(\d+)?x?(\d+)?\)/g,
-                (match, alt, path, w, h) => {
-                    sizeMap[path] = { w, h };
-                    return `![${alt}](${path})`;
-                }
-            );
-
-            resolvedContent = resolvedContent.replace(/\(\.\/images\//g, `(http://127.0.0.1:8765/figures-data/${safeSlug}/images/`);
-            resolvedContent = resolvedContent.replace(/\(\.\.\/images\//g, `(http://127.0.0.1:8765/figures-data/${safeSlug}/images/`);
-
-            resolvedContent = resolvedContent.replace(
-                /!\[([^\]]*)\]\((http:\/\/127\.0\.0\.1:8765\/figures-data\/[^)]+?)\)/g,
-                (match, alt, url) => {
-                    const origPath = Object.keys(sizeMap).find(p => url.endsWith(p.replace(/^\.\.?\/images\//, '')));
-                    const size = origPath ? sizeMap[origPath] : null;
-                    let attrs = `src="${url}" alt="${alt}"`;
-                    if (size?.w) attrs += ` width="${size.w}"`;
-                    if (size?.h) attrs += ` height="${size.h}"`;
-                    const imageBorder = localStorage.getItem('potion-rack-image-border') !== 'false';
-                    const borderStyle = imageBorder ? ' border: 1px solid #ddd;' : '';
-                    if (!size?.w && !size?.h) attrs += ` style="max-width:100%;max-height:500px;display:block;margin:12px auto;border-radius:6px;${borderStyle}"`;
-                    else attrs += ` style="${borderStyle}"`;
-                    return `<img ${attrs} />`;
-                }
-            );
-
-            const htmlContent = marked(resolvedContent) as string;
-            await (window as any).electronAPI?.exportPdf(figure.folder_path || '', figure.name, htmlContent);
+            await exportFigureToPdf(figure);
         } catch (err) { console.error('Export PDF failed:', err); }
-    };
-
-    const handleMoveFolder = async (oldPath: string, newPath: string) => {
-        try {
-            await (window as any).electronAPI?.moveFolder(oldPath, newPath);
-            const figsToUpdate = figures.filter(f => f.folder_path === oldPath || f.folder_path?.startsWith(oldPath + '/'));
-            for (const fig of figsToUpdate) {
-                const updatedPath = fig.folder_path === oldPath ? newPath : newPath + fig.folder_path!.substring(oldPath.length);
-                await updateFigureAPI(fig.id, { folder_path: updatedPath });
-            }
-            if (selectedFolder === oldPath || selectedFolder?.startsWith(oldPath + '/')) {
-                const updatedSelected = selectedFolder === oldPath ? newPath : newPath + selectedFolder.substring(oldPath.length);
-                setSelectedFolder(updatedSelected);
-            }
-            await loadDiskFolders(); await loadFigures();
-        } catch (err) { console.error('Failed to move folder:', err); }
     };
 
     const handleScrollToLine = (line: number) => {
