@@ -213,4 +213,7 @@ export default {
     table: 'Table',
     clickToEdit: 'Click to edit',
     open: 'Open',
+    figureDuplicateMove: 'A figure with this name already exists in the target folder',
+    cannotMoveFolderIntoItself: 'Cannot move a folder into itself',
+    cannotMoveFolderDuplicates: 'Cannot move folder, duplicate figures:',
 };

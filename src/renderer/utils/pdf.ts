@@ -34,6 +34,6 @@ export async function exportFigureToPdf(figure: { folder_path?: string; name: st
         }
     );
 
-    const htmlContent = marked(resolvedContent) as string;
+    const htmlContent = marked(resolvedContent, { breaks: true, gfm: true }) as string;
     await (window as any).electronAPI?.exportPdf(figure.folder_path || '', figure.name, htmlContent);
 }

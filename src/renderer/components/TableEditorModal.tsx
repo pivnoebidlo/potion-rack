@@ -17,7 +17,7 @@ export default function TableEditorModal({ initialMarkdown, onApply, onCancel }:
         for (const line of lines) {
             if (/^\|[-:\s|]+\|$/.test(line)) continue;
             const raw = line.split('|');
-            const cells = raw.slice(1, -1).map(c => c.trim().replace(/ \/ /g, '\n'));
+            const cells = raw.slice(1, -1).map(c => c.trim().replace(/<br\s*\/?>/gi, '\n'));
             if (cells.length > 0) rows.push(cells);
         }
         return rows.length >= 2 ? rows : [['', '', ''], ['', '', '']];
@@ -80,10 +80,10 @@ export default function TableEditorModal({ initialMarkdown, onApply, onCancel }:
         if (nonEmptyCols.length === 0) return '';
 
         let md = '';
-        md += '| ' + nonEmptyCols.map(c => (nonEmptyRows[0][c] || '').replace(/\n/g, ' / ')).join(' | ') + ' |\n';
+        md += '| ' + nonEmptyCols.map(c => (nonEmptyRows[0][c] || '').replace(/\n/g, '<br>')).join(' | ') + ' |\n';
         md += '| ' + nonEmptyCols.map(() => '---').join(' | ') + ' |\n';
         for (let r = 1; r < nonEmptyRows.length; r++) {
-            md += '| ' + nonEmptyCols.map(c => (nonEmptyRows[r][c] || '').replace(/\n/g, ' / ')).join(' | ') + ' |\n';
+            md += '| ' + nonEmptyCols.map(c => (nonEmptyRows[r][c] || '').replace(/\n/g, '<br>')).join(' | ') + ' |\n';
         }
         return md.replace(/\n$/, '');
     }, [rows]);
