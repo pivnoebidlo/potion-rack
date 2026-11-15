@@ -1,7 +1,9 @@
 <!-- The article of a figure: reading (rendered Markdown) or editing (CodeMirror), ⌘E switches. The text saves itself
      a moment after typing stops, when the figure changes and when the window loses focus. -->
 <script lang="ts">
-  import { BookOpen, PencilLine } from '@lucide/svelte';
+  import { BookOpen, FileDown, PencilLine } from '@lucide/svelte';
+  import { articlePage } from './pdf.ts';
+  import { locale } from '../lib/i18n.svelte.ts';
   import { renderMarkdown } from '../../shared/markdown.ts';
   import { parentOf, type Figure } from '../../shared/projects.ts';
   import { paintByMention } from '../../shared/rack.ts';
@@ -100,6 +102,11 @@
     }
   }
 
+  async function exportPdf() {
+    await flush();
+    await window.api.exportPdf(figure.name, articlePage(figure, text, paints, locale.lang));
+  }
+
   function onkeydown(e: KeyboardEvent) {
     const mod = window.api.platform === 'darwin' ? e.metaKey : e.ctrlKey;
     if (mod && e.code === 'KeyE' && !(e.target as HTMLElement).closest('[role=dialog]')) {
@@ -117,6 +124,7 @@
   {#if parentOf(figure.path)}<span class="faint path">{parentOf(figure.path)}</span>{/if}
   <span class="spacer"></span>
   {#if pview.mode === 'edit'}<span class="faint state">{article.saving ? t('figure.saving') : text === saved ? t('figure.saved') : ''}</span>{/if}
+  <button class="icon-btn" title={t('figure.exportPdf')} onclick={exportPdf}><FileDown size={16} /></button>
   <div class="seg">
     <button class="icon-btn" class:active={pview.mode === 'read'} title="{t('figure.read')} · ⌘E" onclick={() => (void flush(), (pview.mode = 'read'))}><BookOpen size={16} /></button>
     <button class="icon-btn" class:active={pview.mode === 'edit'} title="{t('figure.edit')} · ⌘E" onclick={() => (pview.mode = 'edit')}><PencilLine size={16} /></button>

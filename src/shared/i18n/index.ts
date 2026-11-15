@@ -4,11 +4,12 @@ import * as app from './app.ts';
 import * as paints from './paints.ts';
 import * as projects from './projects.ts';
 import * as recipes from './recipes.ts';
+import * as mixer from './mixer.ts';
 
 export * from './core.ts';
 
-export const en = { ...app.en, ...paints.en, ...projects.en, ...recipes.en };
-const dicts: Record<Lang, Partial<Record<Key, unknown>>> = { en, ru: { ...app.ru, ...paints.ru, ...projects.ru, ...recipes.ru } };
+export const en = { ...app.en, ...paints.en, ...projects.en, ...recipes.en, ...mixer.en };
+const dicts: Record<Lang, Partial<Record<Key, unknown>>> = { en, ru: { ...app.ru, ...paints.ru, ...projects.ru, ...recipes.ru, ...mixer.ru } };
 
 export type Key = keyof typeof en;
 

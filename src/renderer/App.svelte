@@ -1,9 +1,11 @@
 <!-- The window: the ribbon of modules, the side panel, the main area and the panel of the selected item. -->
 <script lang="ts">
-  import { BookMarked, Castle, Palette, Settings as SettingsIcon, ShoppingCart, TriangleAlert } from '@lucide/svelte';
+  import { BookMarked, Blend, Castle, Palette, Search, Settings as SettingsIcon, ShoppingCart, TriangleAlert } from '@lucide/svelte';
   import { shopping } from '../shared/rack.ts';
   import Modal from './lib/Modal.svelte';
   import PromptDialog from './lib/PromptDialog.svelte';
+  import UpdateBanner from './lib/UpdateBanner.svelte';
+  import QuickSearch from './lib/QuickSearch.svelte';
   import { asking, confirmation } from './lib/confirm.svelte.ts';
   import { MODULES, openModule, workspace, type ModuleId } from './lib/workspace.svelte.ts';
   import { t } from './lib/i18n.svelte.ts';
@@ -23,9 +25,11 @@
   import { createRecipe, selectedRecipe } from './recipes/view.svelte.ts';
   import Settings from './settings/Settings.svelte';
   import ShoppingSidebar from './shopping/ShoppingSidebar.svelte';
+  import MixerView from './mixer/MixerView.svelte';
   import ShoppingView from './shopping/ShoppingView.svelte';
 
   let settingsOpen = $state(false);
+  let searchOpen = $state(false);
   const paint = $derived(selectedPaint());
   const figure = $derived(selectedFigure());
   const recipe = $derived(selectedRecipe());
@@ -36,25 +40,29 @@
     { id: 'paints', icon: Palette, title: () => t('app.paints') },
     { id: 'projects', icon: Castle, title: () => t('app.projects') },
     { id: 'recipes', icon: BookMarked, title: () => t('app.recipes') },
+    { id: 'mixer', icon: Blend, title: () => t('app.mixer') },
     { id: 'shopping', icon: ShoppingCart, title: () => t('app.shopping') },
   ];
   const modKey = window.api.platform === 'darwin' ? '⌘' : 'Ctrl+';
-  const dialogOpen = () => settingsOpen || !!confirmation.q || !!asking.q;
+  const dialogOpen = () => settingsOpen || searchOpen || !!confirmation.q || !!asking.q;
 
   function onkeydown(e: KeyboardEvent) {
     const cmd = window.api.platform === 'darwin' ? e.metaKey : e.ctrlKey;
     if (cmd && e.code === 'Comma') {
       e.preventDefault();
       settingsOpen = true;
-    } else if (cmd && /^Digit[1-4]$/.test(e.code) && !dialogOpen()) {
+    } else if (cmd && e.code === 'KeyK' && !settingsOpen && !confirmation.q && !asking.q) {
+      e.preventDefault();
+      searchOpen = !searchOpen;
+    } else if (cmd && /^Digit[1-5]$/.test(e.code) && !dialogOpen()) {
       e.preventDefault();
       openModule(MODULES[Number(e.code.slice(5)) - 1]!);
-    } else if (cmd && e.code === 'KeyN' && !dialogOpen() && workspace.module !== 'shopping') {
+    } else if (cmd && e.code === 'KeyN' && !dialogOpen() && workspace.module !== 'shopping' && workspace.module !== 'mixer') {
       e.preventDefault();
       void (paints ? createPaint() : workspace.module === 'projects' ? newFigure() : createRecipe());
     } else if (cmd && e.code === 'KeyF' && !e.shiftKey && !dialogOpen() && !(e.target as HTMLElement).closest('.cm-editor')) {
       e.preventDefault();
-      document.getElementById(`${{ paints: 'paint', projects: 'project', recipes: 'recipe', shopping: 'paint' }[workspace.module]}-search`)?.focus();
+      document.getElementById(`${{ paints: 'paint', projects: 'project', recipes: 'recipe', mixer: 'paint', shopping: 'paint' }[workspace.module]}-search`)?.focus();
     } else if (e.key === 'Escape' && !dialogOpen()) {
       const el = e.target as HTMLElement;
       if (el.closest('input, textarea, select, .cm-editor')) {
@@ -81,12 +89,13 @@
       </button>
     {/each}
     <span class="spacer"></span>
+    <button class="icon-btn" title="{t('search.title')} · {modKey}K" onclick={() => (searchOpen = true)}><Search size={18} /></button>
     <button class="icon-btn" title={t('app.settings')} onclick={() => (settingsOpen = true)}><SettingsIcon size={18} /></button>
   </nav>
 
   <aside class="sidebar">
     <div class="title-row drag"><span>{ribbon.find((m) => m.id === mod)?.title()}</span></div>
-    {#if mod === 'paints'}<PaintsSidebar />{:else if mod === 'projects'}<ProjectsSidebar />{:else if mod === 'recipes'}<RecipesSidebar />{:else}<ShoppingSidebar />{/if}
+    {#if mod === 'paints'}<PaintsSidebar />{:else if mod === 'projects'}<ProjectsSidebar />{:else if mod === 'recipes'}<RecipesSidebar />{:else if mod === 'mixer'}<RecipesSidebar />{:else}<ShoppingSidebar />{/if}
   </aside>
 
   <main>
@@ -104,6 +113,8 @@
         <div class="placeholder drag"></div>
         <p class="muted pick">{store.state.rack.recipes.length ? t('recipes.pick') : t('recipes.empty')}</p>
       {/if}
+    {:else if mod === 'mixer'}
+      <MixerView />
     {:else}
       <ShoppingView />
     {/if}
@@ -129,6 +140,9 @@
 {/if}
 
 {#if asking.q}<PromptDialog />{/if}
+{#if searchOpen}<QuickSearch onclose={() => (searchOpen = false)} />{/if}
+
+<UpdateBanner />
 
 {#if toast.text}<div class="toast">{toast.text}</div>{/if}
 

@@ -49,6 +49,9 @@ Electron-приложение для тех, кто красит миниатю�
 - `npm run build`, потом `npx electron . --remote-debugging-port=9333` из корня проекта (данные — `.dev/`).
 - `.dev/cdp.mjs eval "<выражение>"` / `shot <файл.png>` / `type "<текст>"` / `key "Enter:Enter"` — DOM,
   `window.api.getState()`, действия, скриншоты, ввод в CodeMirror.
+- Тестовый запуск: `PR_SAVE_DIR=<папка> npx electron . --remote-debugging-port=9333` — окно показывается без
+  фокуса, диалоги сохранения (PDF, zip) пропускаются. Экран и клавиатуру пользователя не трогать: никаких AppleScript-
+  нажатий и `screencapture` (у пользователя в это время открыто своё) — проверять через CDP и `PR_SAVE_DIR`.
 - Пользователь сам запускает dev-версию: в `.dev/userData/settings.json` и `.dev/rack/` бывают его данные. Перед
   тестом — копии (`settings.json`, `rack.json`), после — вернуть как было, а не на умолчания.
 - Настоящие данные пользователя не трогать: 0.6 — `~/Documents/potion-rack-data/potion_rack.db` (путь в
@@ -60,6 +63,8 @@ Electron-приложение для тех, кто красит миниатю�
 Сделано ещё: рецепты, список покупок, каталог красок (`src/catalog/catalog.json` — генерируется
 `npm run build-catalog` из github.com/Arcturus5404/miniature-paints на зафиксированном коммите, MIT: `src/catalog/LICENSE`
 едет в пакет через `extraResources`, упоминание — в «О программе» и окне каталога; в окно грузится отдельным куском).
-Дальше: палитра/смешивание, экспорт статьи в PDF, резервные
-копии, проверка обновлений, ⌘K.
+Сделано в 0.8: проверка обновлений (`main/updates.ts`, `shared/updates.ts`, `lib/UpdateBanner.svelte` — из SG),
+резервные копии (`main/backups.ts`: снимки rack.json + figure.md в `<userData>/backups`, полная копия — zip через
+fflate), PDF статьи (`renderer/projects/pdf.ts` → `main/pdf.ts`; ленивые картинки в скрытом окне не грузятся — убраны),
+⌘K (`lib/QuickSearch.svelte`), смешивание (`shared/mixing.ts` на spectral.js, `renderer/mixer/`).
 Лицензию можно сменить (не обязательно GPL) — решить до релиза.

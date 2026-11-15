@@ -1,0 +1,46 @@
+// The mixer.
+import type { Messages } from './core.ts';
+
+export const en = {
+  'app.mixer': 'Mixing',
+  'mixer.mix': 'Mix',
+  'mixer.match': 'Find a mix',
+  'mixer.mixHint': 'Pick paints and parts: the colour comes out as pigments mix (Kubelka-Munk), not as light does.',
+  'mixer.matchHint': 'Set the colour you want: the app tries the paints of your shelf alone and two at a time in parts.',
+  'mixer.addPaint': 'Add a paint',
+  'mixer.result': 'Result',
+  'mixer.empty': 'Add two or more paints.',
+  'mixer.nearRack': 'Closest in the rack',
+  'mixer.nearCatalog': 'Closest in the catalog',
+  'mixer.target': 'Wanted colour',
+  'mixer.onShelf': 'only paints on the shelf',
+  'mixer.noTarget': 'Set a colour: hex, the picker or the eyedropper.',
+  'mixer.noSuggestions': 'Nothing close enough on the shelf.',
+  'mixer.saveRecipe': 'Save as a recipe',
+  'mixer.recipeName': 'Mix {hex}',
+  'mixer.saved': 'Saved as a recipe.',
+  'mixer.clear': 'Clear',
+  'mixer.note': 'Colours on screen are a guide: try a mix on a palette before the model.',
+};
+
+export const ru: Messages<typeof en> = {
+  'app.mixer': 'Смешивание',
+  'mixer.mix': 'Смешать',
+  'mixer.match': 'Подобрать смесь',
+  'mixer.mixHint': 'Выберите краски и части: цвет получается так, как смешиваются пигменты (Кубелка–Мунк), а не свет.',
+  'mixer.matchHint': 'Задайте нужный цвет: приложение переберёт краски вашей полки поодиночке и по две в разных частях.',
+  'mixer.addPaint': 'Добавить краску',
+  'mixer.result': 'Результат',
+  'mixer.empty': 'Добавьте две краски или больше.',
+  'mixer.nearRack': 'Ближайшие на стеллаже',
+  'mixer.nearCatalog': 'Ближайшие в каталоге',
+  'mixer.target': 'Нужный цвет',
+  'mixer.onShelf': 'только краски в наличии',
+  'mixer.noTarget': 'Задайте цвет: hex, палитра или пипетка.',
+  'mixer.noSuggestions': 'На полке нет ничего достаточно близкого.',
+  'mixer.saveRecipe': 'Сохранить как рецепт',
+  'mixer.recipeName': 'Смесь {hex}',
+  'mixer.saved': 'Сохранено рецептом.',
+  'mixer.clear': 'Очистить',
+  'mixer.note': 'Цвета на экране — ориентир: попробуйте смесь на палитре, прежде чем на модели.',
+};

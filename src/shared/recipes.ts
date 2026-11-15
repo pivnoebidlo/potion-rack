@@ -1,5 +1,5 @@
 // Recipes as pure functions: reading them from the rack file, what a recipe needs, which paints are missing.
-import { mixHex } from './colors.ts';
+import { mixPaints } from './mixing.ts';
 import { STEP_KINDS, type Paint, type Recipe, type RecipeStep, type StepKind, type StepPaint } from './types.ts';
 
 const str = (v: unknown) => (typeof v === 'string' ? v.trim() : '');
@@ -58,10 +58,10 @@ export function missingPaints(r: Recipe, paints: readonly Paint[]): { id: string
   return out;
 }
 
-// The colour a step gives: the paint's own, or the mix of its paints.
+// The colour a step gives: the paint's own, or the mix of its paints (as pigments mix, shared/mixing.ts).
 export function stepColor(step: RecipeStep, paints: readonly Paint[]): string {
   const items = step.paints.map((sp) => ({ hex: paints.find((p) => p.id === sp.paint)?.hex ?? '', parts: step.paints.length > 1 ? sp.parts : 1 }));
-  return mixHex(items);
+  return mixPaints(items);
 }
 
 // «2 : 1» — the parts of a mix.
