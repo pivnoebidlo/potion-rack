@@ -1,0 +1,53 @@
+# Packaging: npm run dist (this machine's system) or GitHub Actions on a v* tag (.github/workflows/release.yml).
+# 64-bit builds only, the apps are not signed.
+appId: com.potionrack.app
+productName: Potion Rack
+copyright: Copyright © 2026 pivnoebidlo
+directories:
+  output: dist
+  buildResources: build
+files:
+  - out/**
+  - package.json
+# The MIT license of the built-in paint catalog travels with the data (src/catalog/, scripts/build-catalog.ts).
+extraResources:
+  - from: src/catalog/LICENSE
+    to: catalog-LICENSE.txt
+artifactName: ${name}-${version}-${os}-${arch}.${ext}
+publish: null
+
+mac:
+  category: public.app-category.productivity
+  target:
+    - target: dmg
+      arch: [arm64, x64]
+    - target: zip
+      arch: [arm64, x64]
+  # No Apple certificate: ad-hoc signature (otherwise the app does not start on Apple Silicon at all).
+  identity: '-'
+  hardenedRuntime: false
+dmg:
+  artifactName: ${name}-${version}-mac-${arch}.${ext}
+
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  artifactName: ${name}-${version}-windows-setup.${ext}
+
+linux:
+  category: Graphics
+  maintainer: pivnoebidlo <dima@niktokro.me>
+  synopsis: A paint rack for miniature painters
+  target:
+    - target: deb
+      arch: [x64]
+    - target: AppImage
+      arch: [x64]
+deb:
+  artifactName: ${name}_${version}_amd64.${ext}
+appImage:
+  artifactName: ${name}-${version}-linux-x86_64.${ext}

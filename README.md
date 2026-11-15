@@ -1,101 +1,57 @@
-README.md
-markdown
-# 🧪 Potion Rack
+# Potion Rack
 
-**Potion Rack** is a desktop application for miniature painters.  
-Manage your paint collection and track your figure painting projects — all in one place.
+A paint rack and project journal for miniature painters. [Русская версия](README.ru.md)
 
-![Version](https://img.shields.io/badge/version-0.3.3-blue)
-![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey)
-![License](https://img.shields.io/badge/license-GPL--3.0-green)
+> 0.7 is a rewrite (Svelte 5, no database, no local server).
 
----
+## Features
+- **Paints**: brand, series, code, colour, type (acrylic, contrast, wash, metallic, air…), status (on the shelf,
+  running low, used up, ordered, wanted), bottles, rating, price, store, purchase date, note, photos.
+- Grid and list, sorting (incl. by colour — the rack in rainbow order), filter by status, colour family, brand, type
+  and text.
+- **Similar colours**: the closest paints of the rack by CIEDE2000 — what to use instead of the one that ran out.
+- Colour picker, hex field and an eyedropper that takes a colour from anywhere on the screen (a photo of the bottle).
+- Photos from a file, the clipboard (⌘V) or dropped onto the panel.
+- Duplicate warning (same brand and name).
+- **Catalog of 11,440 paints of 34 brands** (Citadel, Vallejo, Army Painter, AK, Scale75, Reaper, P3, Tamiya, MIG…):
+  search by name, series or code and add a paint in one click — on the shelf or as wanted. The paint panel shows similar
+  paints of the catalog you do not have. Data: [miniature-paints](https://github.com/Arcturus5404/miniature-paints)
+  by Rick Fleuren (Miniature Painter Pro), MIT; rebuilt with `npm run build-catalog`.
+- **Projects**: figures in groups (an army, a box, a game), each with an article in Markdown, pictures, data (maker,
+  scale, material, link, dates, price) and its paints.
+  - A board from the pile of shame to the shelf: drag a card to another column to change its status.
+  - The editor: ⌘E switches reading and editing; `@` mentions a paint of the rack (and adds it to the figure); pictures
+    are pasted or dropped right into the text; `![caption|400](images/x.jpg)` sets the width, as in Obsidian.
+  - Paints mentioned in **bold** get their colour dot in the reading view; a paint shows the projects that use it.
+  - Contents of the article, the cover, everything readable in any Markdown editor.
+- **Recipes**: how a surface is painted — steps from primer to highlights (base, wash, layer, edge, drybrush, glaze…),
+  each a paint or a mix in parts with its approximate colour and a note. A recipe warns when a paint is not on the shelf;
+  figures list their recipes, paints list the recipes that use them.
+- **Shopping list**: paints running low, used up or wanted, by store or by brand, with the recipes that need them;
+  «Bought» puts a paint back on the shelf, «Arrived» — an ordered one; the list copies as text.
+- Themes: system, dark, light, **neutral grey** (does not tint the swatches), workbench. English and Russian.
+- ⌘1–⌘4 — paints, projects, recipes, shopping list; ⌘N — new paint or figure, ⌘F — search, ⌘, — settings.
 
-## ✨ Features
+## Data
+The rack is a plain folder (by default `Documents/Potion Rack`), to put in iCloud or Dropbox as it is; changes made
+from outside are picked up while the app runs:
 
-### 🎨 Paints
-- Full paint inventory with brand, series, color name, article, base color, status, price, rating, purchase date, and custom color hex
-- **List view** with sortable columns and inline editing (status, rating, comment)
-- **Grid view** with color swatch cards and sort bar
-- Filter panel: brand, series, base color, status, text search
-- Paint photos with gallery, primary photo selection, and paste-from-clipboard support
-- Import/export backup of paints and photos
-- Color indicators with real paint color or base color fallback
-- Duplicate detection (same brand + color name)
+    rack.json                       paints and recipes
+    paints/<id>/*.jpg               paint photos
+    projects/<group>/<figure>/
+      figure.md                     front matter (status, maker, paints…) + the article
+      images/*.jpg
 
-### 🧩 Figures
-- Hierarchical folder tree with drag-and-drop, keyboard navigation, and context menu
-- WYSIWYM Markdown editor (CodeMirror 6) with live formatting, table editing, and image embedding
-- Figure metadata: manufacturer, scale, material, status, shop link, dates
-- Right panel: figure info, table of contents, help, folder statistics
-- Markdown articles stored as `.md` files on disk alongside images
-- Export to PDF with embedded images
+Import from 0.6 (paints, photos, figures with their articles and pictures):
 
-### ⚙️ Settings
-- Theme: Midnight, Dark, Light, Retro
-- Language: English, Русский
-- Custom figures folder path (supports cloud storage directories)
-- Custom database path
-- Toggle switches: status indicators, folder counters, paint color dots, grid sort bar
-- Date format: Auto, dd.mm.yyyy, yyyy-mm-dd, mm/dd/yyyy
+    npm run import-legacy -- <path to potion_rack.db> <rack folder> [<0.6 figures folder>]
 
----
+## Development
 
-## 🚀 Getting Started
+    npm install
+    npm run dev        # the app with hot reload (data in .dev/)
+    npm test           # core tests
+    npm run typecheck
+    npm run dist       # a package for this system
 
-### Prerequisites
-- [Node.js](https://nodejs.org/) 18+
-- npm 9+
-
-### Install & Run
-
-```bash
-git clone https://github.com/pivnoebidlo/potion-rack.git
-cd potion-rack
-npm install
-npm run build
-npm start
-```
-
-### Development Mode
-
-```bash
-npm install
-npm start
-In dev mode the app uses potion_rack_dev.db and dev-figures/ folder in the project root.
-```
-
-## 🛠 Tech Stack
-
-| Layer       | Technology                        |
-|-------------|-----------------------------------|
-| Runtime     | Electron + Node.js                |
-| Frontend    | React + TypeScript                |
-| Editor      | CodeMirror 6                      |
-| Database    | SQLite (better-sqlite3)           |
-| Bundler     | Vite + tsc                        |
-| Backend API | Express (port 8765)               |
-
-## 📁 Project Structure
-
-```text
-src/
-  main.ts              # Electron main process, IPC handlers
-  preload.ts           # Context bridge (main ↔ renderer)
-  server.ts            # Express API server
-  controllers/         # API controllers (paints, figures, backup, settings)
-  database/            # SQLite connection, migrations, seed data
-  renderer/
-    components/        # React components
-    services/          # API client functions
-    i18n/              # Localization (ru.ts, en.ts)
-    themes/            # CSS themes
-```
-    
-## 📄 License
-This project is licensed under the GNU General Public License v3.0.
-See LICENSE for the full text.
-
-## 🙏 Acknowledgments
-Built with passion for the miniature painting community.
-Special thanks to all contributors and early testers.
+Stack: Electron 44, electron-vite, Svelte 5, TypeScript, Lucide, Vitest.
