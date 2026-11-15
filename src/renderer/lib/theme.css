@@ -1,0 +1,179 @@
+/* Themes, in the spirit of Obsidian: data-theme on <html> picks one, 'auto' follows the system. Colours are set only
+   here; hard-coded colours only on swatches (the paint's own colour). */
+:root {
+  color-scheme: dark;
+  --bg-primary: #1e1e1e;      /* the workspace */
+  --bg-secondary: #262626;    /* side panels, the ribbon */
+  --bg-hover: #303030;
+  --bg-active: #363636;
+  --border: #363636;
+  --text-normal: #dadada;
+  --text-muted: #a3a3a3;
+  --text-faint: #6e6e6e;
+  --accent: #8a5cf5;
+  --accent-hover: #9d76f7;
+  --accent-soft: rgba(138, 92, 245, 0.18);
+  /* Text on an accent background (buttons, chips). */
+  --on-accent: #ffffff;
+  --danger: #e5534b;
+  /* Warnings and highlights (gold on dark, amber on light). */
+  --warning: #f0c45a;
+  --success: #5cb85c;
+  --radius-s: 4px;
+  --radius-m: 8px;
+  --font-ui: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, system-ui, sans-serif;
+  --font-size: 13px;
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+  --bg-primary: #ffffff;
+  --bg-secondary: #f6f6f6;
+  --bg-hover: #ececec;
+  --bg-active: #e1e1e1;
+  --border: #dedede;
+  --text-normal: #222222;
+  --text-muted: #5c5c5c;
+  --text-faint: #999999;
+  --accent: #7646e0;
+  --accent-hover: #6535d4;
+  --accent-soft: rgba(118, 70, 224, 0.14);
+  --danger: #cf3a32;
+  --warning: #a86d00;
+  --success: #2f8a3c;
+}
+@media (prefers-color-scheme: light) {
+  :root[data-theme='auto'] {
+    color-scheme: light;
+    --bg-primary: #ffffff;
+    --bg-secondary: #f6f6f6;
+    --bg-hover: #ececec;
+    --bg-active: #e1e1e1;
+    --border: #dedede;
+    --text-normal: #222222;
+    --text-muted: #5c5c5c;
+    --text-faint: #999999;
+    --accent: #7646e0;
+    --accent-hover: #6535d4;
+    --accent-soft: rgba(118, 70, 224, 0.14);
+    --danger: #cf3a32;
+    --warning: #a86d00;
+    --success: #2f8a3c;
+  }
+}
+
+/* Neutral grey: no tint at all (the background is the grey of a colour-matching booth), swatches look as they are. */
+:root[data-theme='grey'] {
+  color-scheme: dark;
+  --bg-primary: #4a4a4a;
+  --bg-secondary: #404040;
+  --bg-hover: #555555;
+  --bg-active: #5e5e5e;
+  --border: #5a5a5a;
+  --text-normal: #f0f0f0;
+  --text-muted: #c4c4c4;
+  --text-faint: #959595;
+  --accent: #e8e8e8;
+  --accent-hover: #ffffff;
+  --accent-soft: rgba(255, 255, 255, 0.14);
+  --on-accent: #222222;
+  --danger: #ff7a70;
+  --warning: #ffd36b;
+  --success: #8fd88f;
+}
+/* Workbench: an old wooden desk under a warm lamp, brass for the accent. */
+:root[data-theme='workbench'] {
+  color-scheme: dark;
+  --bg-primary: #1f1915;
+  --bg-secondary: #2a211b;
+  --bg-hover: #352a22;
+  --bg-active: #40332a;
+  --border: #463729;
+  --text-normal: #eadfd2;
+  --text-muted: #b3a291;
+  --text-faint: #7a6a5b;
+  --accent: #d19a4a;
+  --accent-hover: #e2ae62;
+  --accent-soft: rgba(209, 154, 74, 0.18);
+  --on-accent: #1f1407;
+  --danger: #ef6a55;
+  --warning: #e8c15a;
+  --success: #93b86a;
+}
+:root[data-theme='workbench'] body {
+  background:
+    radial-gradient(ellipse 70% 50% at 30% -10%, rgba(255, 190, 110, 0.08), transparent 70%),
+    var(--bg-primary);
+}
+:root[data-theme='workbench'] .pane-title { color: var(--accent); }
+
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body {
+  font-family: var(--font-ui);
+  font-size: var(--font-size);
+  background: var(--bg-primary);
+  color: var(--text-normal);
+  overflow: hidden;
+  user-select: none;
+}
+[hidden] { display: none !important; }
+
+button, input, select, textarea { font: inherit; color: inherit; }
+
+/* Buttons */
+.btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 12px; border-radius: var(--radius-s);
+  border: 1px solid var(--border); background: var(--bg-hover);
+  cursor: pointer; white-space: nowrap;
+}
+.btn:hover { background: var(--bg-active); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.btn.primary:hover { background: var(--accent-hover); }
+.btn.danger { color: var(--danger); }
+.btn:disabled { opacity: .5; cursor: default; }
+
+/* Icon button */
+.icon-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; padding: 0; border: 0; border-radius: var(--radius-s);
+  background: transparent; color: var(--text-muted); cursor: pointer;
+}
+.icon-btn:hover { background: var(--bg-hover); color: var(--text-normal); }
+.icon-btn.active { color: var(--accent); }
+
+/* Fields */
+input[type=text], input[type=number], select, textarea {
+  padding: 5px 8px; border-radius: var(--radius-s);
+  border: 1px solid var(--border); background: var(--bg-primary);
+}
+input[type=text]:focus, input[type=number]:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); }
+textarea { line-height: 1.45; user-select: text; }
+input[type=number]::-webkit-inner-spin-button { opacity: .4; }
+input[type=checkbox] { accent-color: var(--accent); }
+
+.muted { color: var(--text-muted); }
+.faint { color: var(--text-faint); }
+
+/* A section title in a side panel */
+.pane-title {
+  padding: 10px 12px 6px; font-size: 11px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted);
+}
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: var(--bg-active); border-radius: 5px; border: 2px solid transparent; background-clip: padding-box; }
+::-webkit-scrollbar-track { background: transparent; }
+
+input[type=date], input[type=search] {
+  padding: 5px 8px; border-radius: var(--radius-s);
+  border: 1px solid var(--border); background: var(--bg-primary);
+}
+input[type=date]:focus, input[type=search]:focus { outline: none; border-color: var(--accent); }
+input, textarea { user-select: text; }
+
+/* The title row: macOS without the system title bar drags the window by .drag; controls in it stay clickable. */
+:root { --title-h: 38px; }
+:root[data-platform='darwin'] .drag { -webkit-app-region: drag; }
+:root[data-platform='darwin'] .drag :is(button, input, select, textarea, a, label, [role='button']) { -webkit-app-region: no-drag; }

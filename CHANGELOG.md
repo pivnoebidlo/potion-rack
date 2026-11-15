@@ -1,3 +1,31 @@
+## 0.7.0
+
+### Changed
+[*] Rewritten from scratch: Svelte 5 + electron-vite, one window instead of four pages
+[*] No database and no local HTTP server: the rack is a folder (rack.json + photos), synced with iCloud/Dropbox as is
+[*] Photos are files (JPEG, at most 1600 px) instead of database blobs
+
+### Added
+[+] Similar colours of the rack (CIEDE2000), optionally only those on the shelf
+[+] Colour families computed from the colour (filter by colour), sorting by colour
+[+] Paint types (acrylic, contrast, wash, ink, metallic, primer, varnish, air…) and statuses «Wanted», «Used up»
+[+] Eyedropper: a colour from anywhere on the screen
+[+] Neutral grey and workbench themes
+[+] Import from 0.6: npm run import-legacy -- <db> <rack folder> (paints, photos, figures, articles, pictures)
+[+] Projects: figures in groups as folders with figure.md (front matter + Markdown) and images/ — readable in Obsidian
+[+] Board of projects by status (pile of shame → assembly → primed → painting → done), drag to change the status
+[+] Markdown editor (CodeMirror 6): ⌘E read/edit, @ mentions a paint, pictures pasted or dropped into the text, autosave
+[+] Paints of a figure; paint mentions in bold get the paint's colour; «Used in projects» in the paint panel
+[+] Contents of the article, cover picture, dates of start and finish filled in by the status
+[+] Recipes: steps (primer, base, wash, layer, highlight, edge, drybrush, glaze, varnish), paints and mixes in parts with
+    an approximate colour, notes; a warning when a paint is not on the shelf; recipes of a figure, recipes of a paint
+[+] Built-in catalog: 11,440 paints of 34 brands (Arcturus5404/miniature-paints, MIT), add from it in one click,
+    similar catalog paints in the paint panel; npm run build-catalog
+[+] Shopping list: to buy (by store or brand) and ordered, «Bought» / «Arrived», copy as text, a counter on the ribbon
+
+### Removed
+[-] Palette mixer, backups, PDF export — coming back in the next versions
+
 ## 0.6.2
 
 ### Added

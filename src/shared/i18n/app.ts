@@ -1,0 +1,68 @@
+// The app shell, settings and the core (dialogs, errors).
+import type { Messages } from './core.ts';
+
+export const en = {
+  'app.paints': 'Paints',
+  'app.settings': 'Settings',
+  'app.cancel': 'Cancel',
+  'app.delete': 'Delete',
+  'app.close': 'Close',
+  'app.rackError': 'Could not read the rack file. Nothing will be saved until it is fixed.',
+  'app.reveal': 'Show in folder',
+
+  'settings.general': 'General',
+  'settings.rack': 'Rack',
+  'settings.about': 'About',
+  'settings.language': 'Language',
+  'settings.language.auto': 'As in the system',
+  'settings.theme': 'Theme',
+  'theme.auto': 'As in the system',
+  'theme.dark': 'Dark',
+  'theme.light': 'Light',
+  'theme.grey': 'Neutral grey',
+  'theme.workbench': 'Workbench',
+  'settings.themeHint': 'Neutral grey does not tint the swatches: colours look as they are.',
+  'settings.rackFolder': 'Rack folder',
+  'settings.rackHint': 'The rack is a plain folder: rack.json and the photos. Put it in iCloud or Dropbox to keep it in sync.',
+  'settings.chooseFolder': 'Choose another folder…',
+  'settings.defaultFolder': 'Back to the default folder',
+  'settings.version': 'Version {version}',
+  'settings.aboutText': 'A paint rack and project journal for miniature painters.',
+
+  'core.chooseRack': 'Choose the rack folder',
+  'core.badPhoto': 'This file is not an image.',
+  'core.noClipboardImage': 'There is no image in the clipboard.',
+};
+
+export const ru: Messages<typeof en> = {
+  'app.paints': 'Краски',
+  'app.settings': 'Настройки',
+  'app.cancel': 'Отмена',
+  'app.delete': 'Удалить',
+  'app.close': 'Закрыть',
+  'app.rackError': 'Не удалось прочитать файл стеллажа. Пока он не исправлен, ничего не сохраняется.',
+  'app.reveal': 'Показать в папке',
+
+  'settings.general': 'Общие',
+  'settings.rack': 'Стеллаж',
+  'settings.about': 'О программе',
+  'settings.language': 'Язык',
+  'settings.language.auto': 'Как в системе',
+  'settings.theme': 'Тема',
+  'theme.auto': 'Как в системе',
+  'theme.dark': 'Тёмная',
+  'theme.light': 'Светлая',
+  'theme.grey': 'Нейтральная серая',
+  'theme.workbench': 'Верстак',
+  'settings.themeHint': 'Нейтральная серая не искажает образцы: цвета видны такими, какие они есть.',
+  'settings.rackFolder': 'Папка стеллажа',
+  'settings.rackHint': 'Стеллаж — обычная папка: rack.json и фотографии. Её можно положить в iCloud или Dropbox для синхронизации.',
+  'settings.chooseFolder': 'Выбрать другую папку…',
+  'settings.defaultFolder': 'Вернуть папку по умолчанию',
+  'settings.version': 'Версия {version}',
+  'settings.aboutText': 'Стеллаж красок и журнал проектов для тех, кто красит миниатюры.',
+
+  'core.chooseRack': 'Выберите папку стеллажа',
+  'core.badPhoto': 'Этот файл — не картинка.',
+  'core.noClipboardImage': 'В буфере обмена нет картинки.',
+};
