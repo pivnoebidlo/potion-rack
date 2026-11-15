@@ -5,7 +5,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import {
   FIGURE_FILE, IMAGES_DIR, applyMetaPatch, baseName, emptyMeta, emptyTree, extraData, figureText, isWithin, joinPath,
-  metaFromData, parentOf, parseFrontmatter, safeName, type Figure, type FigureMeta, type FolderNode,
+  metaFromData, parentOf, parseFrontmatter, safeName, timeFromName, type Figure, type FigureMeta, type FolderNode,
 } from '../shared/projects.ts';
 import { storeImage } from './photos.ts';
 
@@ -69,15 +69,27 @@ export class ProjectsFolder {
       /* unreadable — shown with defaults */
     }
     let images: string[] = [];
+    const times: Record<string, number> = {};
     try {
       images = fs
         .readdirSync(path.join(dir, IMAGES_DIR))
         .filter((f) => IMAGE_EXT.has(path.extname(f).toLowerCase()) && !f.startsWith('.'))
         .sort(collator.compare);
+      for (const f of images) {
+        let t = timeFromName(f);
+        if (t === null) {
+          try {
+            t = fs.statSync(path.join(dir, IMAGES_DIR, f)).mtimeMs;
+          } catch {
+            t = 0;
+          }
+        }
+        times[f] = t;
+      }
     } catch {
       /* no images yet */
     }
-    return { path: rel, name: baseName(rel), meta, images };
+    return { path: rel, name: baseName(rel), meta, images, times };
   }
 
   // A free name in a folder: «Name», «Name (2)», …

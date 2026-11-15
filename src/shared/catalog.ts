@@ -93,14 +93,19 @@ export interface CatalogSimilar {
 }
 
 // The closest catalog paints to a colour that the rack does not have (CIEDE2000), skipping references (RAL, Pantone).
-export function similarInCatalog(hex: string, list: readonly CatalogPaint[], rack: readonly Paint[], opts: { limit?: number; max?: number } = {}): CatalogSimilar[] {
-  const { limit = 5, max = 6 } = opts;
+export function similarInCatalog(
+  hex: string,
+  list: readonly CatalogPaint[],
+  rack: readonly Paint[],
+  opts: { limit?: number; max?: number; skip?: (c: CatalogPaint) => boolean } = {}
+): CatalogSimilar[] {
+  const { limit = 5, max = 6, skip } = opts;
   const rgb = hexToRgb(hex);
   if (!rgb) return [];
   const lab = rgbToLab(rgb);
   const near: CatalogSimilar[] = [];
   for (const c of list) {
-    if (!c.lab || REFERENCES.has(c.brand)) continue;
+    if (!c.lab || REFERENCES.has(c.brand) || skip?.(c)) continue;
     const d = deltaE2000(lab, c.lab);
     if (d <= max) near.push({ paint: c, distance: d });
   }

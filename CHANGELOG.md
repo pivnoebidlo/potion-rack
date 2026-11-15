@@ -1,3 +1,23 @@
+## 0.9.0
+
+### Added
+[+] Mixing → «From a picture»: open, paste or drop a reference — its main colours (k-means in OKLab), and for each
+    the closest paint on the shelf, the best mix of the shelf and a paint of the catalog to buy; a click on the picture
+    adds the colour under the cursor
+[+] Progress of a figure: pictures by day (time taken from the file name or the file), «before and after» slider
+[+] Painting timer: sessions saved in the figure (sessions in the front matter), total time in the panel and on the board
+[+] Statistics (⌘6): paints on the shelf, pile of shame, finished this year, painting time, money spent; figures
+    finished and hours painted by month (with a table view), brands of the rack, figures by status
+[+] Mixing → «Harmonies»: complementary, split, analogous, triadic and tetradic schemes of a base colour (a hex, the
+    eyedropper or a paint), each colour matched to a paint of the shelf or of the catalog
+
+### Changed
+[*] Metallic and pearl paints are not offered as a match for a flat colour
+
+### Fixed
+[-] An article changed in another program (Obsidian, a sync service) while open is no longer overwritten: without
+    unsaved edits the new text is taken in, with them saving pauses and you choose which version stays
+
 ## 0.8.0
 
 ### Added

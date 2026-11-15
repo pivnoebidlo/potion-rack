@@ -52,6 +52,9 @@ Electron-приложение для тех, кто красит миниатю�
 - Тестовый запуск: `PR_SAVE_DIR=<папка> npx electron . --remote-debugging-port=9333` — окно показывается без
   фокуса, диалоги сохранения (PDF, zip) пропускаются. Экран и клавиатуру пользователя не трогать: никаких AppleScript-
   нажатий и `screencapture` (у пользователя в это время открыто своё) — проверять через CDP и `PR_SAVE_DIR`.
+- Svelte 5 вешает обработчики `change` / `input` / `click` на корень документа: синтетическое событие в CDP-тесте —
+  только с `bubbles: true`, иначе обработчик не сработает (а ввод через `type` + Enter даёт `change`, лишь если значение
+  изменилось с момента фокуса).
 - Пользователь сам запускает dev-версию: в `.dev/userData/settings.json` и `.dev/rack/` бывают его данные. Перед
   тестом — копии (`settings.json`, `rack.json`), после — вернуть как было, а не на умолчания.
 - Настоящие данные пользователя не трогать: 0.6 — `~/Documents/potion-rack-data/potion_rack.db` (путь в
@@ -67,4 +70,13 @@ Electron-приложение для тех, кто красит миниатю�
 резервные копии (`main/backups.ts`: снимки rack.json + figure.md в `<userData>/backups`, полная копия — zip через
 fflate), PDF статьи (`renderer/projects/pdf.ts` → `main/pdf.ts`; ленивые картинки в скрытом окне не грузятся — убраны),
 ⌘K (`lib/QuickSearch.svelte`), смешивание (`shared/mixing.ts` на spectral.js, `renderer/mixer/`).
+После 0.8: палитра с картинки (`shared/palette.ts` — k-means в OKLab, `mixer/ReferenceView.svelte`), прогресс фигурки
+(`Figure.times` — время картинок из имени или файла, `ProgressView.svelte`), таймер (`projects/timer.svelte.ts`,
+сессии — `sessions` во frontmatter строками «YYYY-MM-DDTHH:MM минуты»).
+Ещё: статистика (`shared/stats.ts`, `renderer/stats/` — плитки, столбцы и списки по правилам dataviz), гармонии
+(`shared/harmony.ts`, `mixer/HarmonyView.svelte`), внешняя правка открытой статьи (`FigureArticle.svelte`: без
+несохранённых правок подхватывается, с ними — выбор; ответы чтения во время сохранения отбрасываются).
+Дальше (предложено): телефон (локальная страница с QR); долги — размер сборки окна (CodeMirror), ручная проверка
+сборок Windows/Linux.
+Будущее: мобильное приложение (как минимум Android) — держать `src/shared/` переносимым, формат папки — общий контракт.
 Лицензию можно сменить (не обязательно GPL) — решить до релиза.

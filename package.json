@@ -1,7 +1,7 @@
 {
   "name": "potion-rack",
   "productName": "Potion Rack",
-  "version": "0.8.0",
+  "version": "0.9.0",
   "description": "A paint rack and project journal for miniature painters",
   "license": "GPL-3.0-or-later",
   "author": "pivnoebidlo <dima@niktokro.me>",

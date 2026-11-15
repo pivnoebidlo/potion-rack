@@ -7,7 +7,7 @@ import { notify } from '../lib/toast.svelte.ts';
 import { newId, openRecipe } from '../recipes/view.svelte.ts';
 
 interface Saved {
-  mode: 'mix' | 'match';
+  mode: 'mix' | 'match' | 'reference' | 'harmony';
   items: { paint: string; parts: number }[];
   target: string;
   onShelf: boolean;
@@ -16,7 +16,7 @@ interface Saved {
 const load = (): Saved => {
   try {
     const s = JSON.parse(localStorage.getItem('mixer') ?? '{}') as Partial<Saved>;
-    return { mode: s.mode === 'match' ? 'match' : 'mix', items: Array.isArray(s.items) ? s.items : [], target: s.target ?? '', onShelf: s.onShelf !== false };
+    return { mode: s.mode === 'match' || s.mode === 'reference' || s.mode === 'harmony' ? s.mode : 'mix', items: Array.isArray(s.items) ? s.items : [], target: s.target ?? '', onShelf: s.onShelf !== false };
   } catch {
     return { mode: 'mix', items: [], target: '', onShelf: true };
   }
@@ -44,3 +44,10 @@ export async function saveAsRecipe(items: { paint: string; parts: number }[], he
   notify(t('mixer.saved'));
   openRecipe(recipe.id);
 }
+
+// The reference picture of «From a picture» and its colours: for this session only (not saved, may be big).
+export const reference = $state<{ url: string; count: number; colours: { hex: string; share: number; picked?: boolean }[] }>({
+  url: '',
+  count: 6,
+  colours: [],
+});

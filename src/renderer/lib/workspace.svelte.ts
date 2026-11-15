@@ -1,5 +1,5 @@
 // Which module is open (remembered by the window between launches).
-export const MODULES = ['paints', 'projects', 'recipes', 'mixer', 'shopping'] as const;
+export const MODULES = ['paints', 'projects', 'recipes', 'mixer', 'shopping', 'stats'] as const;
 export type ModuleId = (typeof MODULES)[number];
 
 const saved = (() => {
