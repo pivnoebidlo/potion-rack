@@ -85,6 +85,8 @@ export interface Settings {
   language: LangSetting;
   paints: { view: 'grid' | 'list'; sort: PaintSort; desc: boolean };
   updates: UpdateSettings;
+  // Sync with the phone (shared/sync.ts): off by default; the token is the key of the pairing.
+  phone: { enabled: boolean; token: string; port: number; lastSync: string; device: string };
 }
 
 // Everything a window sees. Replaced as a whole after every change.
@@ -98,6 +100,8 @@ export interface AppState {
   version: string;
   // The rack file could not be read (broken JSON): the app shows it and does not overwrite the file.
   error: string | null;
+  // The phone server as it runs: null — off; link — what the QR code holds.
+  phone: { port: number; hosts: string[]; link: string } | null;
 }
 
 export type RackAction =

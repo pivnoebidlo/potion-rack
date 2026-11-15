@@ -78,5 +78,13 @@ fflate), PDF статьи (`renderer/projects/pdf.ts` → `main/pdf.ts`; лен�
 несохранённых правок подхватывается, с ними — выбор; ответы чтения во время сохранения отбрасываются).
 Дальше (предложено): телефон (локальная страница с QR); долги — размер сборки окна (CodeMirror), ручная проверка
 сборок Windows/Linux.
-Будущее: мобильное приложение (как минимум Android) — держать `src/shared/` переносимым, формат папки — общий контракт.
+Мобильное приложение (Android): `mobile/` — свой package.json (Capacitor ищет зависимости рядом с конфигом), Svelte +
+Vite, общее ядро — импорт из `../src/shared` (держать его без Node/Electron; `api.ts` — только для настольного). Данные —
+Capacitor Preferences (в браузере — localStorage), очередь действий `pending` поверх последнего стеллажа с Mac.
+Синхронизация: `shared/sync.ts` (протокол, `allowed` — что телефону можно, `pairingLink`), `main/syncserver.ts`
+(HTTP на 0.0.0.0, Bearer-токен, по умолчанию выключен), «Настройки → Телефон» (`settings/Phone.svelte`, QR — uqr).
+Android-проект — `mobile/android` (сгенерирован `cap add android`; cleartext разрешён в манифесте — http в локальной
+сети; версия — из mobile/package.json, подпись релиза — из секретов CI). Локально Android SDK нет: APK собирает CI
+(задача `android` в release.yml). Проверка мобильной части — `.dev/mobile-harness.cjs` (окно 400×860, CDP 9334,
+`.dev/cdp-m.mjs`) против настольного в тестовом режиме. При выпуске версия в mobile/package.json = версии приложения.
 Лицензию можно сменить (не обязательно GPL) — решить до релиза.

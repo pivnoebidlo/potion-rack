@@ -1,7 +1,7 @@
 {
   "name": "potion-rack",
   "productName": "Potion Rack",
-  "version": "0.9.0",
+  "version": "0.10.0",
   "description": "A paint rack and project journal for miniature painters",
   "license": "GPL-3.0-or-later",
   "author": "pivnoebidlo <dima@niktokro.me>",
@@ -39,6 +39,7 @@
     "svelte": "^5.57.2",
     "svelte-check": "^4.7.6",
     "typescript": "^6.0.3",
+    "uqr": "^0.1.3",
     "vite": "^7.3.7",
     "vitest": "^3.2.7"
   }

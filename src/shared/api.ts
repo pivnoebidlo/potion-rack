@@ -55,6 +55,9 @@ export interface Api {
   revealBackups(): Promise<void>;
   exportZip(): Promise<string | null>;
   importZip(): Promise<string | null>;
+  // The phone: sync on / off, a new pairing key.
+  enablePhone(on: boolean): Promise<void>;
+  renewPhone(): Promise<void>;
   // Updates (settings — in Settings.updates through setSettings).
   checkForUpdates(): Promise<UpdateInfo>;
   openRelease(url: string): Promise<void>;

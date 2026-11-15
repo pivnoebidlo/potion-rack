@@ -1,3 +1,14 @@
+## 0.10.0
+
+### Added
+[+] Android app (mobile/, Svelte + Capacitor): a copy of the rack that works offline — shopping list with «Bought»,
+    paints with status / bottles / note, the catalog with «I have it» / «Want it»; changes wait and go to the computer
+    at the next sync
+[+] Sync with the phone over Wi-Fi: Settings → Phone turns on a small server on the local network (off by default),
+    a QR code pairs the phone (addresses, port, key); «New key» unpairs; the phone may add paints and change status,
+    bottles, note, price, store, rating — nothing else
+[+] CI builds the Android APK with the desktop builds (signed when the release key is in the repository secrets)
+
 ## 0.9.0
 
 ### Added

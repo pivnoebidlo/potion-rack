@@ -1,0 +1,20 @@
+/* The phone: bigger touch targets, text selectable only in fields, safe areas of the screen. */
+body {
+  font-size: 15px;
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+}
+button {
+  touch-action: manipulation;
+}
+input[type='text'],
+input[type='search'],
+input[type='number'],
+textarea,
+select {
+  font-size: 16px;
+  padding: 8px 10px;
+}
+.btn {
+  padding: 8px 14px;
+}
