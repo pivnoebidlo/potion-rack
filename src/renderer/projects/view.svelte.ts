@@ -2,6 +2,7 @@
 import { allFigures, baseName, findFolder, isWithin, joinPath, parentOf, type Figure, type FigureStatus, type FolderNode } from '../../shared/projects.ts';
 import { confirm, promptText } from '../lib/confirm.svelte.ts';
 import { flushArticle } from './article.svelte.ts';
+import { timer } from './timer.svelte.ts';
 import { t } from '../lib/i18n.svelte.ts';
 import { store } from '../lib/store.svelte.ts';
 import { openModule } from '../lib/workspace.svelte.ts';
@@ -17,7 +18,7 @@ const load = (key: string): string[] => {
 export const pview = $state({
   // A figure or a group ('' — all projects).
   selected: '',
-  mode: 'read' as 'read' | 'edit',
+  mode: 'read' as 'read' | 'edit' | 'progress',
   expanded: load('projects.expanded'),
   search: '',
 });
@@ -86,6 +87,7 @@ function follow(from: string, to: string) {
   const swap = (p: string) => (isWithin(p, from) ? to + p.slice(from.length) : p);
   pview.selected = swap(pview.selected);
   pview.expanded = pview.expanded.map(swap);
+  if (timer.running) timer.running = { ...timer.running, path: swap(timer.running.path) };
 }
 
 export async function rename(path: string) {

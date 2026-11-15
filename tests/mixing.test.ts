@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
 import { hexDistance } from '../src/shared/colors.ts';
-import { mixPaints, suggestMixes } from '../src/shared/mixing.ts';
+import { isMetallic, mixPaints, suggestMixes } from '../src/shared/mixing.ts';
 import { newPaint } from '../src/shared/rack.ts';
 
 const NOW = '2026-11-15T10:00:00.000Z';
@@ -30,4 +30,11 @@ it('suggests paints of the shelf and their mixes for a colour', () => {
   // Off the shelf too, when asked.
   expect(suggestMixes('#3d933e', paints, { onShelf: false })[0]!.items.map((i) => i.paint.id)).toEqual(['green-gone']);
   expect(hexDistance(best.hex, '#3d933e')).toBeCloseTo(best.distance, 6);
+});
+
+it('knows metallics by type, series and name', () => {
+  expect(isMetallic({ type: 'metallic', line: '', name: 'X' })).toBe(true);
+  expect(isMetallic({ type: 'air', line: 'Model Air', name: 'Gunmetal (Metallic)' })).toBe(true);
+  expect(isMetallic({ line: 'Liquitex', name: 'Iridescent White' })).toBe(true);
+  expect(isMetallic({ type: 'acrylic', line: 'Game Extra Opaque', name: 'Heavy Goldbrown' })).toBe(false);
 });

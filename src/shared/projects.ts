@@ -24,6 +24,8 @@ export interface FigureMeta {
   paints: string[];
   // Recipe ids of the rack.
   recipes: string[];
+  // Painting sessions: «YYYY-MM-DDTHH:MM <minutes>» (shared/projects.ts: sessionOf, totalMinutes).
+  sessions: string[];
   // An image of images/ shown on the card; '' — the first one.
   cover: string;
   created: string;
@@ -36,6 +38,8 @@ export interface Figure {
   meta: FigureMeta;
   // File names in images/, oldest first.
   images: string[];
+  // When each picture was taken (ms): from the name the app gives (or 0.6 gave), else the file's time.
+  times: Record<string, number>;
 }
 
 export interface FolderNode {
@@ -49,7 +53,7 @@ export const emptyTree = (): FolderNode => ({ path: '', name: '', folders: [], f
 
 export const emptyMeta = (created = ''): FigureMeta => ({
   status: 'pile', manufacturer: '', scale: '', material: '', link: '', bought: '', started: '', finished: '',
-  price: null, paints: [], recipes: [], cover: '', created,
+  price: null, paints: [], recipes: [], sessions: [], cover: '', created,
 });
 
 // ── Front matter: a small YAML subset (flat keys, strings, numbers, lists) — what we write and what people type.
@@ -144,6 +148,7 @@ export function metaFromData(d: Record<string, FrontValue>): FigureMeta {
     price: str(d['price']) && Number.isFinite(price) && price >= 0 ? price : null,
     paints: [...new Set(list(d['paints']).map((x) => x.trim()).filter(Boolean))],
     recipes: [...new Set(list(d['recipes']).map((x) => x.trim()).filter(Boolean))],
+    sessions: list(d['sessions']).map((x) => x.trim()).filter((x) => sessionOf(x) !== null),
     cover: str(d['cover']).replace(/^images\//, ''),
     created: str(d['created']),
   };
@@ -162,6 +167,7 @@ export function metaToData(m: FigureMeta): [string, FrontValue | number | null][
     ['price', m.price],
     ['paints', m.paints],
     ['recipes', m.recipes],
+    ['sessions', m.sessions],
     ['cover', m.cover],
     ['created', m.created],
   ];
@@ -230,3 +236,39 @@ export function convertLegacyMarkdown(text: string): string {
 
 export const imageUrl = (figurePath: string, name: string) =>
   `rack://projects/${[...figurePath.split('/'), IMAGES_DIR, name].map(encodeURIComponent).join('/')}`;
+
+// ── Progress: when pictures were taken, painting sessions.
+
+// The app names pictures «<Date.now() in base 36><4 random>.jpg», 0.6 — «img_<ms>.png»; null — the name says nothing.
+export function timeFromName(name: string): number | null {
+  const legacy = /^img_(\d{12,14})\./.exec(name);
+  if (legacy) return Number(legacy[1]);
+  const ours = /^([0-9a-z]{8})[0-9a-z]{4}\.jpg$/.exec(name);
+  if (ours) {
+    const t = parseInt(ours[1]!, 36);
+    // A plausible time: from 2020 to 2100.
+    if (t > 1577836800000 && t < 4102444800000) return t;
+  }
+  return null;
+}
+
+// Pictures in the order they were taken.
+export const byTime = (f: Figure) => [...f.images].sort((a, b) => (f.times[a] ?? 0) - (f.times[b] ?? 0));
+
+export function sessionOf(s: string): { start: string; minutes: number } | null {
+  const m = /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2})\s+(\d{1,4})$/.exec(s.trim());
+  return m && Number(m[2]) > 0 ? { start: m[1]!, minutes: Number(m[2]) } : null;
+}
+
+export const sessionText = (start: Date, minutes: number) => {
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${start.getFullYear()}-${p(start.getMonth() + 1)}-${p(start.getDate())}T${p(start.getHours())}:${p(start.getMinutes())} ${Math.max(1, Math.round(minutes))}`;
+};
+
+export const totalMinutes = (meta: FigureMeta) => meta.sessions.reduce((s, x) => s + (sessionOf(x)?.minutes ?? 0), 0);
+
+// «2 h 15 min» in the words of the language (h / min passed in).
+export const duration = (minutes: number, h: string, min: string) => {
+  const hh = Math.floor(minutes / 60), mm = Math.round(minutes % 60);
+  return hh ? (mm ? `${hh} ${h} ${mm} ${min}` : `${hh} ${h}`) : `${mm} ${min}`;
+};

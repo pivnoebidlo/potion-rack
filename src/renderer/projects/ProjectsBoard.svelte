@@ -2,7 +2,7 @@
      another column takes its status. Figures of the subgroups are on the board too. -->
 <script lang="ts">
   import { FilePlus, FolderPlus } from '@lucide/svelte';
-  import { FIGURE_STATUSES, allFigures, coverOf, findFolder, imageUrl, parentOf, type Figure, type FigureStatus } from '../../shared/projects.ts';
+  import { FIGURE_STATUSES, allFigures, coverOf, duration, findFolder, imageUrl, parentOf, totalMinutes, type Figure, type FigureStatus } from '../../shared/projects.ts';
   import ContextMenu, { menuAt, type MenuItem } from '../lib/ContextMenu.svelte';
   import { t } from '../lib/i18n.svelte.ts';
   import FigureStatusDot from './FigureStatusDot.svelte';
@@ -65,6 +65,7 @@
             {#if cover}<img src={imageUrl(f.path, cover)} alt="" loading="lazy" draggable="false" />{/if}
             <span class="cname">{f.name}</span>
             {#if sub(f)}<span class="faint sub">{sub(f)}</span>{/if}
+            {#if totalMinutes(f.meta)}<span class="faint sub">⏱ {duration(totalMinutes(f.meta), t('timer.h'), t('timer.min'))}</span>{/if}
           </button>
         {/each}
       </div>

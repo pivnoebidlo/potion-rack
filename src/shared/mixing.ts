@@ -21,6 +21,11 @@ export function mixPaints(items: readonly { hex: string; parts: number }[]): str
   return normalizeHex(mix(...valid.map((i) => [color(normalizeHex(i.hex)), i.parts] as [Color, number])).toString());
 }
 
+// Metallics (and pearl / iridescent paints) are not a colour to mix or to stand in for a flat one. Some are typed
+// otherwise (Model Air «… (Metallic)» as air), so the name counts too.
+export const isMetallic = (p: { type?: string; line: string; name: string }) =>
+  p.type === 'metallic' || guessType(p.line, p.name) === 'metallic' || /iridescent|pearl|interference/i.test(`${p.line} ${p.name}`);
+
 export interface MixSuggestion {
   // One paint, or two with their parts.
   items: { paint: Paint; parts: number }[];
@@ -42,9 +47,7 @@ export function suggestMixes(target: string, paints: readonly Paint[], opts: { l
   const { limit = 8, onShelf = true } = opts;
   const goal = labOf(target);
   if (!goal) return [];
-  // Metallics do not mix into colours; some are typed otherwise (Model Air «… (Metallic)» as air), so the name counts too.
-  const metallic = (p: Paint) => p.type === 'metallic' || guessType(p.line, p.name) === 'metallic';
-  const pool = paints.filter((p) => p.hex && (!onShelf || isOnShelf(p.status)) && !metallic(p));
+  const pool = paints.filter((p) => p.hex && (!onShelf || isOnShelf(p.status)) && !isMetallic(p));
   const out: MixSuggestion[] = [];
   const add = (items: MixSuggestion['items'], hex: string) => {
     const lab = labOf(hex);

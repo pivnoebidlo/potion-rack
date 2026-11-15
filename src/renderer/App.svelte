@@ -1,6 +1,6 @@
 <!-- The window: the ribbon of modules, the side panel, the main area and the panel of the selected item. -->
 <script lang="ts">
-  import { BookMarked, Blend, Castle, Palette, Search, Settings as SettingsIcon, ShoppingCart, TriangleAlert } from '@lucide/svelte';
+  import { ChartColumn, BookMarked, Blend, Castle, Palette, Search, Settings as SettingsIcon, ShoppingCart, TriangleAlert } from '@lucide/svelte';
   import { shopping } from '../shared/rack.ts';
   import Modal from './lib/Modal.svelte';
   import PromptDialog from './lib/PromptDialog.svelte';
@@ -26,6 +26,7 @@
   import Settings from './settings/Settings.svelte';
   import ShoppingSidebar from './shopping/ShoppingSidebar.svelte';
   import MixerView from './mixer/MixerView.svelte';
+  import StatsView from './stats/StatsView.svelte';
   import ShoppingView from './shopping/ShoppingView.svelte';
 
   let settingsOpen = $state(false);
@@ -42,6 +43,7 @@
     { id: 'recipes', icon: BookMarked, title: () => t('app.recipes') },
     { id: 'mixer', icon: Blend, title: () => t('app.mixer') },
     { id: 'shopping', icon: ShoppingCart, title: () => t('app.shopping') },
+    { id: 'stats', icon: ChartColumn, title: () => t('app.stats') },
   ];
   const modKey = window.api.platform === 'darwin' ? '⌘' : 'Ctrl+';
   const dialogOpen = () => settingsOpen || searchOpen || !!confirmation.q || !!asking.q;
@@ -54,15 +56,15 @@
     } else if (cmd && e.code === 'KeyK' && !settingsOpen && !confirmation.q && !asking.q) {
       e.preventDefault();
       searchOpen = !searchOpen;
-    } else if (cmd && /^Digit[1-5]$/.test(e.code) && !dialogOpen()) {
+    } else if (cmd && /^Digit[1-6]$/.test(e.code) && !dialogOpen()) {
       e.preventDefault();
       openModule(MODULES[Number(e.code.slice(5)) - 1]!);
-    } else if (cmd && e.code === 'KeyN' && !dialogOpen() && workspace.module !== 'shopping' && workspace.module !== 'mixer') {
+    } else if (cmd && e.code === 'KeyN' && !dialogOpen() && !['shopping', 'mixer', 'stats'].includes(workspace.module)) {
       e.preventDefault();
       void (paints ? createPaint() : workspace.module === 'projects' ? newFigure() : createRecipe());
     } else if (cmd && e.code === 'KeyF' && !e.shiftKey && !dialogOpen() && !(e.target as HTMLElement).closest('.cm-editor')) {
       e.preventDefault();
-      document.getElementById(`${{ paints: 'paint', projects: 'project', recipes: 'recipe', mixer: 'paint', shopping: 'paint' }[workspace.module]}-search`)?.focus();
+      document.getElementById(`${{ paints: 'paint', projects: 'project', recipes: 'recipe', mixer: 'paint', shopping: 'paint', stats: 'paint' }[workspace.module]}-search`)?.focus();
     } else if (e.key === 'Escape' && !dialogOpen()) {
       const el = e.target as HTMLElement;
       if (el.closest('input, textarea, select, .cm-editor')) {
@@ -93,7 +95,7 @@
     <button class="icon-btn" title={t('app.settings')} onclick={() => (settingsOpen = true)}><SettingsIcon size={18} /></button>
   </nav>
 
-  <aside class="sidebar">
+  <aside class="sidebar" hidden={mod === 'stats'}>
     <div class="title-row drag"><span>{ribbon.find((m) => m.id === mod)?.title()}</span></div>
     {#if mod === 'paints'}<PaintsSidebar />{:else if mod === 'projects'}<ProjectsSidebar />{:else if mod === 'recipes'}<RecipesSidebar />{:else if mod === 'mixer'}<RecipesSidebar />{:else}<ShoppingSidebar />{/if}
   </aside>
@@ -115,6 +117,8 @@
       {/if}
     {:else if mod === 'mixer'}
       <MixerView />
+    {:else if mod === 'stats'}
+      <StatsView />
     {:else}
       <ShoppingView />
     {/if}

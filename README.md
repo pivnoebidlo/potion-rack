@@ -32,10 +32,13 @@ A paint rack and project journal for miniature painters. [Русская вер�
 - Themes: system, dark, light, **neutral grey** (does not tint the swatches), workbench. English and Russian.
 - **Mixing**: paints mix like pigments (Kubelka-Munk, [spectral.js](https://github.com/rvanwijnen/spectral.js), MIT) —
   blue and yellow give green; «Find a mix» tries the paints of your shelf alone and two at a time for a wanted colour
-  (hex, picker or eyedropper) and saves the best as a recipe.
+  (hex, picker or eyedropper) and saves the best as a recipe; «From a picture» finds the main colours of a reference
+  and what to paint each with.
+- **Progress**: pictures of a figure by day, a «before and after» slider, a painting timer with sessions.
+- **Harmonies** of a colour matched to your paints; **statistics** of the rack and the projects.
 - **Backups**: snapshots of paints, recipes and articles by themselves; the full backup to a zip. **PDF** of an article.
 - Update check on launch, with download and install from inside the app.
-- ⌘1–⌘5 — paints, projects, recipes, mixing, shopping list; ⌘K — search everything; ⌘N — new paint or figure, ⌘F — search, ⌘, — settings.
+- ⌘1–⌘6 — paints, projects, recipes, mixing, shopping list, statistics; ⌘K — search everything; ⌘N — new paint or figure, ⌘F — search, ⌘, — settings.
 
 ## Data
 The rack is a plain folder (by default `Documents/Potion Rack`), to put in iCloud or Dropbox as it is; changes made

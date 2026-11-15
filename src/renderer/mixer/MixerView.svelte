@@ -15,6 +15,8 @@
   import StatusDot from '../paints/StatusDot.svelte';
   import { view as paintView } from '../paints/view.svelte.ts';
   import { mixer, saveAsRecipe } from './state.svelte.ts';
+  import ReferenceView from './ReferenceView.svelte';
+  import HarmonyView from './HarmonyView.svelte';
 
   void loadCatalog();
   const paints = $derived(store.state.rack.paints);
@@ -29,6 +31,10 @@
 
   // Match
   let hexInput = $state(mixer.target);
+  // The target may come from elsewhere («From a picture» → «Find a mix for this colour»).
+  $effect(() => {
+    hexInput = mixer.target;
+  });
   const target = $derived(normalizeHex(mixer.target));
   const suggestions = $derived(target ? suggestMixes(target, paints, { onShelf: mixer.onShelf, limit: 10 }) : []);
   function setTarget(v: string) {
@@ -56,6 +62,8 @@
   <div class="seg">
     <button class="btn" class:on={mixer.mode === 'mix'} onclick={() => (mixer.mode = 'mix')}>{t('mixer.mix')}</button>
     <button class="btn" class:on={mixer.mode === 'match'} onclick={() => (mixer.mode = 'match')}>{t('mixer.match')}</button>
+    <button class="btn" class:on={mixer.mode === 'reference'} onclick={() => (mixer.mode = 'reference')}>{t('mixer.reference')}</button>
+    <button class="btn" class:on={mixer.mode === 'harmony'} onclick={() => (mixer.mode = 'harmony')}>{t('mixer.harmonies')}</button>
   </div>
 </header>
 
@@ -120,6 +128,10 @@
           </section>
         </div>
       {/if}
+    {:else if mixer.mode === 'reference'}
+      <ReferenceView />
+    {:else if mixer.mode === 'harmony'}
+      <HarmonyView />
     {:else}
       <p class="faint hint">{t('mixer.matchHint')}</p>
       <div class="target">
@@ -176,11 +188,13 @@
     padding: 3px 12px;
     border-radius: 0;
   }
+  .seg .btn + .btn {
+    margin-left: -1px;
+  }
   .seg .btn:first-child {
     border-radius: var(--radius-s) 0 0 var(--radius-s);
   }
   .seg .btn:last-child {
-    margin-left: -1px;
     border-radius: 0 var(--radius-s) var(--radius-s) 0;
   }
   .seg .btn.on {

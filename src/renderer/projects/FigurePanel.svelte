@@ -1,7 +1,9 @@
 <!-- The data of the selected figure, edited in place: status, maker, dates, paints (from the rack), pictures,
      the contents of the article. Pictures dropped onto the panel go to images/. -->
 <script lang="ts">
-  import { ClipboardPaste, Ellipsis, ImagePlus, Plus, Star, TextCursorInput, Trash2, X } from '@lucide/svelte';
+  import { ClipboardPaste, Ellipsis, ImagePlus, Play, Plus, Square, Star, TextCursorInput, Trash2, X } from '@lucide/svelte';
+  import { duration, sessionOf, totalMinutes } from '../../shared/projects.ts';
+  import { elapsedMinutes, startTimer, stopTimer, timer } from './timer.svelte.ts';
   import { headings } from '../../shared/markdown.ts';
   import { FIGURE_STATUSES, coverOf, imageUrl, type Figure, type FigureMeta } from '../../shared/projects.ts';
   import { mentionOf } from '../../shared/rack.ts';
@@ -9,7 +11,7 @@
   import ContextMenu, { menuAt, type MenuItem } from '../lib/ContextMenu.svelte';
   import Lightbox from '../lib/Lightbox.svelte';
   import Swatch from '../lib/Swatch.svelte';
-  import { t } from '../lib/i18n.svelte.ts';
+  import { locale, t } from '../lib/i18n.svelte.ts';
   import { store } from '../lib/store.svelte.ts';
   import { notify } from '../lib/toast.svelte.ts';
   import { openModule } from '../lib/workspace.svelte.ts';
@@ -45,6 +47,17 @@
     paintView.selected = id;
     openModule('paints');
   }
+
+  // The painting timer.
+  const runningHere = $derived(timer.running?.path === figure.path);
+  const runningElsewhere = $derived(timer.running && !runningHere ? timer.running.path.split('/').at(-1) : null);
+  const clock = $derived.by(() => {
+    void timer.now;
+    const s = Math.floor(elapsedMinutes() * 60);
+    return `${Math.floor(s / 3600)}:${String(Math.floor((s % 3600) / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+  });
+  const hm = (m: number) => duration(m, t('timer.h'), t('timer.min'));
+  const sessionsShown = $derived([...meta.sessions].reverse().slice(0, 5));
 
   // Recipes of the figure.
   const recipes = $derived(store.state.rack.recipes);
@@ -143,6 +156,32 @@
       <label><span>{t('figure.started')}</span><input type="date" value={meta.started} onchange={field('started')} /></label>
       <label><span>{t('figure.finished')}</span><input type="date" value={meta.finished} onchange={field('finished')} /></label>
     </div>
+
+    <section>
+      <div class="pane-title row">{t('timer.title')}</div>
+      <div class="timer">
+        {#if runningHere}
+          <span class="clock">{clock}</span>
+          <button class="btn primary" onclick={stopTimer}><Square size={13} /> {t('timer.stop')}</button>
+        {:else}
+          <button class="btn" disabled={!!runningElsewhere} onclick={() => startTimer(figure.path)}><Play size={13} /> {t('timer.start')}</button>
+        {/if}
+        <span class="faint total">{t('timer.total', { time: hm(totalMinutes(meta)) })}</span>
+      </div>
+      {#if runningElsewhere}<p class="faint hint">{t('timer.elsewhere', { name: runningElsewhere })}</p>{/if}
+      {#each sessionsShown as s (s)}
+        {@const x = sessionOf(s)}
+        {#if x}
+          <div class="session">
+            <span>{new Date(x.start).toLocaleString(locale.lang, { dateStyle: 'medium', timeStyle: 'short' })}</span>
+            <span class="faint">{hm(x.minutes)}</span>
+            <button class="icon-btn x" title={t('timer.removeSession')} onclick={() => update({ sessions: meta.sessions.filter((y) => y !== s) })}><X size={12} /></button>
+          </div>
+        {/if}
+      {:else}
+        {#if !runningHere}<p class="faint hint">{t('timer.none')}</p>{/if}
+      {/each}
+    </section>
 
     <section>
       <div class="pane-title row">
@@ -365,6 +404,31 @@
   }
   .pick {
     margin: 0 14px 6px;
+  }
+  .timer {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 14px 6px;
+  }
+  .clock {
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+    font-size: 18px;
+    font-variant-numeric: tabular-nums;
+  }
+  .total {
+    margin-left: auto;
+    font-size: 12px;
+  }
+  .session {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 1px 8px 1px 14px;
+    font-size: 12px;
+  }
+  .session span:first-child {
+    flex: 1;
   }
   .pick select {
     width: 100%;

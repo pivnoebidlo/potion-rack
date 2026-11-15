@@ -117,3 +117,26 @@ describe('markdown', () => {
     expect(renderMarkdown(text, opts)).toContain('<h2 id="нижняя-часть">');
   });
 });
+
+describe('progress', () => {
+  it('reads when a picture was taken from its name', async () => {
+    const { timeFromName } = await import('../src/shared/projects.ts');
+    const now = 1794761000000;
+    expect(timeFromName(`${now.toString(36)}ab12.jpg`)).toBe(now);
+    expect(timeFromName('img_1781789673153.png')).toBe(1781789673153);
+    expect(timeFromName('photo.jpg')).toBeNull();
+    expect(timeFromName('00000000abcd.jpg')).toBeNull();
+  });
+
+  it('keeps painting sessions and sums them', async () => {
+    const { sessionOf, sessionText, totalMinutes, duration } = await import('../src/shared/projects.ts');
+    const meta = metaFromData({ sessions: ['2026-11-15T19:00 45', 'nonsense', '2026-11-16T10:30 90', '2026-11-16T11:00 0'] });
+    expect(meta.sessions).toEqual(['2026-11-15T19:00 45', '2026-11-16T10:30 90']);
+    expect(totalMinutes(meta)).toBe(135);
+    expect(sessionOf('2026-11-15T19:00 45')).toEqual({ start: '2026-11-15T19:00', minutes: 45 });
+    expect(sessionText(new Date(2026, 10, 15, 9, 5), 0.4)).toBe('2026-11-15T09:05 1');
+    expect(duration(135, 'h', 'min')).toBe('2 h 15 min');
+    expect(duration(120, 'h', 'min')).toBe('2 h');
+    expect(duration(7, 'h', 'min')).toBe('7 min');
+  });
+});

@@ -1,7 +1,10 @@
 <!-- The article of a figure: reading (rendered Markdown) or editing (CodeMirror), ⌘E switches. The text saves itself
-     a moment after typing stops, when the figure changes and when the window loses focus. -->
+     a moment after typing stops, when the figure changes and when the window loses focus. A change of the file from
+     outside (Obsidian, a sync service) is taken in when there are no unsaved edits; with unsaved edits saving stops
+     and the user chooses which text stays. -->
 <script lang="ts">
-  import { BookOpen, FileDown, PencilLine } from '@lucide/svelte';
+  import { BookOpen, FileDown, Images, PencilLine } from '@lucide/svelte';
+  import ProgressView from './ProgressView.svelte';
   import { articlePage } from './pdf.ts';
   import { locale } from '../lib/i18n.svelte.ts';
   import { renderMarkdown } from '../../shared/markdown.ts';
@@ -22,14 +25,19 @@
   let loaded = $state<string | null>(null);
   let saved = $state('');
   let timer: ReturnType<typeof setTimeout> | undefined;
+  // The text on disk changed from outside while there were unsaved edits here; null — no conflict.
+  let conflict = $state<string | null>(null);
+  // Bumped when the text is replaced from outside: the editor starts again with it.
+  let version = $state(0);
 
   async function flush() {
     clearTimeout(timer);
     const path = loaded;
-    if (path === null || text === saved) return;
+    if (path === null || text === saved || conflict !== null) return;
     const body = text;
     saved = body;
     article.saving = true;
+    // (saved changed: reads of the file in flight are ignored, see below)
     await window.api.writeFigure(path, body);
     article.saving = false;
   }
@@ -43,6 +51,7 @@
       await flush();
       const body = (await window.api.readFigure(path)) ?? '';
       text = saved = body;
+      conflict = null;
       loaded = path;
       if (!body.trim()) pview.mode = 'edit';
     })();
@@ -51,6 +60,34 @@
     void flush();
     setPending(null);
   });
+
+  // Every rescan of the projects gives a new figure object: compare the file with what was saved here.
+  $effect(() => {
+    void figure;
+    const path = loaded;
+    if (path === null || path !== figure.path) return;
+    // A save while the file was being read makes the answer stale: it is ignored.
+    const before = saved;
+    void window.api.readFigure(path).then((disk) => {
+      if (disk === null || path !== loaded || saved !== before || disk === saved || disk === conflict) return;
+      if (text === saved) {
+        text = saved = disk;
+        version++;
+      } else conflict = disk;
+    });
+  });
+  function takeDisk() {
+    if (conflict === null) return;
+    text = saved = conflict;
+    conflict = null;
+    version++;
+  }
+  function keepMine() {
+    if (conflict === null) return;
+    saved = conflict;
+    conflict = null;
+    void flush();
+  }
 
   const paints = $derived(store.state.rack.paints);
   const hooks: EditorHooks = {
@@ -128,14 +165,25 @@
   <div class="seg">
     <button class="icon-btn" class:active={pview.mode === 'read'} title="{t('figure.read')} · ⌘E" onclick={() => (void flush(), (pview.mode = 'read'))}><BookOpen size={16} /></button>
     <button class="icon-btn" class:active={pview.mode === 'edit'} title="{t('figure.edit')} · ⌘E" onclick={() => (pview.mode = 'edit')}><PencilLine size={16} /></button>
+    <button class="icon-btn" class:active={pview.mode === 'progress'} title={t('figure.progress')} onclick={() => (void flush(), (pview.mode = 'progress'))}><Images size={16} /></button>
   </div>
 </header>
+
+{#if conflict !== null}
+  <div class="conflict">
+    <span>{t('figure.changedOutside')}</span>
+    <button class="btn" onclick={takeDisk}>{t('figure.takeTheirs')}</button>
+    <button class="btn" onclick={keepMine}>{t('figure.keepMine')}</button>
+  </div>
+{/if}
 
 <div class="body">
   {#if loaded !== figure.path}
     <!-- reading the file -->
   {:else if pview.mode === 'edit'}
-    {#key figure.path}<Editor doc={text} {hooks} />{/key}
+    {#key `${figure.path}:${version}`}<Editor doc={text} {hooks} />{/key}
+  {:else if pview.mode === 'progress'}
+    <ProgressView {figure} />
   {:else}
     <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
     <article class="read" bind:this={readEl} {onclick}>
@@ -178,6 +226,17 @@
   }
   .seg {
     display: flex;
+  }
+  .conflict {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 8px 16px;
+    background: color-mix(in srgb, var(--warning) 16%, transparent);
+  }
+  .conflict span {
+    flex: 1;
   }
   .body {
     flex: 1;
