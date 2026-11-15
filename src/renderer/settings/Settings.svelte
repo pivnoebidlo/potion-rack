@@ -5,12 +5,13 @@
   import { THEMES, type ThemeSetting } from '../../shared/types.ts';
   import Modal from '../lib/Modal.svelte';
   import Backups from './Backups.svelte';
+  import Phone from './Phone.svelte';
   import { t } from '../lib/i18n.svelte.ts';
   import { setSettings, store } from '../lib/store.svelte.ts';
 
   let { onclose }: { onclose: () => void } = $props();
 
-  const SECTIONS = ['general', 'rack', 'backups', 'about'] as const;
+  const SECTIONS = ['general', 'rack', 'backups', 'phone', 'about'] as const;
   let section = $state<(typeof SECTIONS)[number]>('general');
   const s = $derived(store.state.settings);
 
@@ -75,6 +76,8 @@
         </div>
       {:else if section === 'backups'}
         <Backups />
+      {:else if section === 'phone'}
+        <Phone />
       {:else}
         <h3>Potion Rack</h3>
         <p class="muted">{t('settings.version', { version: store.state.version })}</p>

@@ -1,6 +1,6 @@
 // The core: one state (settings, the rack, the projects tree), actions from the window, saving, photos, the rack://
 // protocol (rack://photos/<paint>/<file>, rack://projects/<figure path>/images/<file>).
-import { app, BrowserWindow, dialog, ipcMain, net, protocol, shell } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, nativeImage, net, protocol, shell } from 'electron';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -12,6 +12,10 @@ import { clipboardImages, imageFromFile, storeImage } from './photos.ts';
 import { ProjectsFolder } from './projects.ts';
 import { checkForUpdates, downloadUpdate, installUpdate } from './updates.ts';
 import { htmlToPdf } from './pdf.ts';
+import { SyncServer, lanAddresses } from './syncserver.ts';
+import { SYNC_VERSION, acceptPending, pairingLink, type SyncFigure } from '../shared/sync.ts';
+import { allFigures } from '../shared/projects.ts';
+import { randomBytes } from 'node:crypto';
 import { createSnapshot, listSnapshots, prune, restoreSnapshot, unzipRack, zipRack, type Reason } from './backups.ts';
 import { isReleaseUrl } from '../shared/updates.ts';
 import { RackFolder } from './rackfile.ts';
@@ -44,7 +48,7 @@ function openRack() {
   folder = new RackFolder(rackPath());
   projects = new ProjectsFolder(path.join(folder.root, 'projects'));
   const { rack, error } = folder.load();
-  state = { rack, projects: projects.scan(), rackPath: folder.root, settings, lang: langOf(settings), version: app.getVersion(), error };
+  state = { rack, projects: projects.scan(), rackPath: folder.root, settings, lang: langOf(settings), version: app.getVersion(), error, phone: state?.phone ?? null };
   folder.watch(() => {
     const loaded = folder.load();
     setState({ rack: loaded.rack, error: loaded.error });
@@ -233,6 +237,50 @@ ipcMain.handle('figure:exportPdf', async (_e, name: string, html: string) => {
   return file;
 });
 
+// The phone (main/syncserver.ts, shared/sync.ts): a server on the local network while sync is on. The phone sends what
+// it did offline, gets the whole rack back.
+const phoneServer = new SyncServer({
+  token: () => (settings.phone.enabled ? settings.phone.token : ''),
+  sync(req, device) {
+    const applied = acceptPending(req.pending, (a) => apply(a));
+    const figures: SyncFigure[] = allFigures(state.projects).map((f) => ({ path: f.path, name: f.name, status: f.meta.status, paints: f.meta.paints, recipes: f.meta.recipes }));
+    setSettings({ phone: { ...settings.phone, lastSync: new Date().toISOString(), device: device.slice(0, 80) } });
+    return { version: SYNC_VERSION, rack: state.rack, figures, applied, at: new Date().toISOString() };
+  },
+  async photo(paintId, name) {
+    const file = folder.photoPath(paintId, name);
+    if (!file || !fs.existsSync(file)) return null;
+    const img = nativeImage.createFromPath(file);
+    if (img.isEmpty()) return null;
+    const { width, height } = img.getSize();
+    const k = Math.min(1, 400 / Math.max(width, height));
+    return (k < 1 ? img.resize({ width: Math.round(width * k), height: Math.round(height * k) }) : img).toJPEG(80);
+  },
+});
+async function phoneSync() {
+  if (!settings.phone.enabled) {
+    await phoneServer.stop();
+    if (state.phone) setState({ phone: null });
+    return;
+  }
+  if (!settings.phone.token) {
+    settings = normalizeSettings({ ...settings, phone: { ...settings.phone, token: randomBytes(18).toString('base64url') } });
+    saveSettings(settings);
+  }
+  const port = phoneServer.port ?? (await phoneServer.start(settings.phone.port));
+  const hosts = lanAddresses();
+  setState({ settings, phone: { port, hosts, link: pairingLink(hosts, port, settings.phone.token) } });
+}
+ipcMain.handle('phone:enable', async (_e, on: boolean) => {
+  setSettings({ phone: { ...settings.phone, enabled: on } });
+  await phoneSync();
+});
+// A new key: the paired phone has to scan the new QR code.
+ipcMain.handle('phone:renew', async () => {
+  setSettings({ phone: { ...settings.phone, token: randomBytes(18).toString('base64url'), device: '', lastSync: '' } });
+  await phoneSync();
+});
+
 // Updates: the latest release on GitHub (main/updates.ts), downloaded and installed by the app itself where it can.
 let updatePath: string | null = null;
 ipcMain.handle('updates:check', () => checkForUpdates());
@@ -293,6 +341,7 @@ app.whenReady().then(() => {
     return net.fetch(pathToFileURL(file).toString());
   });
   openRack();
+  void phoneSync();
   snapshot('open');
   setInterval(() => snapshot('auto'), 30 * 60 * 1000);
   createWindow();
@@ -305,6 +354,7 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
 app.on('before-quit', () => {
+  void phoneServer.stop();
   if (folder) snapshot('quit');
   folder?.close();
   projects?.close();

@@ -40,6 +40,16 @@ A paint rack and project journal for miniature painters. [Русская вер�
 - Update check on launch, with download and install from inside the app.
 - ⌘1–⌘6 — paints, projects, recipes, mixing, shopping list, statistics; ⌘K — search everything; ⌘N — new paint or figure, ⌘F — search, ⌘, — settings.
 
+## Android app
+`mobile/` — the same core (`src/shared/`) in a Capacitor shell. The phone keeps a copy of the rack and works without
+the network: the shopping list, paints, the catalog. On the computer, Settings → Phone turns sync on and shows a QR
+code; scan it in the app (Sync → Pair). At home, on the same Wi-Fi, the phone sends what it changed and gets the
+rack back. The APK is attached to each release.
+
+    cd mobile && npm install
+    npm run dev      # in a browser (pairing by pasting the link)
+    npm run sync     # build and copy into the Android project (mobile/android)
+
 ## Data
 The rack is a plain folder (by default `Documents/Potion Rack`), to put in iCloud or Dropbox as it is; changes made
 from outside are picked up while the app runs:
