@@ -3,6 +3,7 @@
 // language) live in the user data folder.
 import type { Lang, LangSetting } from './i18n/core.ts';
 import type { FolderNode } from './projects.ts';
+import type { UpdateSettings } from './updates.ts';
 
 export const PAINT_TYPES = ['acrylic', 'contrast', 'wash', 'ink', 'metallic', 'primer', 'varnish', 'technical', 'pigment', 'oil', 'air', 'other'] as const;
 export type PaintType = (typeof PAINT_TYPES)[number];
@@ -83,6 +84,7 @@ export interface Settings {
   theme: ThemeSetting;
   language: LangSetting;
   paints: { view: 'grid' | 'list'; sort: PaintSort; desc: boolean };
+  updates: UpdateSettings;
 }
 
 // Everything a window sees. Replaced as a whole after every change.

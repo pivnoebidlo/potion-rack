@@ -31,6 +31,30 @@ const api: Api = {
   addFigureImages: (path, files) => ipcRenderer.invoke('figure:addImages', path, files),
   pasteFigureImages: (path) => ipcRenderer.invoke('figure:pasteImages', path),
   removeFigureImage: (path, name) => ipcRenderer.invoke('figure:removeImage', path, name),
+  exportPdf: (name, html) => ipcRenderer.invoke('figure:exportPdf', name, html),
+  listBackups: () => ipcRenderer.invoke('backups:list'),
+  createBackup: () => ipcRenderer.invoke('backups:create'),
+  restoreBackup: (id) => ipcRenderer.invoke('backups:restore', id),
+  revealBackups: () => ipcRenderer.invoke('backups:reveal'),
+  exportZip: () => ipcRenderer.invoke('backups:exportZip'),
+  importZip: () => ipcRenderer.invoke('backups:importZip'),
+  checkForUpdates: () => ipcRenderer.invoke('updates:check'),
+  openRelease: (url) => ipcRenderer.invoke('updates:open', url),
+  onUpdateAvailable: (cb) => {
+    ipcRenderer.on('updates:available', (_e, info) => cb(info));
+  },
+  downloadUpdate: () => ipcRenderer.invoke('updates:download'),
+  installUpdate: () => ipcRenderer.invoke('updates:install'),
+  onUpdateProgress: (cb) => {
+    ipcRenderer.on('updates:progress', (_e, pct: number) => cb(pct));
+  },
+  onUpdateReady: (cb) => {
+    ipcRenderer.on('updates:ready', () => cb());
+  },
+  onUpdateError: (cb) => {
+    ipcRenderer.on('updates:error', () => cb());
+  },
+  setUpdateSettings: (next) => ipcRenderer.invoke('updates:setSettings', next),
   pathForFile: (file) => webUtils.getPathForFile(file),
 };
 

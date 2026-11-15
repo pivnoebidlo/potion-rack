@@ -54,6 +54,7 @@ export const en = {
   'figure.insert': 'Insert into the article',
   'figure.deletePicture': 'Delete picture',
   'figure.contents': 'Contents',
+  'figure.exportPdf': 'Export to PDF',
   'figure.unknownPaint': 'A paint that is no longer in the rack',
 
   'panel.usedIn': 'Used in projects',
@@ -112,6 +113,7 @@ export const ru: Messages<typeof en> = {
   'figure.insert': 'Вставить в статью',
   'figure.deletePicture': 'Удалить картинку',
   'figure.contents': 'Содержание',
+  'figure.exportPdf': 'Экспорт в PDF',
   'figure.unknownPaint': 'Краски уже нет на стеллаже',
 
   'panel.usedIn': 'Используется в проектах',

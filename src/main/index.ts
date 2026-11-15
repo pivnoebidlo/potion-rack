@@ -10,6 +10,10 @@ import { applyAction } from '../shared/rack.ts';
 import type { AppState, Paint, RackAction, Settings } from '../shared/types.ts';
 import { clipboardImages, imageFromFile, storeImage } from './photos.ts';
 import { ProjectsFolder } from './projects.ts';
+import { checkForUpdates, downloadUpdate, installUpdate } from './updates.ts';
+import { htmlToPdf } from './pdf.ts';
+import { createSnapshot, listSnapshots, prune, restoreSnapshot, unzipRack, zipRack, type Reason } from './backups.ts';
+import { isReleaseUrl } from '../shared/updates.ts';
 import { RackFolder } from './rackfile.ts';
 import { defaultRackPath, loadSettings, normalizeSettings, saveSettings } from './settings.ts';
 
@@ -164,6 +168,93 @@ ipcMain.handle('figure:pasteImages', async (_e, rel: string) => {
 });
 ipcMain.handle('figure:removeImage', async (_e, rel: string, name: string) => changed(await projects.removeImage(rel, name)));
 
+// Backups (main/backups.ts): snapshots of rack.json and the articles in <userData>/backups — on launch, every half an
+// hour, on quit, before a restore; the full backup — the rack folder as a zip.
+const backupsDir = () => path.join(app.getPath('userData'), 'backups');
+function snapshot(reason: Reason, force = false) {
+  try {
+    const meta = createSnapshot(backupsDir(), folder.root, reason, Date.now(), force);
+    prune(backupsDir());
+    return meta;
+  } catch {
+    return null;
+  }
+}
+const backupList = () => listSnapshots(backupsDir()).filter((s) => s.rack === folder.root);
+ipcMain.handle('backups:list', () => backupList());
+ipcMain.handle('backups:create', () => (snapshot('manual', true), backupList()));
+ipcMain.handle('backups:reveal', () => {
+  fs.mkdirSync(backupsDir(), { recursive: true });
+  return shell.openPath(backupsDir());
+});
+ipcMain.handle('backups:restore', (_e, id: string) => {
+  snapshot('before-restore', true);
+  restoreSnapshot(backupsDir(), id, folder.root);
+  const loaded = folder.load();
+  setState({ rack: loaded.rack, error: loaded.error, projects: projects.scan() });
+  return backupList();
+});
+ipcMain.handle('backups:exportZip', async () => {
+  const file = await savePath(`Potion Rack ${new Date().toISOString().slice(0, 10)}`, 'zip');
+  if (!file) return null;
+  zipRack(folder.root, file);
+  if (!process.env['PR_SAVE_DIR']) shell.showItemInFolder(file);
+  return file;
+});
+// A full backup goes into a new folder, and the app switches to it: the current rack is never overwritten.
+ipcMain.handle('backups:importZip', async () => {
+  const zip = await dialog.showOpenDialog(win!, { properties: ['openFile'], filters: [{ name: 'ZIP', extensions: ['zip'] }] });
+  if (zip.canceled || !zip.filePaths[0]) return null;
+  const to = await dialog.showOpenDialog(win!, { title: t('backups.chooseEmpty'), properties: ['openDirectory', 'createDirectory'] });
+  if (to.canceled || !to.filePaths[0]) return null;
+  try {
+    unzipRack(zip.filePaths[0], to.filePaths[0]);
+  } catch (e) {
+    return (e as Error).message === 'folder not empty' ? t('backups.notEmpty') : t('backups.notBackup');
+  }
+  setSettings({ rackPath: to.filePaths[0] });
+  return null;
+});
+
+// An article as a PDF (main/pdf.ts): the window builds the page, the core prints and saves it.
+const testRun = () => !app.isPackaged && !!process.env['PR_SAVE_DIR'];
+// In development PR_SAVE_DIR skips the save dialog (tests drive the app without touching the screen).
+async function savePath(name: string, ext: string): Promise<string | null> {
+  const testDir = !app.isPackaged ? process.env['PR_SAVE_DIR'] : undefined;
+  if (testDir) return path.join(testDir, `${name}.${ext}`);
+  const res = await dialog.showSaveDialog(win!, { defaultPath: path.join(app.getPath('documents'), `${name}.${ext}`), filters: [{ name: ext.toUpperCase(), extensions: [ext] }] });
+  return res.canceled || !res.filePath ? null : res.filePath;
+}
+ipcMain.handle('figure:exportPdf', async (_e, name: string, html: string) => {
+  const file = await savePath(name, 'pdf');
+  if (!file) return null;
+  fs.writeFileSync(file, await htmlToPdf(html));
+  if (!process.env['PR_SAVE_DIR']) shell.showItemInFolder(file);
+  return file;
+});
+
+// Updates: the latest release on GitHub (main/updates.ts), downloaded and installed by the app itself where it can.
+let updatePath: string | null = null;
+ipcMain.handle('updates:check', () => checkForUpdates());
+ipcMain.handle('updates:open', (_e, url: string) => (isReleaseUrl(url) ? shell.openExternal(url) : undefined));
+ipcMain.handle('updates:setSettings', (_e, next: { skip?: string }) => setSettings({ updates: { ...settings.updates, ...next } }));
+ipcMain.handle('updates:download', async () => {
+  try {
+    updatePath = await downloadUpdate((pct) => win?.webContents.send('updates:progress', pct));
+    win?.webContents.send('updates:ready');
+  } catch {
+    win?.webContents.send('updates:error');
+  }
+});
+ipcMain.handle('updates:install', async () => {
+  if (updatePath) await installUpdate(updatePath);
+});
+async function checkOnLaunch() {
+  if (!settings.updates.check || !app.isPackaged) return;
+  const info = await checkForUpdates();
+  if (info.newer && info.latest !== settings.updates.skip) win?.webContents.send('updates:available', info);
+}
+
 function createWindow() {
   const mac = process.platform === 'darwin';
   win = new BrowserWindow({
@@ -173,6 +264,8 @@ function createWindow() {
     minHeight: 560,
     title: 'Potion Rack',
     backgroundColor: '#1e1e1e',
+    // Test runs (PR_SAVE_DIR) show the window without taking the focus from what the user is doing.
+    show: !testRun(),
     ...(mac ? { titleBarStyle: 'hidden' as const, trafficLightPosition: { x: 15, y: 13 } } : {}),
     webPreferences: { preload: path.join(__dirname, '../preload/index.js'), contextIsolation: true, nodeIntegration: false, sandbox: false },
   });
@@ -184,7 +277,9 @@ function createWindow() {
     if (/^https?:\/\//.test(url)) void shell.openExternal(url);
     return { action: 'deny' };
   });
+  if (testRun()) win.once('ready-to-show', () => win?.showInactive());
   win.on('closed', () => (win = null));
+  win.webContents.once('did-finish-load', () => setTimeout(() => void checkOnLaunch(), 5000));
 }
 
 app.whenReady().then(() => {
@@ -198,6 +293,8 @@ app.whenReady().then(() => {
     return net.fetch(pathToFileURL(file).toString());
   });
   openRack();
+  snapshot('open');
+  setInterval(() => snapshot('auto'), 30 * 60 * 1000);
   createWindow();
   app.on('activate', () => {
     if (!win) createWindow();
@@ -208,6 +305,7 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
 app.on('before-quit', () => {
+  if (folder) snapshot('quit');
   folder?.close();
   projects?.close();
 });

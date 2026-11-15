@@ -4,14 +4,26 @@
   import { LANGS, type LangSetting } from '../../shared/i18n/core.ts';
   import { THEMES, type ThemeSetting } from '../../shared/types.ts';
   import Modal from '../lib/Modal.svelte';
+  import Backups from './Backups.svelte';
   import { t } from '../lib/i18n.svelte.ts';
   import { setSettings, store } from '../lib/store.svelte.ts';
 
   let { onclose }: { onclose: () => void } = $props();
 
-  const SECTIONS = ['general', 'rack', 'about'] as const;
+  const SECTIONS = ['general', 'rack', 'backups', 'about'] as const;
   let section = $state<(typeof SECTIONS)[number]>('general');
   const s = $derived(store.state.settings);
+
+  let checking = $state(false);
+  let result = $state<{ text: string; url?: string } | null>(null);
+  async function checkNow() {
+    checking = true;
+    const info = await window.api.checkForUpdates();
+    checking = false;
+    if (!info.latest) result = { text: t('updates.failed') };
+    else if (info.newer) result = { text: t('updates.newer', { version: info.latest }), url: info.url };
+    else result = { text: t('updates.upToDate') };
+  }
 </script>
 
 <Modal title={t('app.settings')} {onclose} wide>
@@ -37,6 +49,19 @@
           </select>
           <small class="faint">{t('settings.themeHint')}</small>
         </label>
+        <div class="field">
+          <span>{t('updates.title')}</span>
+          <small class="faint">{t('updates.desc', { version: store.state.version })}</small>
+          <label class="check">
+            <input type="checkbox" checked={s.updates.check} onchange={(e) => setSettings({ updates: { ...s.updates, check: e.currentTarget.checked } })} />
+            {t('updates.onLaunch')}
+          </label>
+          <div class="buttons">
+            <button class="btn" disabled={checking} onclick={checkNow}>{checking ? t('updates.checking') : t('updates.checkNow')}</button>
+            {#if result}<span class="faint">{result.text}</span>{/if}
+            {#if result?.url}<button class="btn primary" onclick={() => window.api.openRelease(result!.url!)}>{t('updates.download')}</button>{/if}
+          </div>
+        </div>
       {:else if section === 'rack'}
         <div class="field">
           <span>{t('settings.rackFolder')}</span>
@@ -48,6 +73,8 @@
             {#if s.rackPath}<button class="btn" onclick={() => window.api.resetRack()}>{t('settings.defaultFolder')}</button>{/if}
           </div>
         </div>
+      {:else if section === 'backups'}
+        <Backups />
       {:else}
         <h3>Potion Rack</h3>
         <p class="muted">{t('settings.version', { version: store.state.version })}</p>
@@ -99,6 +126,14 @@
   }
   .field > span {
     font-weight: 600;
+  }
+  .check {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .buttons span {
+    align-self: center;
   }
   .field select {
     max-width: 260px;

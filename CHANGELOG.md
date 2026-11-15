@@ -1,3 +1,18 @@
+## 0.8.0
+
+### Added
+[+] Update check on launch (can be turned off), download and install from inside the app, «Skip this version»
+[+] Backups: snapshots of paints, recipes and articles on launch, every half an hour and on quit (when something
+    changed), restore from Settings; the full backup — the whole rack with photos in a zip, restored into a new folder
+[+] Export an article to PDF: the figure's data, the article with pictures, its paints with their colours
+[+] Quick search ⌘K: paints, projects and recipes in one field
+[+] Mixing (⌘4): paints mix like pigments (spectral.js, Kubelka-Munk), closest paints of the rack and the catalog to
+    a mix; «Find a mix» — the paints of the shelf, alone or two in parts, closest to a wanted colour; save as a recipe
+
+### Changed
+[*] The colour of a mix in recipes follows pigment mixing instead of averaging light
+[*] Modules: ⌘1 paints, ⌘2 projects, ⌘3 recipes, ⌘4 mixing, ⌘5 shopping list
+
 ## 0.7.0
 
 ### Changed

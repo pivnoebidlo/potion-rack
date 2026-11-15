@@ -7,7 +7,7 @@
   import { store } from '../lib/store.svelte.ts';
   import { recipeMenu } from './menu.ts';
   import StepStrip from './StepStrip.svelte';
-  import { createRecipe, recipeTitle, rview } from './view.svelte.ts';
+  import { createRecipe, openRecipe, recipeTitle, rview } from './view.svelte.ts';
 
   const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
   const paints = $derived(store.state.rack.paints);
@@ -39,7 +39,7 @@
     <button
       class="row"
       class:selected={rview.selected === r.id}
-      onclick={() => (rview.selected = r.id)}
+      onclick={() => openRecipe(r.id)}
       oncontextmenu={(e) => (menu = { ...menuAt(e), items: recipeMenu(r) })}
     >
       <span class="l" class:faint={!r.name}>{recipeTitle(r)}</span>

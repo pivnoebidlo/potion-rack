@@ -13,12 +13,14 @@ export const defaultSettings = (): Settings => ({
   theme: 'auto',
   language: 'auto',
   paints: { view: 'grid', sort: 'name', desc: false },
+  updates: { check: true },
 });
 
 export function normalizeSettings(raw: unknown): Settings {
   const d = defaultSettings();
   const s = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
   const p = s['paints'] && typeof s['paints'] === 'object' ? (s['paints'] as Record<string, unknown>) : {};
+  const u = s['updates'] && typeof s['updates'] === 'object' ? (s['updates'] as Record<string, unknown>) : {};
   return {
     rackPath: typeof s['rackPath'] === 'string' && s['rackPath'] ? s['rackPath'] : null,
     theme: THEMES.includes(s['theme'] as ThemeSetting) ? (s['theme'] as ThemeSetting) : d.theme,
@@ -28,6 +30,7 @@ export function normalizeSettings(raw: unknown): Settings {
       sort: isSort(p['sort']) ? p['sort'] : d.paints.sort,
       desc: p['desc'] === true,
     },
+    updates: { check: u['check'] !== false, ...(typeof u['skip'] === 'string' && u['skip'] ? { skip: u['skip'] } : {}) },
   };
 }
 
