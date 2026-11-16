@@ -1,6 +1,8 @@
-<!-- The app: four screens and a tab bar at the bottom. -->
+<!-- The app: five tabs at the bottom; the catalog opens from the paints. -->
 <script lang="ts">
-  import { BookOpen, Palette, RefreshCw, ShoppingCart } from '@lucide/svelte';
+  import { FlaskConical, Paintbrush, Palette, RefreshCw, ShoppingCart } from '@lucide/svelte';
+  import Mixing from './mixing/Mixing.svelte';
+  import Projects from './projects/Projects.svelte';
   import Catalog from './screens/Catalog.svelte';
   import Paints from './screens/Paints.svelte';
   import Shopping from './screens/Shopping.svelte';
@@ -8,21 +10,35 @@
   import { shopping } from '../../src/shared/rack.ts';
   import { store, t } from './store.svelte.ts';
 
-  type Tab = 'shopping' | 'paints' | 'catalog' | 'sync';
-  let tab = $state<Tab>(store.pairing ? 'shopping' : 'sync');
+  type Tab = 'projects' | 'paints' | 'mixing' | 'shopping' | 'sync';
+  let tab = $state<Tab>(store.pairing ? 'projects' : 'sync');
+  let catalog = $state(false);
   const toBuy = $derived(shopping(store.rack.paints).buy.length);
   const tabs = $derived([
-    { id: 'shopping' as const, icon: ShoppingCart, label: t('m.shopping'), badge: toBuy },
+    { id: 'projects' as const, icon: Paintbrush, label: t('app.projects'), badge: 0 },
     { id: 'paints' as const, icon: Palette, label: t('m.paints'), badge: 0 },
-    { id: 'catalog' as const, icon: BookOpen, label: t('m.catalog'), badge: 0 },
-    { id: 'sync' as const, icon: RefreshCw, label: t('m.sync'), badge: store.pending.length },
+    { id: 'mixing' as const, icon: FlaskConical, label: t('app.mixer'), badge: 0 },
+    { id: 'shopping' as const, icon: ShoppingCart, label: t('m.shopping'), badge: toBuy },
+    { id: 'sync' as const, icon: RefreshCw, label: t('m.sync'), badge: store.changes + store.conflicts.length },
   ]);
+
+  // Messages of the other tabs (saved, a picture that could not be read) show for a moment at the bottom.
+  $effect(() => {
+    if (!store.message || tab === 'sync') return;
+    const id = setTimeout(() => (store.message = null), 3500);
+    return () => clearTimeout(id);
+  });
 </script>
 
 <div class="app">
   <main>
-    {#if tab === 'shopping'}<Shopping />{:else if tab === 'paints'}<Paints />{:else if tab === 'catalog'}<Catalog />{:else}<Sync />{/if}
+    {#if tab === 'projects'}<Projects />
+    {:else if tab === 'paints'}{#if catalog}<Catalog onback={() => (catalog = false)} />{:else}<Paints oncatalog={() => (catalog = true)} />{/if}
+    {:else if tab === 'mixing'}<Mixing />
+    {:else if tab === 'shopping'}<Shopping />
+    {:else}<Sync />{/if}
   </main>
+  {#if store.message && tab !== 'sync'}<div class="toast" class:bad={store.message.bad}>{store.message.text}</div>{/if}
   <nav>
     {#each tabs as x (x.id)}
       <button class:on={tab === x.id} onclick={() => (tab = x.id)}>
@@ -48,7 +64,7 @@
   }
   nav {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(5, 1fr);
     flex: none;
     padding-bottom: env(safe-area-inset-bottom);
     border-top: 1px solid var(--border);
@@ -86,6 +102,25 @@
     text-align: center;
   }
   .label {
-    font-size: 11px;
+    max-width: 100%;
+    overflow: hidden;
+    font-size: 10.5px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .toast {
+    position: fixed;
+    left: 16px;
+    right: 16px;
+    bottom: calc(72px + env(safe-area-inset-bottom));
+    z-index: 30;
+    padding: 10px 14px;
+    border-radius: var(--radius-m);
+    background: var(--bg-active);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+    pointer-events: none;
+  }
+  .toast.bad {
+    color: var(--danger);
   }
 </style>

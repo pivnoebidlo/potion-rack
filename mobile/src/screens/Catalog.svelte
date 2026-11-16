@@ -1,11 +1,13 @@
 <!-- The catalog on the phone: in a shop, find a paint and add it — «I have it» or «Want it». -->
 <script lang="ts">
+  import { ArrowLeft } from '@lucide/svelte';
   import { flatten, fromCatalog, inRack, searchCatalog, type CatalogFile, type CatalogPaint } from '../../../src/shared/catalog.ts';
   import { newPaint } from '../../../src/shared/rack.ts';
   import type { PaintStatus } from '../../../src/shared/types.ts';
   import Swatch from '../Swatch.svelte';
   import { store, t } from '../store.svelte.ts';
 
+  let { onback }: { onback: () => void } = $props();
   let list = $state.raw<CatalogPaint[]>([]);
   void import('../../../src/catalog/catalog.json').then((m) => (list = flatten((m.default ?? m) as unknown as CatalogFile)));
   let query = $state('');
@@ -18,7 +20,10 @@
 </script>
 
 <header class="bar">
-  <h1>{t('m.catalog')}</h1>
+  <div class="line">
+    <button class="round plain" aria-label={t('m.back')} onclick={onback}><ArrowLeft size={22} /></button>
+    <h1>{t('m.catalog')}</h1>
+  </div>
   <input type="search" placeholder={t('catalog.search')} bind:value={query} />
 </header>
 
@@ -39,20 +44,6 @@
 {/each}
 
 <style>
-  .bar {
-    position: sticky;
-    top: 0;
-    z-index: 2;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    padding: 12px 16px 10px;
-    background: var(--bg-primary);
-  }
-  h1 {
-    margin: 0;
-    font-size: 22px;
-  }
   .row {
     display: flex;
     align-items: center;

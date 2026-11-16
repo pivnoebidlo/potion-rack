@@ -1,5 +1,5 @@
 // What the projects module shows: the selected figure or group, the article mode, open groups of the tree.
-import { allFigures, baseName, findFolder, isWithin, joinPath, parentOf, type Figure, type FigureStatus, type FolderNode } from '../../shared/projects.ts';
+import { allFigures, baseName, findFolder, isWithin, joinPath, parentOf, statusPatch, type Figure, type FigureStatus, type FolderNode } from '../../shared/projects.ts';
 import { confirm, promptText } from '../lib/confirm.svelte.ts';
 import { flushArticle } from './article.svelte.ts';
 import { timer } from './timer.svelte.ts';
@@ -117,10 +117,5 @@ export async function remove(path: string) {
 }
 
 // A new status; the dates of starting and finishing fill in by themselves when still empty.
-export function setFigureStatus(f: Figure, status: FigureStatus) {
-  const today = new Date().toISOString().slice(0, 10);
-  const patch: Partial<Figure['meta']> = { status };
-  if (status === 'painting' && !f.meta.started) patch.started = today;
-  if (status === 'done' && !f.meta.finished) patch.finished = today;
-  return window.api.updateFigure(f.path, patch);
-}
+export const setFigureStatus = (f: Figure, status: FigureStatus) =>
+  window.api.updateFigure(f.path, statusPatch(f.meta, status, new Date().toISOString().slice(0, 10)));

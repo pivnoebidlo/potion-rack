@@ -40,15 +40,35 @@ A paint rack and project journal for miniature painters. [Русская вер�
 - Update check on launch, with download and install from inside the app.
 - ⌘1–⌘6 — paints, projects, recipes, mixing, shopping list, statistics; ⌘K — search everything; ⌘N — new paint or figure, ⌘F — search, ⌘, — settings.
 
-## Android app
-`mobile/` — the same core (`src/shared/`) in a Capacitor shell. The phone keeps a copy of the rack and works without
-the network: the shopping list, paints, the catalog. On the computer, Settings → Phone turns sync on and shows a QR
-code; scan it in the app (Sync → Pair). At home, on the same Wi-Fi, the phone sends what it changed and gets the
-rack back. The APK is attached to each release.
+## Phone app (Android, iPhone)
+`mobile/` — the same core (`src/shared/`) in a Capacitor shell, for the painting table. The phone keeps a copy of the
+rack and the projects and works without the network:
+- **Projects**: figures by status, the article (read, edit as a whole, or add a quick note with the date, photos from
+  the camera or the gallery and paint mentions), the status, the painting timer.
+- **Mixing**: paints in parts → the colour (as pigments mix); saved as a new recipe or as one more step of a recipe;
+  recipes step by step.
+- Paints and the catalog, the shopping list.
+
+On the computer, Settings → Phone turns sync on and shows a QR code; scan it in the app (Sync → Pair) or with the
+iPhone Camera. At home, on the same Wi-Fi, the phone sends what it changed (photos first) and gets everything back.
+If an article was changed on both sides, nothing is overwritten: the phone asks which version stays. The phone needs
+the computer's Potion Rack of the same version or newer. The APK is attached to each release.
 
     cd mobile && npm install
     npm run dev      # in a browser (pairing by pasting the link)
-    npm run sync     # build and copy into the Android project (mobile/android)
+    npm run android  # build and copy into the Android project (mobile/android)
+    npm run ios      # build and copy into the iOS project (mobile/ios)
+
+**iPhone without a developer account** (a free Apple ID; the app has to be installed again every 7 days):
+1. Install Xcode from the App Store and open it once.
+2. `cd mobile && npm install && npm run ios && npx cap open ios`.
+3. Xcode → Settings → Accounts: add your Apple ID. Target App → Signing & Capabilities → Team: your Personal Team
+   (if Xcode says the bundle id is taken, change `com.potionrack.app` to something of your own).
+4. Connect the iPhone by cable, trust the computer, turn on Settings → Privacy & Security → Developer Mode.
+5. Choose the iPhone as the destination and press Run. On the iPhone: Settings → General → VPN & Device Management →
+   trust the developer. Allow «local network» when the app asks.
+6. Pair: on the computer Settings → Phone → turn sync on; point the iPhone Camera at the code and tap the link.
+   After 7 days press Run again: the app is reinstalled over the old one, its data stays.
 
 ## Data
 The rack is a plain folder (by default `Documents/Potion Rack`), to put in iCloud or Dropbox as it is; changes made

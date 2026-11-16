@@ -11,6 +11,14 @@
   const qr = $derived(live ? renderSVG(live.link, { border: 1 }) : '');
   const fmt = $derived(new Intl.DateTimeFormat(locale.lang, { dateStyle: 'medium', timeStyle: 'short' }));
 
+  let copied = $state(false);
+  async function copyLink() {
+    if (!live) return;
+    await navigator.clipboard.writeText(live.link);
+    copied = true;
+    setTimeout(() => (copied = false), 1500);
+  }
+
   async function renew() {
     if (await confirm(t('phone.renewConfirm'), t('phone.renew'))) await window.api.renewPhone();
   }
@@ -35,7 +43,11 @@
       <p class="faint small">
         {#if ph.lastSync}{t('phone.lastSync', { date: fmt.format(new Date(ph.lastSync)), device: ph.device || '—' })}{:else}{t('phone.never')}{/if}
       </p>
-      <button class="btn" onclick={renew}>{t('phone.renew')}</button>
+      <p class="faint small">{t('phone.copyHint')}</p>
+      <div class="row">
+        <button class="btn" onclick={copyLink}>{copied ? t('phone.copied') : t('phone.copy')}</button>
+        <button class="btn" onclick={renew}>{t('phone.renew')}</button>
+      </div>
     </div>
   </div>
 {/if}
@@ -75,6 +87,10 @@
   }
   .info p {
     margin: 0 0 8px;
+  }
+  .row {
+    display: flex;
+    gap: 8px;
   }
   .small {
     font-size: 12px;

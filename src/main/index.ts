@@ -13,8 +13,8 @@ import { ProjectsFolder } from './projects.ts';
 import { checkForUpdates, downloadUpdate, installUpdate } from './updates.ts';
 import { htmlToPdf } from './pdf.ts';
 import { SyncServer, lanAddresses } from './syncserver.ts';
-import { SYNC_VERSION, acceptPending, pairingLink, type SyncFigure } from '../shared/sync.ts';
-import { allFigures } from '../shared/projects.ts';
+import { SYNC_VERSION, acceptPending, pairingLink, type FigureStore, type SyncFigure } from '../shared/sync.ts';
+import { allFigures, isImageName } from '../shared/projects.ts';
 import { randomBytes } from 'node:crypto';
 import { createSnapshot, listSnapshots, prune, restoreSnapshot, unzipRack, zipRack, type Reason } from './backups.ts';
 import { isReleaseUrl } from '../shared/updates.ts';
@@ -239,22 +239,54 @@ ipcMain.handle('figure:exportPdf', async (_e, name: string, html: string) => {
 
 // The phone (main/syncserver.ts, shared/sync.ts): a server on the local network while sync is on. The phone sends what
 // it did offline, gets the whole rack back.
+// A small JPEG of a picture for the phone: at most `max` px.
+function smallJpeg(file: string | null, max: number): Buffer | null {
+  if (!file || !fs.existsSync(file)) return null;
+  const img = nativeImage.createFromPath(file);
+  if (img.isEmpty()) return null;
+  const { width, height } = img.getSize();
+  const k = Math.min(1, max / Math.max(width, height));
+  return (k < 1 ? img.resize({ width: Math.round(width * k), height: Math.round(height * k) }) : img).toJPEG(80);
+}
+
 const phoneServer = new SyncServer({
   token: () => (settings.phone.enabled ? settings.phone.token : ''),
   sync(req, device) {
-    const applied = acceptPending(req.pending, (a) => apply(a));
-    const figures: SyncFigure[] = allFigures(state.projects).map((f) => ({ path: f.path, name: f.name, status: f.meta.status, paints: f.meta.paints, recipes: f.meta.recipes }));
+    let wrote = false;
+    const figureStore: FigureStore = {
+      meta: (rel) => projects.readMeta(rel),
+      body: (rel) => projects.readBody(rel),
+      write: (rel, change) => {
+        projects.write(rel, change);
+        wrote = true;
+      },
+    };
+    const today = new Date().toISOString().slice(0, 10);
+    const { applied, conflicts } = acceptPending(req.pending, (a) => apply(a), figureStore, today);
+    if (wrote) rescan();
+    const figures: SyncFigure[] = allFigures(state.projects).map((f) => ({
+      path: f.path,
+      name: f.name,
+      status: f.meta.status,
+      paints: f.meta.paints,
+      recipes: f.meta.recipes,
+      meta: f.meta,
+      images: f.images,
+      body: projects.readBody(f.path) ?? '',
+    }));
     setSettings({ phone: { ...settings.phone, lastSync: new Date().toISOString(), device: device.slice(0, 80) } });
-    return { version: SYNC_VERSION, rack: state.rack, figures, applied, at: new Date().toISOString() };
+    return { version: SYNC_VERSION, rack: state.rack, figures, applied, conflicts, at: new Date().toISOString() };
   },
-  async photo(paintId, name) {
-    const file = folder.photoPath(paintId, name);
-    if (!file || !fs.existsSync(file)) return null;
-    const img = nativeImage.createFromPath(file);
-    if (img.isEmpty()) return null;
-    const { width, height } = img.getSize();
-    const k = Math.min(1, 400 / Math.max(width, height));
-    return (k < 1 ? img.resize({ width: Math.round(width * k), height: Math.round(height * k) }) : img).toJPEG(80);
+  photo: async (paintId, name) => smallJpeg(folder.photoPath(paintId, name), 400),
+  image: async (figure, name, width) => smallJpeg(projects.imagePath(figure, name), width),
+  async addImage(figure, name, data) {
+    if (!isImageName(name)) return 'bad';
+    if (!projects.isFigure(figure)) return 'gone';
+    const img = nativeImage.createFromBuffer(data);
+    if (img.isEmpty()) return 'bad';
+    if (!projects.putImage(figure, name, img)) return 'gone';
+    rescan();
+    return 'ok';
   },
 });
 async function phoneSync() {

@@ -81,10 +81,28 @@ fflate), PDF статьи (`renderer/projects/pdf.ts` → `main/pdf.ts`; лен�
 Мобильное приложение (Android): `mobile/` — свой package.json (Capacitor ищет зависимости рядом с конфигом), Svelte +
 Vite, общее ядро — импорт из `../src/shared` (держать его без Node/Electron; `api.ts` — только для настольного). Данные —
 Capacitor Preferences (в браузере — localStorage), очередь действий `pending` поверх последнего стеллажа с Mac.
-Синхронизация: `shared/sync.ts` (протокол, `allowed` — что телефону можно, `pairingLink`), `main/syncserver.ts`
-(HTTP на 0.0.0.0, Bearer-токен, по умолчанию выключен), «Настройки → Телефон» (`settings/Phone.svelte`, QR — uqr).
+Синхронизация: `shared/sync.ts` (протокол 2, `allowed` — что телефону можно: краски, `recipe/add`, `recipe/addStep`,
+`figure/status|session|article`; статья — целиком с `base` = `articleHash` версии, от которой правили: не совпало —
+конфликт, телефон спрашивает; `acceptPending` → `{applied, conflicts}`, `figureWith` — вид на телефоне до синхронизации),
+`main/syncserver.ts` (HTTP на 0.0.0.0, Bearer-токен, по умолчанию выключен; `/api/image` — картинки фигурок туда и
+обратно, имя даёт телефон — `newImageName`), «Настройки → Телефон» (`settings/Phone.svelte`, QR — uqr).
+Телефон: вкладки Проекты (`mobile/src/projects/`), Краски (+каталог), Смешивание (`mixing/`), Покупки, Синхронизация;
+`store.svelte.ts` — `pending`, `uploads` (фото до отправки), `conflicts`, `timer`; `pictures.ts` — фото в Filesystem
+(`uploads/` до отправки, кэш с компьютера), сеть картинок — `CapacitorHttp` напрямую (подменённый fetch портит
+двоичные данные). Порядок синхронизации: `/api/hello` (версия) → фото → `/api/sync`.
 Android-проект — `mobile/android` (сгенерирован `cap add android`; cleartext разрешён в манифесте — http в локальной
 сети; версия — из mobile/package.json, подпись релиза — из секретов CI). Локально Android SDK нет: APK собирает CI
 (задача `android` в release.yml). Проверка мобильной части — `.dev/mobile-harness.cjs` (окно 400×860, CDP 9334,
 `.dev/cdp-m.mjs`) против настольного в тестовом режиме. При выпуске версия в mobile/package.json = версии приложения.
+iOS: `mobile/ios` (`cap add ios`, SPM; сканер ML Kit на iOS только через CocoaPods — исключён, привязка камерой iPhone
+по ссылке `potionrack://`, обработчик — `@capacitor/app` в mobile/src/main.ts; Info.plist: `NSAllowsLocalNetworking`,
+`NSLocalNetworkUsageDescription`, `CFBundleURLTypes`). Аккаунта разработчика нет: установка из Xcode с Personal Team,
+CI только собирает для симулятора (задача `ios` в check.yml). Версия в Xcode-проект — `mobile/scripts/version.mjs`
+(в `npm run ios` / `sync`). Xcode установлен, но не выбран системно (нет sudo): команды Xcode — с
+`DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer`. Проверка iOS: сборка для симулятора (`xcodebuild … -sdk
+iphonesimulator CODE_SIGNING_ALLOWED=NO -derivedDataPath <scratchpad>`), `xcrun simctl boot/install/launch` без окна,
+снимки — `simctl io <dev> screenshot` (только экран симулятора), консоль страницы — `simctl launch --console-pty`.
+Касаний `simctl` не умеет: системный вопрос «Открыть в Potion Rack?» при `simctl openurl` не нажать — привязку для
+теста пишут в хранилище приложения (Preferences = UserDefaults контейнера, ключ `CapacitorStorage.state`; `simctl spawn
+defaults read` видит НЕ контейнер приложения).
 Лицензию можно сменить (не обязательно GPL) — решить до релиза.

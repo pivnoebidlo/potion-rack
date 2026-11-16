@@ -272,3 +272,32 @@ export const duration = (minutes: number, h: string, min: string) => {
   const hh = Math.floor(minutes / 60), mm = Math.round(minutes % 60);
   return hh ? (mm ? `${hh} ${h} ${mm} ${min}` : `${hh} ${h}`) : `${mm} ${min}`;
 };
+
+// A new status; the dates of starting and finishing fill in by themselves when still empty.
+export function statusPatch(meta: FigureMeta, status: FigureStatus, today: string): Partial<FigureMeta> {
+  const patch: Partial<FigureMeta> = { status };
+  if (status === 'painting' && !meta.started) patch.started = today;
+  if (status === 'done' && !meta.finished) patch.finished = today;
+  return patch;
+}
+
+// The article as compared between the phone and the desktop: line ends and the trailing blank lines do not count.
+export const articleKey = (body: string) => body.replace(/\r\n?/g, '\n').replace(/\s+$/, '');
+
+// A short fingerprint of an article (cyrb53): the phone sends it with its edit to say which version it changed.
+export function articleHash(body: string): string {
+  const s = articleKey(body);
+  let h1 = 0xdeadbeef, h2 = 0x41c6ce57;
+  for (let i = 0; i < s.length; i++) {
+    const c = s.charCodeAt(i);
+    h1 = Math.imul(h1 ^ c, 2654435761);
+    h2 = Math.imul(h2 ^ c, 1597334677);
+  }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(36);
+}
+
+// A picture name as the app gives it: «<Date.now() in base 36><4 random>.jpg» (timeFromName reads the time back).
+export const newImageName = (now = Date.now()) => `${now.toString(36).padStart(8, '0')}${Math.random().toString(36).slice(2, 6).padEnd(4, '0')}.jpg`;
+export const isImageName = (name: string) => /^[0-9a-z]{12}\.jpg$/.test(name);

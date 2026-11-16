@@ -7,7 +7,9 @@
 
   let link = $state('');
   let error = $state('');
-  const native = Capacitor.isNativePlatform();
+  // The ML Kit scanner is in the Android app only; on the iPhone the system Camera reads the code and opens the app.
+  const scanner = Capacitor.getPlatform() === 'android';
+  const ios = Capacitor.getPlatform() === 'ios';
   const fmt = new Intl.DateTimeFormat(lang, { dateStyle: 'medium', timeStyle: 'short' });
 
   function pair(text: string) {
@@ -42,13 +44,18 @@
     </button>
     {#if store.message}<p class:bad={store.message.bad}>{store.message.text}</p>{/if}
     <p class="faint">{store.lastSync ? t('m.lastSync', { date: fmt.format(new Date(store.lastSync)) }) : t('m.never')}</p>
-    <p class="faint">{store.pending.length ? t('m.pending', { count: store.pending.length }) : t('m.noPending')}</p>
+    <p class="faint">{store.changes ? t('m.pending', { count: store.changes }) : t('m.noPending')}</p>
+    {#if store.conflicts.length}
+      <p class="bad">{t('m.conflictsOpen')}</p>
+      {#each store.conflicts as c (c.path)}<p class="small">· {c.path}</p>{/each}
+    {/if}
     <p class="faint small">{t('m.offlineHint')}</p>
     <button class="btn" onclick={() => store.unpair()}>{t('m.unpair')}</button>
   {:else}
     <p>{t('m.notPaired')}</p>
     <p class="faint small">{t('m.pairHint')}</p>
-    {#if native}<button class="btn primary big" onclick={scan}><QrCode size={18} /> {t('m.scan')}</button>{/if}
+    {#if scanner}<button class="btn primary big" onclick={scan}><QrCode size={18} /> {t('m.scan')}</button>{/if}
+    {#if ios}<p class="hint"><QrCode size={18} /> {t('m.cameraHint')}</p>{/if}
     <label class="field">
       <span class="faint small">{t('m.paste')}</span>
       <input type="text" bind:value={link} placeholder="potionrack://pair?…" autocapitalize="off" autocomplete="off" spellcheck="false" />
@@ -93,5 +100,16 @@
   }
   .bad {
     color: var(--danger);
+  }
+  .hint {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    border-radius: var(--radius-m);
+    background: var(--accent-soft);
+  }
+  .hint :global(svg) {
+    flex: none;
   }
 </style>
