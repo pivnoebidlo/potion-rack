@@ -1,12 +1,13 @@
 <!-- The rack: search, a list by brand; a tap opens a sheet to change status, bottles and the note. -->
 <script lang="ts">
-  import { Minus, Plus, X } from '@lucide/svelte';
+  import { BookOpen, Minus, Plus, X } from '@lucide/svelte';
   import { emptyFilter, matches, mentionOf, sortPaints } from '../../../src/shared/rack.ts';
   import { PAINT_STATUSES, type Paint } from '../../../src/shared/types.ts';
   import Dot from '../Dot.svelte';
   import Swatch from '../Swatch.svelte';
   import { store, t } from '../store.svelte.ts';
 
+  let { oncatalog }: { oncatalog: () => void } = $props();
   let query = $state('');
   const list = $derived(sortPaints(store.rack.paints.filter((p) => matches(p, { ...emptyFilter(), text: query })), 'brand'));
   let openId = $state<string | null>(null);
@@ -15,7 +16,10 @@
 </script>
 
 <header class="bar">
-  <h1>{t('m.paints')} <span class="faint">{store.rack.paints.length}</span></h1>
+  <div class="line">
+    <h1>{t('m.paints')} <span class="faint">{store.rack.paints.length}</span></h1>
+    <button class="btn" onclick={oncatalog}><BookOpen size={16} /> {t('m.catalog')}</button>
+  </div>
   <input type="search" placeholder={t('m.search')} bind:value={query} />
 </header>
 
@@ -58,20 +62,6 @@
 {/if}
 
 <style>
-  .bar {
-    position: sticky;
-    top: 0;
-    z-index: 2;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    padding: 12px 16px 10px;
-    background: var(--bg-primary);
-  }
-  h1 {
-    margin: 0;
-    font-size: 22px;
-  }
   .row {
     display: flex;
     align-items: center;

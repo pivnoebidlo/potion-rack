@@ -12,7 +12,7 @@ import { storeImage } from './photos.ts';
 const IMAGE_EXT = new Set(['.jpg', '.jpeg', '.png', '.webp', '.gif']);
 const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
 
-function writeAtomic(file: string, text: string) {
+function writeAtomic(file: string, text: string | Buffer) {
   const tmp = file + '.tmp';
   fs.writeFileSync(tmp, text);
   fs.renameSync(tmp, file);
@@ -145,6 +145,30 @@ export class ProjectsFolder {
   private file(rel: string) {
     const dir = this.abs(rel);
     return dir && rel ? path.join(dir, FIGURE_FILE) : null;
+  }
+
+  // The front matter as it is on disk now; null — not a figure.
+  readMeta(rel: string): FigureMeta | null {
+    const f = this.file(rel);
+    try {
+      return f && fs.existsSync(f) ? metaFromData(parseFrontmatter(fs.readFileSync(f, 'utf8')).data) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  // A picture with the name it already has (taken on the phone); false — not a figure.
+  putImage(rel: string, name: string, img: NativeImage, maxSide = 2000): boolean {
+    const dir = this.abs(rel);
+    if (!dir || !this.isFigure(rel) || path.basename(name) !== name) return false;
+    const file = path.join(dir, IMAGES_DIR, name);
+    if (fs.existsSync(file)) return true;
+    const { width, height } = img.getSize();
+    const k = Math.min(1, maxSide / Math.max(width, height));
+    const out = k < 1 ? img.resize({ width: Math.round(width * k), height: Math.round(height * k), quality: 'best' }) : img;
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    writeAtomic(file, out.toJPEG(88));
+    return true;
   }
 
   readBody(rel: string): string | null {

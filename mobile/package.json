@@ -1,20 +1,25 @@
 {
   "name": "potion-rack-mobile",
-  "version": "0.10.0",
+  "version": "0.11.0",
   "private": true,
   "type": "module",
   "description": "Potion Rack for Android: a copy of the rack that syncs with the desktop over Wi-Fi",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "sync": "vite build && cap sync android",
-    "typecheck": "svelte-check --tsconfig ./tsconfig.json"
+    "sync": "vite build && node scripts/version.mjs && cap sync",
+    "typecheck": "svelte-check --tsconfig ./tsconfig.json",
+    "android": "vite build && cap sync android",
+    "ios": "vite build && node scripts/version.mjs && cap sync ios"
   },
   "dependencies": {
     "@capacitor-mlkit/barcode-scanning": "^8.2.2",
     "@capacitor/android": "^8.6.2",
+    "@capacitor/app": "^8.1.2",
     "@capacitor/core": "^8.6.2",
     "@capacitor/device": "^8.0.3",
+    "@capacitor/filesystem": "^8.1.5",
+    "@capacitor/ios": "^8.6.2",
     "@capacitor/preferences": "^8.0.1"
   },
   "devDependencies": {

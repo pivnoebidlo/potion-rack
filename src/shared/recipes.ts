@@ -12,7 +12,7 @@ function normalizeStepPaint(raw: unknown): StepPaint | null {
   return paint ? { paint, parts: Number.isFinite(parts) && parts > 0 ? Math.min(99, Math.round(parts * 10) / 10) : 1 } : null;
 }
 
-function normalizeStep(raw: unknown, i: number): RecipeStep | null {
+export function normalizeStep(raw: unknown, i: number): RecipeStep | null {
   if (!raw || typeof raw !== 'object') return null;
   const s = raw as Record<string, unknown>;
   const kind = STEP_KINDS.includes(s['kind'] as StepKind) ? (s['kind'] as StepKind) : 'other';

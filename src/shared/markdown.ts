@@ -9,6 +9,8 @@ export interface RenderOptions {
   figurePath: string;
   // Bold text that is a paint name → its colour (a dot before the name).
   paintColor?: (text: string) => string | null;
+  // Where a picture of images/ comes from (the phone: its own copy); by default the rack:// protocol of the desktop.
+  imageSrc?: (name: string) => string;
 }
 
 // GitHub-style heading ids: 'Нижняя часть' → 'нижняя-часть'.
@@ -34,9 +36,9 @@ export function renderMarkdown(text: string, opts: RenderOptions): string {
         })();
         let src = href;
         const local = /^(?:\.\/)?images\/(.+)$/.exec(decodeURI(href));
-        if (local) src = imageUrl(opts.figurePath, local[1]!);
+        if (local) src = opts.imageSrc ? opts.imageSrc(local[1]!) : imageUrl(opts.figurePath, local[1]!);
         else if (!/^(https?:|data:image\/)/.test(href)) return esc(`![${text}](${href})`);
-        return `<img src="${esc(src)}" alt="${esc(alt)}"${w ? ` style="width:${Number(w)}px"` : ''} data-view loading="lazy">`;
+        return `<img src="${esc(src)}" alt="${esc(alt)}"${w ? ` style="width:${Number(w)}px"` : ''} data-view${local ? ` data-name="${esc(local[1]!)}"` : ''} loading="lazy">`;
       },
       link({ href, tokens }: Tokens.Link) {
         const inner = this.parser.parseInline(tokens);

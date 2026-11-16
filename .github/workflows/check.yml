@@ -24,3 +24,21 @@ jobs:
       - run: npm run build
       - run: npm ci && npm run typecheck && npm run build
         working-directory: mobile
+
+  # The iPhone app compiles (for the simulator, unsigned): there is no Apple developer account to sign a real build.
+  ios:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            mobile/package-lock.json
+      - run: npm ci
+      - run: npm ci && npm run ios
+        working-directory: mobile
+      - run: xcodebuild -project App/App.xcodeproj -scheme App -sdk iphonesimulator -configuration Debug -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build | tail -20
+        working-directory: mobile/ios

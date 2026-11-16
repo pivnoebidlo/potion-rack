@@ -105,6 +105,12 @@ export function applyAction(rack: Rack, action: RackAction, now: string): Rack {
       });
       return changed ? { ...rack, recipes } : rack;
     }
+    case 'recipe/addStep': {
+      const r = rack.recipes.find((x) => x.id === action.id);
+      // Sent twice: the step is there already.
+      if (!r || r.steps.some((s) => s.id === action.step.id)) return rack;
+      return applyAction(rack, { type: 'recipe/update', id: r.id, patch: { steps: [...r.steps, action.step] } }, now);
+    }
     case 'recipe/remove':
       return rack.recipes.some((r) => r.id === action.id) ? { ...rack, recipes: rack.recipes.filter((r) => r.id !== action.id) } : rack;
   }

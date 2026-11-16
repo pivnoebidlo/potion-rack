@@ -1,3 +1,19 @@
+## 0.11.0
+
+### Added
+[+] iPhone app from the same code (mobile/ios, Swift Package Manager): built and installed from Xcode with a free
+    Apple ID (README: «iPhone without a developer account»); CI checks that it compiles
+[+] Pairing from the camera: the QR code holds a potionrack:// link that opens the app (iPhone Camera, Android camera
+    apps); on Android the in-app scanner stays
+[+] App icon and launch screen of Potion Rack on both phones
+[+] Phone: projects — figures by status, the article (read, edit, quick notes with the date, photos from the camera
+    or the gallery, paint mentions), the status (start and finish dates fill in), the painting timer
+[+] Phone: mixing — paints in parts give the colour, saved as a new recipe or a step of a recipe; recipes step by step
+[+] Settings → Phone: «Copy link» — pair by pasting the link (a simulator, a phone without a camera)
+[*] Phone: five tabs — Projects, Paints (the catalog opens from there), Mixing, Shopping, Sync
+[*] Sync protocol 2: figures, articles, pictures and recipes from the phone; an article changed on both sides is not
+    overwritten — the phone asks which version stays; the computer still takes phones of version 1
+
 ## 0.10.0
 
 ### Added

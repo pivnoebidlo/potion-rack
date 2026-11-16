@@ -110,4 +110,6 @@ export type RackAction =
   | { type: 'paint/remove'; id: string }
   | { type: 'recipe/add'; recipe: Recipe }
   | { type: 'recipe/update'; id: string; patch: Partial<Omit<Recipe, 'id' | 'created' | 'updated'>> }
-  | { type: 'recipe/remove'; id: string };
+  | { type: 'recipe/remove'; id: string }
+  // One more step at the end (the phone adds a mix to a recipe without touching the steps made on the desktop).
+  | { type: 'recipe/addStep'; id: string; step: RecipeStep };
